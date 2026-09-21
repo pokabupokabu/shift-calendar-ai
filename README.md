@@ -42,17 +42,17 @@ apps/shift-calendar-ai/
 
 ## 2. 使用技術・依存関係
 
-| 領域 | 選定 | 理由 |
-|---|---|---|
-| フレームワーク | Expo SDK 57 / React Native 0.86 / expo-router | iPhone専用MVPでもEASでのビルド・配信が楽。file-based routingで画面遷移の見通しが良い |
-| 言語 | TypeScript（strict） | AI出力JSON・カレンダーAPIの型を静的に保証する |
-| 状態管理 | zustand | Reduxほどの定型文が不要。永続化用途と一時セッション用途でストアを分離できる |
-| ローカル永続化 | `@react-native-async-storage/async-storage`（zustand `persist`経由） | ログイン不要のMVP方針（19節）に合わせ、サーバーではなく端末に保存 |
-| 画像取得 | `expo-image-picker` | カメラ撮影・ライブラリ選択・複数選択のいずれもサポート（5節） |
-| Apple Calendar | `expo-calendar`（EventKitラッパー） | ネイティブ実装を書かずにEventKitへアクセスできる |
-| Google Calendar (認証) | `expo-auth-session` + `expo-crypto` | OAuth PKCEフローを自前実装せずに済む |
-| 日付処理 | `date-fns`（`date-fns/locale/ja`） | 「9/20（日）」のような和文表示フォーマットが必要（9節） |
-| Lint/Format | `eslint-config-expo` + `prettier` | テンプレート標準。`npm run lint`で担保 |
+| 領域                   | 選定                                                                 | 理由                                                                                 |
+| ---------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| フレームワーク         | Expo SDK 57 / React Native 0.86 / expo-router                        | iPhone専用MVPでもEASでのビルド・配信が楽。file-based routingで画面遷移の見通しが良い |
+| 言語                   | TypeScript（strict）                                                 | AI出力JSON・カレンダーAPIの型を静的に保証する                                        |
+| 状態管理               | zustand                                                              | Reduxほどの定型文が不要。永続化用途と一時セッション用途でストアを分離できる          |
+| ローカル永続化         | `@react-native-async-storage/async-storage`（zustand `persist`経由） | ログイン不要のMVP方針（19節）に合わせ、サーバーではなく端末に保存                    |
+| 画像取得               | `expo-image-picker`                                                  | カメラ撮影・ライブラリ選択・複数選択のいずれもサポート（5節）                        |
+| Apple Calendar         | `expo-calendar`（EventKitラッパー）                                  | ネイティブ実装を書かずにEventKitへアクセスできる                                     |
+| Google Calendar (認証) | `expo-auth-session` + `expo-crypto`                                  | OAuth PKCEフローを自前実装せずに済む                                                 |
+| 日付処理               | `date-fns`（`date-fns/locale/ja`）                                   | 「9/20（日）」のような和文表示フォーマットが必要（9節）                              |
+| Lint/Format            | `eslint-config-expo` + `prettier`                                    | テンプレート標準。`npm run lint`で担保                                               |
 
 Gemini/Google Calendar本体の呼び出しライブラリは未追加（後述のPhase 1/5で実装時に追加する）。
 
@@ -80,7 +80,9 @@ interface AIProvider {
 
 `getAiProvider()`（`src/services/ai/index.ts`）が`EXPO_PUBLIC_AI_PROVIDER`を見て実装を返す。
 モデル差し替え（Proプラン候補、5節）は新しい`AIProvider`実装を追加するだけで済む。
-`GeminiProvider`は骨組みのみで、実際のAPI呼び出しはPhase 1で実装する（下記「未実装」参照）。
+`GeminiProvider`はPhase 1で実装済み（Gemini 3系への直接呼び出し、`responseSchema`で`ShiftAnalysisResult`同型のJSONを強制）。
+`userMatch`が`ambiguous`/`not_found`のときの候補選択は`AnalyzeShiftImagesInput.confirmedRowLabel`経由で
+再解析する形でPhase 2実装済み（`src/app/user-match-select.tsx`）。
 
 ## 5. CalendarProviderインターフェース（13〜15・20節）
 
@@ -92,20 +94,25 @@ interface AIProvider {
 
 ## 6. 画面一覧（MVP、要件定義書 Claude Codeプロンプトの「MVP画面」節）
 
-`src/app/` にexpo-routerのファイルとして配置済み（現時点ではUIと画面遷移のみ、AI/Googleの実処理は未接続）。
+`src/app/` にexpo-routerのファイルとして配置済み。AI解析（Gemini、Phase 1/2）とApple Calendar登録は
+実処理まで接続済み。Google Calendarは未接続（下記「未実装」参照）。
 
-| # | 画面 | ファイル |
-|---|---|---|
-| 1 | 初回画面 | `app/index.tsx` |
-| 2 | 名前入力画面 | `app/name-input.tsx` |
-| 3 | 写真選択画面 | `app/photo-select.tsx` |
-| 4 | AI解析中画面 | `app/analyzing.tsx` |
-| 5 | シフト結果一覧 | `app/shift-results.tsx` |
-| 6 | 要確認・編集画面 | `app/shift-review.tsx` |
-| 7 | カレンダー登録確認画面 | `app/calendar-confirm.tsx` |
-| 8 | 登録完了画面 | `app/complete.tsx` |
-| 9 | 設定画面 | `app/settings/index.tsx` |
-| 10 | シフト種別・時間マスター画面 | `app/settings/shift-types.tsx` |
+| #   | 画面                         | ファイル                       |
+| --- | ---------------------------- | ------------------------------ |
+| 1   | 初回画面                     | `app/index.tsx`                |
+| 2   | 名前入力画面                 | `app/name-input.tsx`           |
+| 3   | 写真選択画面                 | `app/photo-select.tsx`         |
+| 4   | AI解析中画面                 | `app/analyzing.tsx`            |
+| 4.5 | 本人確認（候補選択）画面※    | `app/user-match-select.tsx`    |
+| 5   | シフト結果一覧               | `app/shift-results.tsx`        |
+| 6   | 要確認・編集画面             | `app/shift-review.tsx`         |
+| 7   | カレンダー登録確認画面       | `app/calendar-confirm.tsx`     |
+| 8   | 登録完了画面                 | `app/complete.tsx`             |
+| 9   | 設定画面                     | `app/settings/index.tsx`       |
+| 10  | シフト種別・時間マスター画面 | `app/settings/shift-types.tsx` |
+
+※ MVP画面一覧（要件定義書）にはない、Phase 2で追加した画面。`userMatch.status`が
+`ambiguous`/`not_found`のときだけ`analyzing`からここへ遷移し、`matched`ならそのまま5へ進む。
 
 ## 7. MVPの最小実装順序（開発フェーズ、25節に対応）
 
@@ -113,9 +120,9 @@ interface AIProvider {
 
 - [x] Phase 0（今回）: プロジェクト構成・依存関係・データモデル・AIProvider/CalendarProviderインターフェース・
       画面の骨組みと画面遷移・ローカル永続化・env設定
-- [ ] Phase 1: `GeminiProvider.analyzeShiftImages`の実装（画像→AI→Shift JSON のPoC）
-- [ ] Phase 2: 本人シフト抽出のプロンプト調整（`userMatch`が`ambiguous`のときの候補選択UI）
-- [ ] Phase 3: 確認UIの磨き込み（現状は最小限のリスト・スイッチのみ）
+- [x] Phase 1: `GeminiProvider.analyzeShiftImages`の実装（画像→AI→Shift JSON のPoC、Gemini 3系・直接呼び出し）
+- [x] Phase 2: 本人シフト抽出のプロンプト調整（`userMatch`が`ambiguous`/`not_found`のときの候補選択UI、`user-match-select`画面）
+- [x] Phase 3: 確認UIの磨き込み（`shift-review`の日付・時刻をネイティブピッカー化。リスク5参照）
 - [ ] Phase 4: Apple Calendar連携の実機検証（コードは実装済み、実機での権限フロー・EventKit挙動を確認）
 - [ ] Phase 5: `GoogleCalendarProvider`の実装（OAuth・Calendar API呼び出し）
 - [ ] Phase 6: 上書き判定の実機検証
@@ -142,9 +149,11 @@ interface AIProvider {
    設定画面などで一言説明を入れるかは要検討。
 4. **シフト表画像のサイズ**：スクリーンショット・高解像度写真をそのままBase64で送る前提だが、
    Gemini側のリクエストサイズ上限・料金への影響を見て、送信前のリサイズ要否をPhase 1で判断する。
-5. **`shift-review`画面の入力方式**：MVPでは日付・時刻を自由入力のテキストフィールドにしている
+5. ~~**`shift-review`画面の入力方式**：MVPでは日付・時刻を自由入力のテキストフィールドにしている
    （ネイティブの日付・時刻ピッカーは未導入）。誤入力のリスクがあるため、Phase 3で
-   `@react-native-community/datetimepicker`等の導入を検討する。
+   `@react-native-community/datetimepicker`等の導入を検討する。~~
+   → Phase 3で解消済み。追加の依存関係なしで、既存の`@expo/ui`（`@expo/ui/community/datetime-picker`、
+   内部はSwiftUIの`DatePicker`）でネイティブピッカー化した。
 
 ## 9. 環境変数
 
