@@ -61,6 +61,22 @@ const RESPONSE_SCHEMA = {
   required: ['shifts', 'userMatch', 'warnings'],
 } as const;
 
+function buildMatchingTask(input: AnalyzeShiftImagesInput): string {
+  if (input.confirmedRowLabel) {
+    return `1. 画像内のシフト表の構造（誰の行が誰のシフトか）を理解する。
+2. ユーザーは既に、表内で「${input.confirmedRowLabel}」と記載されている行が自分の行であることを確認済みである。この行を本人の行として直接使用し、再度あいまいさを判断し直さない。
+3. userMatch.status は必ず "matched" にし、candidates には rowLabel="${input.confirmedRowLabel}", confidence=1 の1件のみを入れる。
+4. その行に対応するシフトのみを shifts に抽出する。`;
+  }
+
+  return `1. 画像内のシフト表の構造（誰の行が誰のシフトか）を理解する。
+2. ユーザー本人の名前「${input.shiftName}」に該当する行を表内から探す。完全一致だけでなく、表記ゆれ・姓のみ・名前の一部のみの記載も候補として考慮する。
+3. 該当行が1つに絞り込める場合のみ userMatch.status を "matched" とし、その行のシフトだけを shifts に抽出する。
+4. 複数の行が候補になり得て確信を持って1つに絞れない場合は userMatch.status を "ambiguous" にし、shifts は空配列のままにして candidates に候補を列挙する。
+5. 該当しそうな行が見つからない場合は userMatch.status を "not_found" にし、shifts は空配列にする。
+6. 本人の行が曖昧なときに、絶対に自分で1つを勝手に決めつけない。`;
+}
+
 function buildPrompt(input: AnalyzeShiftImagesInput): string {
   const knownShiftTypesText =
     input.knownShiftTypes.length > 0
@@ -72,12 +88,7 @@ function buildPrompt(input: AnalyzeShiftImagesInput): string {
   return `あなたはシフト表を解析するアシスタントです。添付された1枚以上の画像は、アルバイト先のシフト表の写真またはスクリーンショットです。
 
 # あなたのタスク
-1. 画像内のシフト表の構造（誰の行が誰のシフトか）を理解する。
-2. ユーザー本人の名前「${input.shiftName}」に該当する行を表内から探す。完全一致だけでなく、表記ゆれ・姓のみ・名前の一部のみの記載も候補として考慮する。
-3. 該当行が1つに絞り込める場合のみ userMatch.status を "matched" とし、その行のシフトだけを shifts に抽出する。
-4. 複数の行が候補になり得て確信を持って1つに絞れない場合は userMatch.status を "ambiguous" にし、shifts は空配列のままにして candidates に候補を列挙する。
-5. 該当しそうな行が見つからない場合は userMatch.status を "not_found" にし、shifts は空配列にする。
-6. 本人の行が曖昧なときに、絶対に自分で1つを勝手に決めつけない。
+${buildMatchingTask(input)}
 
 # シフト種別の扱い
 以下は過去にユーザーが登録・修正した「シフト種別 → 時間」の対応表です。表内の記載（例:「早番」）がこの対応表のいずれかと一致する場合、その時間を優先的な手がかりとして使ってよい。ただし画像内に明記された時間があればそちらを優先する。

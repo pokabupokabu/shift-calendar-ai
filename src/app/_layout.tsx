@@ -17,6 +17,7 @@ export default function RootLayout() {
           name="analyzing"
           options={{ title: '解析中', headerBackVisible: false, gestureEnabled: false }}
         />
+        <Stack.Screen name="user-match-select" options={{ title: '本人確認' }} />
         <Stack.Screen name="shift-results" options={{ title: 'シフト結果' }} />
         <Stack.Screen name="shift-review" options={{ title: '要確認・編集' }} />
         <Stack.Screen name="calendar-confirm" options={{ title: 'カレンダー登録の確認' }} />
