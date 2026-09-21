@@ -8,6 +8,8 @@ export const env = {
   ai: {
     provider: process.env.EXPO_PUBLIC_AI_PROVIDER ?? 'gemini',
     geminiApiKey: process.env.EXPO_PUBLIC_GEMINI_API_KEY ?? '',
+    // Gemini model names change frequently; keep it swappable without a code change.
+    geminiModel: process.env.EXPO_PUBLIC_GEMINI_MODEL ?? 'gemini-3-flash-preview',
   },
   google: {
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? '',

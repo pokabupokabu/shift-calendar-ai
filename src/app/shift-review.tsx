@@ -1,3 +1,5 @@
+import { DateTimePicker } from '@expo/ui/community/datetime-picker';
+import { format, parse, parseISO } from 'date-fns';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Switch, TextInput, View } from 'react-native';
@@ -9,7 +11,18 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useShiftSessionStore } from '@/store/useShiftSessionStore';
 
-/** 要確認・編集画面: 日付・時刻・シフト種別を編集できる (requirements section 10). */
+const TIME_FORMAT = 'HH:mm';
+const DATE_FORMAT = 'yyyy-MM-dd';
+
+/** "HH:mm" has no date component, so anchor it to an arbitrary reference date for the picker. */
+function parseShiftTime(time: string): Date {
+  return parse(time, TIME_FORMAT, new Date());
+}
+
+/**
+ * 要確認・編集画面: 日付・時刻をネイティブピッカーで、シフト種別・日跨ぎはこれまで通り編集できる
+ * (requirements section 10、README「8. 不明点・リスク」5でPhase 3対応が指示されていた項目)。
+ */
 export default function ShiftReviewScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const shift = useShiftSessionStore((state) => state.shifts.find((item) => item.id === id));
@@ -42,14 +55,29 @@ export default function ShiftReviewScreen() {
 
   return (
     <Screen>
-      <ThemedText type="small">日付（YYYY-MM-DD）</ThemedText>
-      <TextInput value={date} onChangeText={setDate} style={inputStyle} />
+      <ThemedText type="small">日付</ThemedText>
+      <DateTimePicker
+        value={parseISO(date)}
+        mode="date"
+        display="compact"
+        onValueChange={(_event, value) => setDate(format(value, DATE_FORMAT))}
+      />
 
-      <ThemedText type="small">開始時刻（HH:mm）</ThemedText>
-      <TextInput value={startTime} onChangeText={setStartTime} style={inputStyle} />
+      <ThemedText type="small">開始時刻</ThemedText>
+      <DateTimePicker
+        value={parseShiftTime(startTime)}
+        mode="time"
+        display="compact"
+        onValueChange={(_event, value) => setStartTime(format(value, TIME_FORMAT))}
+      />
 
-      <ThemedText type="small">終了時刻（HH:mm）</ThemedText>
-      <TextInput value={endTime} onChangeText={setEndTime} style={inputStyle} />
+      <ThemedText type="small">終了時刻</ThemedText>
+      <DateTimePicker
+        value={parseShiftTime(endTime)}
+        mode="time"
+        display="compact"
+        onValueChange={(_event, value) => setEndTime(format(value, TIME_FORMAT))}
+      />
 
       <ThemedText type="small">シフト種別</ThemedText>
       <TextInput value={shiftType} onChangeText={setShiftType} style={inputStyle} />

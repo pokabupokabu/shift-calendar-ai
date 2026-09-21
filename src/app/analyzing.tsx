@@ -33,7 +33,9 @@ export default function AnalyzingScreen() {
         });
         if (cancelled) return;
         setAnalysisResult(result);
-        router.replace('/shift-results');
+        router.replace(
+          result.userMatch.status === 'matched' ? '/shift-results' : '/user-match-select',
+        );
       } catch (error) {
         if (cancelled) return;
         setAnalysisError(
