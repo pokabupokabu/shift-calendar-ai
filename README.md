@@ -90,7 +90,10 @@ interface AIProvider {
 共通インターフェースがどちらかのSDKの形を漏らさないようにしている。
 
 - `AppleCalendarProvider`：`expo-calendar`を使って実装済み（権限取得・作成・更新・削除・カレンダーを開く）
-- `GoogleCalendarProvider`：骨組みのみ。OAuth未実装（下記「未実装」参照）
+- `GoogleCalendarProvider`：Phase 5で実装済み。`expo-auth-session`のPKCE（`AuthRequest`/`exchangeCodeAsync`/`refreshAsync`を直接利用。
+  `expo-auth-session/providers/google`のフック版はこのExpoバージョンでは非推奨のため使用していない）でOAuthし、
+  Google Calendar API v3へ`fetch`で作成・更新・削除。トークンは`AsyncStorage`にこのProvider内だけで保持する。
+  実際に動かすには**リスク2のOAuthクライアントID発行がまだ必要**（下記「不明点・リスク」参照）。
 
 ## 6. 画面一覧（MVP、要件定義書 Claude Codeプロンプトの「MVP画面」節）
 
@@ -124,7 +127,7 @@ interface AIProvider {
 - [x] Phase 2: 本人シフト抽出のプロンプト調整（`userMatch`が`ambiguous`/`not_found`のときの候補選択UI、`user-match-select`画面）
 - [x] Phase 3: 確認UIの磨き込み（`shift-review`の日付・時刻をネイティブピッカー化。リスク5参照）
 - [ ] Phase 4: Apple Calendar連携の実機検証（コードは実装済み、実機での権限フロー・EventKit挙動を確認）
-- [ ] Phase 5: `GoogleCalendarProvider`の実装（OAuth・Calendar API呼び出し）
+- [x] Phase 5: `GoogleCalendarProvider`の実装（OAuth・Calendar API呼び出し。実際に使うにはリスク2のクライアントID発行が別途必要）
 - [ ] Phase 6: 上書き判定の実機検証
 - [ ] Phase 7: シフト種別マスターの「学習」を`AnalyzeShiftImagesInput.knownShiftTypes`経由でAIプロンプトへ反映
 - [ ] Phase 8: エラー処理の拡充（現状は解析失敗のみ対応。権限エラー・通信エラーなどの文言整備）
@@ -140,9 +143,11 @@ interface AIProvider {
    (a) 薄いプロキシ（Supabase Edge Function等）を挟むか、
    (b) Google CloudのAPIキー制限（アプリのbundle ID/署名で制限）で許容できるリスクに収めるか、
    を決める必要がある。現状の`.env.example`はPoC用の直接呼び出し前提。
-2. **Google Calendar OAuthのクライアントID**：`expo-auth-session`でのiOS向けOAuthクライアントIDが未発行。
-   Google Cloud Console側の設定（OAuth同意画面・iOSクライアントID）が必要（既存のNext.jsアプリ用プロジェクトを
-   流用するか、新規プロジェクトを切るか要判断）。
+2. **Google Calendar OAuthのクライアントID**：コード側（`GoogleCalendarProvider`、Phase 5）は実装済みだが、
+   `expo-auth-session`でのiOS向けOAuthクライアントIDが未発行のため、実際には動かせない。
+   Google Cloud Console側の設定（OAuth同意画面・「iOS」タイプのクライアントID発行、bundle identifierの登録）が必要
+   （既存のNext.jsアプリ用プロジェクトを流用するか、新規プロジェクトを切るか要判断。発行したクライアントIDを
+   `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`に設定する）。またExpo Goでは動作しないため、development buildが必要。
 3. **上書き判定はアプリ内記録のみに依存**：`CalendarEventRecord`はローカル永続化のみなので、
    アプリを削除・再インストールすると「アプリが以前作成したイベント」の記録が失われ、
    重複登録される可能性がある。要件定義書12節の想定どおりだが、ユーザーには伝わりにくいため、
