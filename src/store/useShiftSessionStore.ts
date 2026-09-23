@@ -1,3 +1,4 @@
+import { format } from 'date-fns';
 import { create } from 'zustand';
 
 import type { Shift, ShiftAnalysisResult } from '@/models';
@@ -13,11 +14,16 @@ interface ShiftSessionState {
   analysisResult: ShiftAnalysisResult | null;
   analysisError: string | null;
   shifts: Shift[];
+  /** Soft-deleted shift ids (section: 登録内容の確認 - "消す"+"元に戻す" instead of a select-to-include list). */
+  removedShiftIds: string[];
 
   setImages: (images: ShiftImage[]) => void;
   setAnalysisResult: (result: ShiftAnalysisResult) => void;
   setAnalysisError: (message: string) => void;
   updateShift: (id: string, patch: Partial<Shift>) => void;
+  addManualShift: () => void;
+  removeShift: (id: string) => void;
+  restoreAllShifts: () => void;
   reset: () => void;
 }
 
@@ -32,13 +38,16 @@ export const useShiftSessionStore = create<ShiftSessionState>((set) => ({
   analysisResult: null,
   analysisError: null,
   shifts: [],
+  removedShiftIds: [],
 
-  setImages: (images) => set({ images, analysisResult: null, analysisError: null, shifts: [] }),
+  setImages: (images) =>
+    set({ images, analysisResult: null, analysisError: null, shifts: [], removedShiftIds: [] }),
 
   setAnalysisResult: (result) =>
     set({
       analysisResult: result,
       analysisError: null,
+      removedShiftIds: [],
       shifts: result.shifts.map((raw) => ({
         id: createLocalShiftId(),
         date: raw.date,
@@ -60,5 +69,28 @@ export const useShiftSessionStore = create<ShiftSessionState>((set) => ({
       ),
     })),
 
-  reset: () => set({ images: [], analysisResult: null, analysisError: null, shifts: [] }),
+  addManualShift: () =>
+    set((state) => ({
+      shifts: [
+        ...state.shifts,
+        {
+          id: createLocalShiftId(),
+          date: format(new Date(), 'yyyy-MM-dd'),
+          startTime: '09:00',
+          endTime: '18:00',
+          shiftType: '',
+          isOvernight: false,
+          confidence: 1,
+          source: 'manual' as const,
+        },
+      ],
+    })),
+
+  removeShift: (id) =>
+    set((state) => ({ removedShiftIds: [...state.removedShiftIds, id] })),
+
+  restoreAllShifts: () => set({ removedShiftIds: [] }),
+
+  reset: () =>
+    set({ images: [], analysisResult: null, analysisError: null, shifts: [], removedShiftIds: [] }),
 }));

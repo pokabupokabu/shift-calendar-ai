@@ -33,6 +33,15 @@ function ShiftTypeRow({ shiftType }: { shiftType: ShiftType }) {
         onChangeText={(endTime) => upsertShiftType({ ...shiftType, endTime })}
         style={[inputStyle, styles.timeInput]}
       />
+      <TextInput
+        value={String(shiftType.hourlyWage ?? '')}
+        onChangeText={(value) =>
+          upsertShiftType({ ...shiftType, hourlyWage: Number(value) || undefined })
+        }
+        placeholder="時給（円）"
+        keyboardType="number-pad"
+        style={[inputStyle, styles.wageInput]}
+      />
       <Pressable onPress={() => removeShiftType(shiftType.id)}>
         <ThemedText type="link">削除</ThemedText>
       </Pressable>
@@ -92,5 +101,8 @@ const styles = StyleSheet.create({
   },
   timeInput: {
     width: 64,
+  },
+  wageInput: {
+    width: 72,
   },
 });

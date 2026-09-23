@@ -10,6 +10,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { getAiProvider } from '@/services/ai';
 import { useAppStore } from '@/store/useAppStore';
 import { useShiftSessionStore } from '@/store/useShiftSessionStore';
+import { deferNavigation } from '@/utils/deferNavigation';
 
 /**
  * 本人シフト抽出の候補選択画面: userMatchが"ambiguous"/"not_found"のとき、
@@ -43,7 +44,7 @@ export default function UserMatchSelectScreen() {
       });
       setAnalysisResult(result);
       if (result.userMatch.status === 'matched') {
-        router.replace('/shift-results');
+        deferNavigation(() => router.replace('/calendar-confirm'));
       } else {
         setError('この名前でもシフトを特定できませんでした。別の表記で試してみてください。');
       }

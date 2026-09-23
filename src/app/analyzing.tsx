@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet } from 'react-native';
+import { Animated, Easing, StyleSheet } from 'react-native';
 
+import { CircularProgress } from '@/components/circular-progress';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
@@ -9,6 +10,10 @@ import { Spacing } from '@/constants/theme';
 import { getAiProvider } from '@/services/ai';
 import { useAppStore } from '@/store/useAppStore';
 import { useShiftSessionStore } from '@/store/useShiftSessionStore';
+import { deferNavigation } from '@/utils/deferNavigation';
+
+const ESTIMATED_ANALYSIS_DURATION_MS = 7000;
+const ESTIMATED_PROGRESS_CEILING = 90;
 
 /** AI解析中画面、失敗時は理由と次の操作を提示する (requirements section 18). */
 export default function AnalyzingScreen() {
@@ -19,12 +24,26 @@ export default function AnalyzingScreen() {
   const shiftName = useAppStore((state) => state.user?.shiftName ?? '');
   const knownShiftTypes = useAppStore((state) => state.shiftTypes);
   const [running, setRunning] = useState(true);
+  const [progressAnim] = useState(() => new Animated.Value(0));
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    const listenerId = progressAnim.addListener(({ value }) => setProgress(value));
+    return () => progressAnim.removeListener(listenerId);
+  }, [progressAnim]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function run() {
       setRunning(true);
+      progressAnim.setValue(0);
+      Animated.timing(progressAnim, {
+        toValue: ESTIMATED_PROGRESS_CEILING,
+        duration: ESTIMATED_ANALYSIS_DURATION_MS,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: false,
+      }).start();
       try {
         const result = await getAiProvider().analyzeShiftImages({
           images,
@@ -32,10 +51,18 @@ export default function AnalyzingScreen() {
           knownShiftTypes,
         });
         if (cancelled) return;
+        Animated.timing(progressAnim, {
+          toValue: 100,
+          duration: 300,
+          useNativeDriver: false,
+        }).start();
         setAnalysisResult(result);
-        router.replace(
-          result.userMatch.status === 'matched' ? '/shift-results' : '/user-match-select',
-        );
+        deferNavigation(() => {
+          if (cancelled) return;
+          router.replace(
+            result.userMatch.status === 'matched' ? '/calendar-confirm' : '/user-match-select',
+          );
+        });
       } catch (error) {
         if (cancelled) return;
         setAnalysisError(
@@ -68,7 +95,7 @@ export default function AnalyzingScreen() {
 
   return (
     <Screen style={styles.center}>
-      <ActivityIndicator size="large" />
+      <CircularProgress progress={progress} size={180} />
       <ThemedText themeColor="textSecondary">AIがシフト表を読み取っています…</ThemedText>
       {!running && (
         <PrimaryButton label="別の画像を選び直す" onPress={() => router.replace('/photo-select')} />

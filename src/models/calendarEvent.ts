@@ -12,6 +12,8 @@ export interface CalendarEventRecord {
   startTime: string; // "HH:mm"
   endTime: string; // "HH:mm"
   title: string;
+  /** Shift type name (e.g. "早番") at creation time, used to look up a wage rate for payroll. */
+  shiftType?: string;
   calendarProvider: CalendarProviderId;
   /** The event id returned by EventKit / Google Calendar API. */
   externalEventId: string;

@@ -22,8 +22,11 @@ interface AppState {
   shiftTypes: ShiftType[];
   /** Events the app itself created, used for overwrite detection (section 12, 14). */
   calendarEvents: CalendarEventRecord[];
+  /** Gates the first-launch tutorial; backfilled to true for pre-existing users, see migrate below. */
+  hasSeenTutorial: boolean;
 
   setShiftName: (shiftName: string) => void;
+  setHasSeenTutorial: () => void;
   updateSettings: (settings: Partial<UserSettings>) => void;
   upsertShiftType: (shiftType: ShiftType) => void;
   removeShiftType: (id: string) => void;
@@ -38,6 +41,9 @@ export const useAppStore = create<AppState>()(
       user: null,
       shiftTypes: DEFAULT_SHIFT_TYPES,
       calendarEvents: [],
+      hasSeenTutorial: false,
+
+      setHasSeenTutorial: () => set({ hasSeenTutorial: true }),
 
       setShiftName: (shiftName) =>
         set((state) => ({
@@ -81,6 +87,16 @@ export const useAppStore = create<AppState>()(
     {
       name: 'shift-calendar-ai-store',
       storage: createJSONStorage(() => AsyncStorage),
+      version: 1,
+      migrate: (persisted, version) => {
+        const state = persisted as AppState;
+        if (version < 1) {
+          // Anyone who already finished the old onboarding flow has clearly
+          // already "gotten it" - don't show them the new tutorial retroactively.
+          state.hasSeenTutorial = Boolean(state.user?.shiftName);
+        }
+        return state;
+      },
     },
   ),
 );

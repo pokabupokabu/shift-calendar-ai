@@ -8,4 +8,6 @@ export interface ShiftType {
   name: string;
   startTime: string; // "HH:mm"
   endTime: string; // "HH:mm", may be earlier than startTime for overnight shifts
+  /** Yen per hour. Undefined until the user sets it; excluded from payroll totals until then. */
+  hourlyWage?: number;
 }

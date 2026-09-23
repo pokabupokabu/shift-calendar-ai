@@ -1,17 +1,18 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, FlatList, Image, Pressable, StyleSheet, View } from 'react-native';
 
+import { Card } from '@/components/card';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { Radius, Spacing } from '@/constants/theme';
 import type { Shift, ShiftRegistrationStatus } from '@/models';
 import { getCalendarProvider } from '@/services/calendar';
 import { useAppStore } from '@/store/useAppStore';
 import { useShiftSessionStore } from '@/store/useShiftSessionStore';
 import { classifyShift } from '@/utils/classifyShifts';
+import { deferNavigation } from '@/utils/deferNavigation';
 import { buildEventTitle } from '@/utils/eventTitle';
 import { formatShiftDate, formatShiftTimeRange } from '@/utils/formatShift';
 
@@ -21,49 +22,46 @@ const STATUS_LABEL: Record<ShiftRegistrationStatus, string> = {
   needs_review: '要確認',
 };
 
+const PHOTO_HEIGHT = 220;
+
 interface ClassifiedShift {
   shift: Shift;
   status: ShiftRegistrationStatus;
 }
 
-/** カレンダー登録確認画面: 新規・上書き・要確認の3分類と個別/全選択 (requirements section 11, 12). */
+/**
+ * 抽出結果の目視確認とカレンダー登録確認を兼ねる画面 (旧shift-results.tsx廃止に伴い統合)。
+ * 選択式ではなく、個別編集(/shift-review)・削除(消)・全復元(元に戻す)・追加(日付を追加)で
+ * 登録対象を調整してから一括登録する (requirements section 11, 12)。
+ */
 export default function CalendarConfirmScreen() {
-  const theme = useTheme();
+  const images = useShiftSessionStore((state) => state.images);
   const shifts = useShiftSessionStore((state) => state.shifts);
+  const removedShiftIds = useShiftSessionStore((state) => state.removedShiftIds);
+  const addManualShift = useShiftSessionStore((state) => state.addManualShift);
+  const removeShift = useShiftSessionStore((state) => state.removeShift);
+  const restoreAllShifts = useShiftSessionStore((state) => state.restoreAllShifts);
   const calendarEvents = useAppStore((state) => state.calendarEvents);
   const settings = useAppStore((state) => state.user?.settings);
   const recordCalendarEvent = useAppStore((state) => state.recordCalendarEvent);
   const updateCalendarEvent = useAppStore((state) => state.updateCalendarEvent);
 
-  const classified: ClassifiedShift[] = useMemo(
-    () => shifts.map((shift) => ({ shift, status: classifyShift(shift, calendarEvents) })),
-    [shifts, calendarEvents],
-  );
+  const photoUri = images[0]?.uri;
 
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(
-    () => new Set(shifts.map((s) => s.id)),
-  );
   const [registering, setRegistering] = useState(false);
 
-  const counts = classified.reduce(
+  const visible: ClassifiedShift[] = useMemo(
+    () =>
+      shifts
+        .filter((shift) => !removedShiftIds.includes(shift.id))
+        .map((shift) => ({ shift, status: classifyShift(shift, calendarEvents) })),
+    [shifts, removedShiftIds, calendarEvents],
+  );
+
+  const counts = visible.reduce(
     (acc, item) => ({ ...acc, [item.status]: acc[item.status] + 1 }),
     { new: 0, overwrite: 0, needs_review: 0 } as Record<ShiftRegistrationStatus, number>,
   );
-
-  const toggle = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const toggleAll = () => {
-    setSelectedIds((prev) =>
-      prev.size === shifts.length ? new Set() : new Set(shifts.map((s) => s.id)),
-    );
-  };
 
   const handleRegister = async () => {
     if (!settings) return;
@@ -87,8 +85,7 @@ export default function CalendarConfirmScreen() {
     setRegistering(true);
     let successCount = 0;
     try {
-      for (const { shift, status } of classified) {
-        if (!selectedIds.has(shift.id)) continue;
+      for (const { shift, status } of visible) {
         const title = buildEventTitle(settings.eventTitleTemplate, shift.shiftType);
         const input = {
           date: shift.date,
@@ -101,14 +98,20 @@ export default function CalendarConfirmScreen() {
 
         if (existing) {
           await provider.updateEvent(existing.externalEventId, input);
-          updateCalendarEvent(existing.id, { ...input, shiftId: shift.id });
+          updateCalendarEvent(existing.id, {
+            ...input,
+            shiftId: shift.id,
+            shiftType: shift.shiftType,
+          });
         } else {
           const record = await provider.createEvent(input);
-          recordCalendarEvent({ ...record, shiftId: shift.id });
+          recordCalendarEvent({ ...record, shiftId: shift.id, shiftType: shift.shiftType });
         }
         successCount += 1;
       }
-      router.replace({ pathname: '/complete', params: { count: String(successCount) } });
+      deferNavigation(() =>
+        router.replace({ pathname: '/complete', params: { count: String(successCount) } }),
+      );
     } catch (error) {
       Alert.alert(
         'カレンダーへの登録に失敗しました',
@@ -122,26 +125,32 @@ export default function CalendarConfirmScreen() {
   return (
     <Screen>
       <ThemedText type="subtitle">登録内容の確認</ThemedText>
-      <ThemedText themeColor="textSecondary">
-        新規：{counts.new}件　上書き：{counts.overwrite}件　要確認：{counts.needs_review}件
-      </ThemedText>
 
-      <Pressable onPress={toggleAll}>
-        <ThemedText type="link">
-          {selectedIds.size === shifts.length ? 'すべて選択解除' : 'すべて選択'}
+      {photoUri && (
+        <Image source={{ uri: photoUri }} style={styles.photo} resizeMode="contain" />
+      )}
+
+      <View style={styles.summaryRow}>
+        <ThemedText themeColor="textSecondary">
+          新規：{counts.new}件　上書き：{counts.overwrite}件　要確認：{counts.needs_review}件
         </ThemedText>
-      </Pressable>
+        {removedShiftIds.length > 0 && (
+          <Pressable onPress={restoreAllShifts}>
+            <ThemedText type="link">元に戻す</ThemedText>
+          </Pressable>
+        )}
+      </View>
 
       <FlatList
-        data={classified}
+        data={visible}
         keyExtractor={(item) => item.shift.id}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => (
-          <Pressable
-            onPress={() => toggle(item.shift.id)}
-            style={[styles.row, { backgroundColor: theme.backgroundElement }]}
+          <Card
+            onPress={() => router.push({ pathname: '/shift-review', params: { id: item.shift.id } })}
+            style={styles.card}
           >
-            <View style={styles.rowText}>
+            <View style={styles.cardText}>
               <ThemedText type="smallBold">
                 {formatShiftDate(item.shift.date)} {item.shift.shiftType}
               </ThemedText>
@@ -153,35 +162,57 @@ export default function CalendarConfirmScreen() {
                 )}
               </ThemedText>
             </View>
-            <ThemedText type="smallBold">
-              {selectedIds.has(item.shift.id) ? '✓ ' : ''}
-              {STATUS_LABEL[item.status]}
-            </ThemedText>
-          </Pressable>
+            <View style={styles.cardActions}>
+              <ThemedText type="smallBold">{STATUS_LABEL[item.status]}</ThemedText>
+              <Pressable onPress={() => removeShift(item.shift.id)} hitSlop={Spacing.two}>
+                <ThemedText themeColor="danger">消</ThemedText>
+              </Pressable>
+            </View>
+          </Card>
         )}
       />
 
+      <Pressable onPress={addManualShift} style={styles.addButton}>
+        <ThemedText type="link">＋ 日付を追加</ThemedText>
+      </Pressable>
+
       <PrimaryButton
-        label={registering ? '登録中…' : `カレンダーに登録（${selectedIds.size}件）`}
+        label={registering ? '登録中…' : `カレンダーに登録（${visible.length}件）`}
         onPress={handleRegister}
-        disabled={registering || selectedIds.size === 0}
+        disabled={registering || visible.length === 0}
       />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  list: {
-    gap: Spacing.two,
+  photo: {
+    width: '100%',
+    height: PHOTO_HEIGHT,
+    borderRadius: Radius.medium,
   },
-  row: {
+  summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: Spacing.three,
-    borderRadius: Spacing.three,
   },
-  rowText: {
+  list: {
+    gap: Spacing.two,
+  },
+  card: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  cardText: {
     gap: Spacing.half,
+  },
+  cardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  addButton: {
+    alignSelf: 'flex-start',
   },
 });
