@@ -1,12 +1,6 @@
-import { router } from 'expo-router';
-import {
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
-  Coins,
-  TriangleAlert,
-  Wallet,
-} from 'lucide-react-native';
+import { format } from 'date-fns';
+import { ja } from 'date-fns/locale';
+import { CalendarDays, ChevronLeft, ChevronRight, Coins, Wallet } from 'lucide-react-native';
 import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -17,30 +11,49 @@ import { ThemedText } from '@/components/themed-text';
 import { BottomTabInset, IconSize, Spacing } from '@/constants/theme';
 import { useMonthNavigation } from '@/hooks/use-month-navigation';
 import { useTheme } from '@/hooks/use-theme';
+import { DEFAULT_USER_SETTINGS } from '@/models';
 import { computeDailyEarnings, computeMonthlyPayroll } from '@/utils/computePayroll';
-import { formatShiftDate } from '@/utils/formatShift';
+import { formatShiftDate, formatShiftTimeRange } from '@/utils/formatShift';
 import { useAppStore } from '@/store/useAppStore';
 
-/** 給与計算タブ: 月ごとにシフト種別別の時給集計と合計見込み額を表示する。 */
+function formatYen(amount: number): string {
+  return `${Math.round(amount).toLocaleString('ja-JP')}円`;
+}
+
+const WAGE_TYPE_LABEL = { hourly: '時給', daily: '日給' } as const;
+
+/** 給与計算タブ: 月ごとにシフト種別別の集計と合計見込み額を表示する。 */
 export default function PayrollTab() {
   const theme = useTheme();
   const calendarEvents = useAppStore((state) => state.calendarEvents);
-  const shiftTypes = useAppStore((state) => state.shiftTypes);
+  const settings = useAppStore((state) => state.user?.settings) ?? DEFAULT_USER_SETTINGS;
   const { month, goToPrevMonth, goToNextMonth, label } = useMonthNavigation();
 
   const payroll = useMemo(
-    () => computeMonthlyPayroll(calendarEvents, shiftTypes, month),
-    [calendarEvents, shiftTypes, month],
+    () =>
+      computeMonthlyPayroll(
+        calendarEvents,
+        month,
+        settings.wageType,
+        settings.hourlyWage,
+        settings.dailyWage,
+      ),
+    [calendarEvents, month, settings.wageType, settings.hourlyWage, settings.dailyWage],
   );
 
   const dailyEarnings = useMemo(
-    () => computeDailyEarnings(calendarEvents, shiftTypes, month),
-    [calendarEvents, shiftTypes, month],
+    () =>
+      computeDailyEarnings(
+        calendarEvents,
+        month,
+        settings.wageType,
+        settings.hourlyWage,
+        settings.dailyWage,
+      ),
+    [calendarEvents, month, settings.wageType, settings.hourlyWage, settings.dailyWage],
   );
 
-  const hasUnsetWage =
-    payroll.unclassifiedCount > 0 ||
-    shiftTypes.some((shiftType) => shiftType.hourlyWage === undefined);
+  const monthLabel = format(month, 'M月', { locale: ja });
 
   return (
     <Screen>
@@ -48,7 +61,9 @@ export default function PayrollTab() {
         <Pressable onPress={goToPrevMonth} hitSlop={Spacing.two}>
           <ChevronLeft size={IconSize.medium} color={theme.text} />
         </Pressable>
-        <ThemedText type="subtitle">{label}</ThemedText>
+        <ThemedText type="subtitle" style={styles.monthLabel}>
+          {label}
+        </ThemedText>
         <Pressable onPress={goToNextMonth} hitSlop={Spacing.two}>
           <ChevronRight size={IconSize.medium} color={theme.text} />
         </Pressable>
@@ -61,27 +76,27 @@ export default function PayrollTab() {
             <View style={styles.rowText}>
               <ThemedText type="smallBold">{entry.name}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                {entry.hours}時間 × 時給{entry.hourlyWage.toLocaleString('ja-JP')}円
+                {settings.wageType === 'daily'
+                  ? `${entry.count}日 × ${WAGE_TYPE_LABEL.daily}${formatYen(settings.dailyWage)}`
+                  : `${entry.hours}時間 × ${WAGE_TYPE_LABEL.hourly}${formatYen(settings.hourlyWage)}`}
               </ThemedText>
             </View>
-            <ThemedText type="smallBold">
-              ¥{Math.round(entry.subtotal).toLocaleString('ja-JP')}
-            </ThemedText>
+            <ThemedText type="smallBold">{formatYen(entry.subtotal)}</ThemedText>
           </Card>
         ))}
 
-        <Card style={styles.row}>
-          <Coins size={IconSize.medium} color={theme.primary} />
-          <View style={styles.rowText}>
-            <ThemedText type="default">今月の合計見込み</ThemedText>
+        <Card style={styles.totalCard}>
+          <View style={styles.row}>
+            <Coins size={IconSize.medium} color={theme.primary} />
+            <ThemedText type="default">{monthLabel}の合計見込み</ThemedText>
           </View>
-          <ThemedText type="subtitle" themeColor="primary">
-            ¥{Math.round(payroll.total).toLocaleString('ja-JP')}
+          <ThemedText type="subtitle" themeColor="primary" style={styles.totalAmount}>
+            {formatYen(payroll.total)}
           </ThemedText>
         </Card>
 
         <ThemedText type="smallBold" style={styles.sectionHeading}>
-          日別履歴
+          出勤履歴
         </ThemedText>
 
         {dailyEarnings.length === 0 ? (
@@ -98,26 +113,16 @@ export default function PayrollTab() {
                 <ThemedText type="smallBold">{formatShiftDate(entry.date)}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
                   {entry.shiftType ? `${entry.shiftType}・` : ''}
-                  {entry.hours}時間
+                  {formatShiftTimeRange(
+                    entry.startTime,
+                    entry.endTime,
+                    entry.endTime <= entry.startTime,
+                  )}
                 </ThemedText>
               </View>
-              <ThemedText type="smallBold">
-                ¥{Math.round(entry.earnings).toLocaleString('ja-JP')}
-              </ThemedText>
+              <ThemedText type="smallBold">{formatYen(entry.earnings)}</ThemedText>
             </Card>
           ))
-        )}
-
-        {hasUnsetWage && (
-          <Card style={styles.row} onPress={() => router.push('/settings/shift-types')}>
-            <TriangleAlert size={IconSize.medium} color={theme.danger} />
-            <View style={styles.rowText}>
-              <ThemedText type="smallBold">時給が未設定のシフトがあります</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                シフト種別に時給を設定すると、全てのシフトを集計に含められます
-              </ThemedText>
-            </View>
-          </Card>
         )}
 
         <AdPlaceholder slot="payroll" style={styles.ad} />
@@ -133,6 +138,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Spacing.four,
   },
+  monthLabel: {
+    fontSize: 20,
+    lineHeight: 26,
+  },
   scrollContent: {
     gap: Spacing.two,
     paddingBottom: BottomTabInset,
@@ -141,6 +150,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
+  },
+  totalCard: {
+    gap: Spacing.one,
+  },
+  totalAmount: {
+    alignSelf: 'flex-start',
   },
   rowText: {
     flex: 1,

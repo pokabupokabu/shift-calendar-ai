@@ -1,24 +1,25 @@
 import {
   Bell,
-  Building2,
-  CalendarCog,
   ChevronRight,
   CircleHelp,
   ClipboardList,
   Crown,
   FileText,
+  LifeBuoy,
+  Languages,
+  LogIn,
   Palette,
   ShieldCheck,
   User,
   type LucideIcon,
 } from 'lucide-react-native';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Card } from '@/components/card';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
-import { IconSize, Radius, Spacing } from '@/constants/theme';
+import { BottomTabInset, IconSize, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 interface SettingsRow {
@@ -26,13 +27,34 @@ interface SettingsRow {
   label: string;
 }
 
-const PRIMARY_ROWS: SettingsRow[] = [
-  { icon: User, label: 'アカウント設定' },
-  { icon: Building2, label: '会社・シフト管理' },
-  { icon: Bell, label: '通知設定' },
-  { icon: CalendarCog, label: 'カレンダー出力設定' },
-  { icon: Palette, label: '外観' },
-  { icon: CircleHelp, label: 'お問い合わせ' },
+interface SettingsSection {
+  caption: string;
+  rows: SettingsRow[];
+}
+
+const SECTIONS: SettingsSection[] = [
+  {
+    caption: 'アカウント',
+    rows: [
+      { icon: User, label: 'アカウント設定' },
+      { icon: LogIn, label: 'ログイン方法' },
+    ],
+  },
+  {
+    caption: '一般',
+    rows: [
+      { icon: Bell, label: '通知設定' },
+      { icon: Palette, label: '外観' },
+      { icon: Languages, label: '言語' },
+    ],
+  },
+  {
+    caption: 'サポート',
+    rows: [
+      { icon: LifeBuoy, label: 'ヘルプ・よくある質問' },
+      { icon: CircleHelp, label: 'お問い合わせ' },
+    ],
+  },
 ];
 
 const LEGAL_ROWS: SettingsRow[] = [
@@ -45,23 +67,30 @@ function showComingSoon() {
   Alert.alert('準備中', 'この機能は近日公開予定です。');
 }
 
-function SettingsRowGroup({ rows }: { rows: SettingsRow[] }) {
+function SettingsRowGroup({ rows, caption }: { rows: SettingsRow[]; caption?: string }) {
   const theme = useTheme();
 
   return (
-    <Card style={styles.rowGroup}>
-      {rows.map((row, index) => (
-        <Pressable
-          key={row.label}
-          onPress={showComingSoon}
-          style={[styles.row, index > 0 && { borderTopColor: theme.border, borderTopWidth: 1 }]}
-        >
-          <row.icon size={IconSize.medium} color={theme.text} />
-          <ThemedText style={styles.rowLabel}>{row.label}</ThemedText>
-          <ChevronRight size={IconSize.medium} color={theme.textSecondary} />
-        </Pressable>
-      ))}
-    </Card>
+    <View style={styles.group}>
+      {caption && (
+        <ThemedText type="small" themeColor="textSecondary" style={styles.caption}>
+          {caption}
+        </ThemedText>
+      )}
+      <Card style={styles.rowGroup}>
+        {rows.map((row, index) => (
+          <Pressable
+            key={row.label}
+            onPress={showComingSoon}
+            style={[styles.row, index > 0 && { borderTopColor: theme.border, borderTopWidth: 1 }]}
+          >
+            <row.icon size={IconSize.medium} color={theme.text} />
+            <ThemedText style={styles.rowLabel}>{row.label}</ThemedText>
+            <ChevronRight size={IconSize.medium} color={theme.textSecondary} />
+          </Pressable>
+        ))}
+      </Card>
+    </View>
   );
 }
 
@@ -80,21 +109,25 @@ export default function SettingsTab() {
         <ThemedText type="default">匿名ユーザー</ThemedText>
       </View>
 
-      <Card style={[styles.proCard, { backgroundColor: theme.backgroundElement }]}>
-        <View style={styles.proHeading}>
-          <Crown size={IconSize.medium} color={theme.primary} />
-          <ThemedText type="smallBold" themeColor="primary">
-            シフトカレンダーAI PRO
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Card style={[styles.proCard, { backgroundColor: theme.backgroundElement }]}>
+          <View style={styles.proHeading}>
+            <Crown size={IconSize.medium} color={theme.primary} />
+            <ThemedText type="smallBold" themeColor="primary">
+              シフトカレンダーAI PRO
+            </ThemedText>
+          </View>
+          <ThemedText type="small" themeColor="textSecondary">
+            月別集計・給与見込みに加え、広告の非表示やシフト読み取り枠の拡大が利用できます
           </ThemedText>
-        </View>
-        <ThemedText type="small" themeColor="textSecondary">
-          月別集計・給与見込みに加え、広告の非表示やシフト読み取り枠の拡大が利用できます
-        </ThemedText>
-        <PrimaryButton label="PROにアップグレード" onPress={showComingSoon} />
-      </Card>
+          <PrimaryButton label="PROにアップグレード" onPress={showComingSoon} />
+        </Card>
 
-      <SettingsRowGroup rows={PRIMARY_ROWS} />
-      <SettingsRowGroup rows={LEGAL_ROWS} />
+        {SECTIONS.map((section) => (
+          <SettingsRowGroup key={section.caption} caption={section.caption} rows={section.rows} />
+        ))}
+        <SettingsRowGroup rows={LEGAL_ROWS} />
+      </ScrollView>
     </Screen>
   );
 }
@@ -112,6 +145,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  scrollContent: {
+    gap: Spacing.three,
+    paddingBottom: BottomTabInset,
+  },
   proCard: {
     gap: Spacing.two,
   },
@@ -119,6 +156,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.one,
+  },
+  group: {
+    gap: Spacing.one,
+  },
+  caption: {
+    paddingHorizontal: Spacing.one,
   },
   rowGroup: {
     padding: 0,

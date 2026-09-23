@@ -1,8 +1,6 @@
-import { DateTimePicker } from '@expo/ui/community/datetime-picker';
-import { format, parse, parseISO } from 'date-fns';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Switch, TextInput, View } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
 
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
@@ -11,17 +9,9 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useShiftSessionStore } from '@/store/useShiftSessionStore';
 
-const TIME_FORMAT = 'HH:mm';
-const DATE_FORMAT = 'yyyy-MM-dd';
-
-/** "HH:mm" has no date component, so anchor it to an arbitrary reference date for the picker. */
-function parseShiftTime(time: string): Date {
-  return parse(time, TIME_FORMAT, new Date());
-}
-
 /**
- * 要確認・編集画面: 日付・時刻をネイティブピッカーで、シフト種別・日跨ぎはこれまで通り編集できる
- * (requirements section 10、README「8. 不明点・リスク」5でPhase 3対応が指示されていた項目)。
+ * 要確認・編集画面: 日付・時刻は自由入力（"YYYY-MM-DD"/"HH:mm"）、日をまたぐかどうかは
+ * 開始・終了時刻の大小関係から自動判定する (requirements section 10)。
  */
 export default function ShiftReviewScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -33,7 +23,6 @@ export default function ShiftReviewScreen() {
   const [startTime, setStartTime] = useState(shift?.startTime ?? '');
   const [endTime, setEndTime] = useState(shift?.endTime ?? '');
   const [shiftType, setShiftType] = useState(shift?.shiftType ?? '');
-  const [isOvernight, setIsOvernight] = useState(shift?.isOvernight ?? false);
 
   if (!shift) {
     return (
@@ -49,43 +38,44 @@ export default function ShiftReviewScreen() {
   ];
 
   const handleSave = () => {
-    updateShift(shift.id, { date, startTime, endTime, shiftType, isOvernight });
+    updateShift(shift.id, {
+      date,
+      startTime,
+      endTime,
+      shiftType,
+      isOvernight: endTime <= startTime,
+    });
     router.back();
   };
 
   return (
     <Screen>
       <ThemedText type="small">日付</ThemedText>
-      <DateTimePicker
-        value={parseISO(date)}
-        mode="date"
-        display="compact"
-        onValueChange={(_event, value) => setDate(format(value, DATE_FORMAT))}
-      />
+      <TextInput value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" style={inputStyle} />
 
-      <ThemedText type="small">開始時刻</ThemedText>
-      <DateTimePicker
-        value={parseShiftTime(startTime)}
-        mode="time"
-        display="compact"
-        onValueChange={(_event, value) => setStartTime(format(value, TIME_FORMAT))}
-      />
-
-      <ThemedText type="small">終了時刻</ThemedText>
-      <DateTimePicker
-        value={parseShiftTime(endTime)}
-        mode="time"
-        display="compact"
-        onValueChange={(_event, value) => setEndTime(format(value, TIME_FORMAT))}
-      />
+      <View style={styles.timeRow}>
+        <View style={styles.timeField}>
+          <ThemedText type="small">開始時刻</ThemedText>
+          <TextInput
+            value={startTime}
+            onChangeText={setStartTime}
+            placeholder="HH:mm"
+            style={inputStyle}
+          />
+        </View>
+        <View style={styles.timeField}>
+          <ThemedText type="small">終了時刻</ThemedText>
+          <TextInput
+            value={endTime}
+            onChangeText={setEndTime}
+            placeholder="HH:mm"
+            style={inputStyle}
+          />
+        </View>
+      </View>
 
       <ThemedText type="small">シフト種別</ThemedText>
       <TextInput value={shiftType} onChangeText={setShiftType} style={inputStyle} />
-
-      <View style={styles.switchRow}>
-        <ThemedText>日をまたぐ（夜勤など）</ThemedText>
-        <Switch value={isOvernight} onValueChange={setIsOvernight} />
-      </View>
 
       <PrimaryButton label="保存" onPress={handleSave} />
     </Screen>
@@ -99,9 +89,12 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
     fontSize: 16,
   },
-  switchRow: {
+  timeRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  timeField: {
+    flex: 1,
+    gap: Spacing.one,
   },
 });

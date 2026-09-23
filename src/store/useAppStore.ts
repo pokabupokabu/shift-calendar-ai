@@ -87,13 +87,29 @@ export const useAppStore = create<AppState>()(
     {
       name: 'shift-calendar-ai-store',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 1,
+      version: 3,
       migrate: (persisted, version) => {
         const state = persisted as AppState;
         if (version < 1) {
           // Anyone who already finished the old onboarding flow has clearly
           // already "gotten it" - don't show them the new tutorial retroactively.
           state.hasSeenTutorial = Boolean(state.user?.shiftName);
+        }
+        if (version < 3) {
+          // Wage settings moved from per-shiftType to a single app-wide rate
+          // (settings.wageType/hourlyWage/dailyWage); older per-type wage
+          // fields (however they were shaped across earlier dev iterations)
+          // don't map onto that cleanly, so they're just dropped here in
+          // favor of the new app-wide defaults.
+          if (state.user) {
+            state.user.settings = { ...DEFAULT_USER_SETTINGS, ...state.user.settings };
+          }
+          state.shiftTypes = state.shiftTypes.map(({ id, name, startTime, endTime }) => ({
+            id,
+            name,
+            startTime,
+            endTime,
+          }));
         }
         return state;
       },

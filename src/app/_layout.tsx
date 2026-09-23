@@ -26,7 +26,8 @@ export default function RootLayout() {
           name="complete"
           options={{ title: '登録完了', headerBackVisible: false, gestureEnabled: false }}
         />
-        <Stack.Screen name="settings/shift-types" options={{ title: 'シフト種別・時間マスター' }} />
+        <Stack.Screen name="settings/calendar-providers" options={{ title: '対応カレンダー' }} />
+        <Stack.Screen name="settings/calendar-connect" options={{ title: 'カレンダー連携' }} />
       </Stack>
     </ThemeProvider>
   );

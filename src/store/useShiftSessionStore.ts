@@ -1,4 +1,3 @@
-import { format } from 'date-fns';
 import { create } from 'zustand';
 
 import type { Shift, ShiftAnalysisResult } from '@/models';
@@ -21,7 +20,9 @@ interface ShiftSessionState {
   setAnalysisResult: (result: ShiftAnalysisResult) => void;
   setAnalysisError: (message: string) => void;
   updateShift: (id: string, patch: Partial<Shift>) => void;
-  addManualShift: () => void;
+  addShift: (
+    input: Pick<Shift, 'date' | 'startTime' | 'endTime' | 'shiftType' | 'isOvernight'>,
+  ) => void;
   removeShift: (id: string) => void;
   restoreAllShifts: () => void;
   reset: () => void;
@@ -69,25 +70,20 @@ export const useShiftSessionStore = create<ShiftSessionState>((set) => ({
       ),
     })),
 
-  addManualShift: () =>
+  addShift: (input) =>
     set((state) => ({
       shifts: [
         ...state.shifts,
         {
           id: createLocalShiftId(),
-          date: format(new Date(), 'yyyy-MM-dd'),
-          startTime: '09:00',
-          endTime: '18:00',
-          shiftType: '',
-          isOvernight: false,
+          ...input,
           confidence: 1,
           source: 'manual' as const,
         },
       ],
     })),
 
-  removeShift: (id) =>
-    set((state) => ({ removedShiftIds: [...state.removedShiftIds, id] })),
+  removeShift: (id) => set((state) => ({ removedShiftIds: [...state.removedShiftIds, id] })),
 
   restoreAllShifts: () => set({ removedShiftIds: [] }),
 

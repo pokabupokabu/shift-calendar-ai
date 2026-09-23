@@ -30,10 +30,7 @@ function ScanTabButton() {
       <View style={styles.scanButtonLift}>
         <Pressable
           onPress={() => router.push('/photo-select')}
-          style={[
-            styles.scanButton,
-            { backgroundColor: theme.accent, shadowColor: theme.text },
-          ]}
+          style={[styles.scanButton, { backgroundColor: theme.accent, shadowColor: theme.text }]}
         >
           <ScanText size={IconSize.large} color={theme.onPrimary} />
         </Pressable>
@@ -124,9 +121,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   scanButtonLift: {
-    // Pulls just the button up so roughly its top third overflows above the tab
-    // bar, rather than sitting flush inside it like the other four tabs.
-    marginTop: -(SCAN_BUTTON_SIZE - TAB_BAR_CONTENT_HEIGHT) - Spacing.two,
+    // Pulls the button up past the tab bar's top edge while leaving enough
+    // room below it that the "スキャン" label lands at the same y as the
+    // other four tabs' labels (measured empirically against their layout).
+    marginTop: -35,
   },
   scanButton: {
     width: SCAN_BUTTON_SIZE,

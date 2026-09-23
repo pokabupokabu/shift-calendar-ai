@@ -3,9 +3,10 @@
   "configurations": [
     {
       "name": "expo-web",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["expo", "start", "--web"],
-      "port": 8081
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "npx expo start --web --port \"$PORT\""],
+      "port": 8081,
+      "autoPort": false
     }
   ]
 }

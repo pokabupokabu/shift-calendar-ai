@@ -1,3 +1,5 @@
+import type { WageType } from './shiftType';
+
 export interface UserSettings {
   /** Default calendar provider used for registration (section 13). */
   defaultCalendarProvider: 'apple' | 'google';
@@ -5,6 +7,12 @@ export interface UserSettings {
   eventTitleTemplate: string;
   /** Pro feature: create an all-day event for detected days off (section 16). */
   createDayOffEvents: boolean;
+  /** App-wide: whether every shift earns a per-hour or a flat per-shift rate. */
+  wageType: WageType;
+  /** Yen per hour, used when wageType is 'hourly'. */
+  hourlyWage: number;
+  /** Yen per shift (flat rate), used when wageType is 'daily'. */
+  dailyWage: number;
 }
 
 export interface User {
@@ -19,4 +27,7 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   defaultCalendarProvider: 'apple',
   eventTitleTemplate: 'バイト｜{shiftType}',
   createDayOffEvents: false,
+  wageType: 'hourly',
+  hourlyWage: 1300,
+  dailyWage: 10400,
 };

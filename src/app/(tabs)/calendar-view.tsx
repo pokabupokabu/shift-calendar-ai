@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { AdPlaceholder } from '@/components/ad-placeholder';
 import { Card } from '@/components/card';
 import { MonthGrid } from '@/components/calendar/month-grid';
+import { Dialog } from '@/components/dialog';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
@@ -46,13 +47,13 @@ export default function CalendarViewTab() {
         <Pressable onPress={goToPrevMonth} hitSlop={Spacing.two}>
           <ChevronLeft size={IconSize.medium} color={theme.text} />
         </Pressable>
-        <ThemedText type="subtitle">{label}</ThemedText>
+        <ThemedText type="subtitle" style={styles.monthLabel}>
+          {label}
+        </ThemedText>
         <Pressable onPress={goToNextMonth} hitSlop={Spacing.two}>
           <ChevronRight size={IconSize.medium} color={theme.text} />
         </Pressable>
       </View>
-
-      <PrimaryButton label="カレンダーを見に行く" onPress={handleOpenCalendar} />
 
       <MonthGrid
         month={month}
@@ -62,32 +63,34 @@ export default function CalendarViewTab() {
       />
 
       <ScrollView contentContainerStyle={styles.listContent}>
-        {selectedDate === undefined ? (
-          <ThemedText type="small" themeColor="textSecondary">
-            日付を選択するとシフトが表示されます
-          </ThemedText>
-        ) : selectedEvents.length === 0 ? (
-          <ThemedText type="small" themeColor="textSecondary">
-            この日のシフトは登録されていません
-          </ThemedText>
-        ) : (
-          selectedEvents.map((event) => (
-            <Card key={event.id} style={styles.eventCard}>
-              <ThemedText type="smallBold">{formatShiftDate(event.date)}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                {formatShiftTimeRange(event.startTime, event.endTime, false)}
-              </ThemedText>
-              {event.shiftType ? (
-                <ThemedText type="small" themeColor="textSecondary">
-                  {event.shiftType}
-                </ThemedText>
-              ) : null}
-            </Card>
-          ))
-        )}
-
+        <PrimaryButton label="カレンダーを見に行く" onPress={handleOpenCalendar} />
         <AdPlaceholder slot="calendar-view" style={styles.ad} />
       </ScrollView>
+
+      <Dialog visible={selectedDate !== undefined} onClose={() => setSelectedDate(undefined)}>
+        {selectedDate && (
+          <>
+            <ThemedText type="smallBold">{formatShiftDate(selectedDate)}</ThemedText>
+            {selectedEvents.length === 0 ? (
+              <ThemedText type="small" themeColor="textSecondary">
+                この日のシフトは登録されていません
+              </ThemedText>
+            ) : (
+              selectedEvents.map((event) => (
+                <Card key={event.id} style={styles.eventCard}>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    {formatShiftTimeRange(event.startTime, event.endTime, false)}
+                  </ThemedText>
+                  {event.shiftType ? (
+                    <ThemedText type="smallBold">{event.shiftType}</ThemedText>
+                  ) : null}
+                </Card>
+              ))
+            )}
+            <PrimaryButton label="閉じる" onPress={() => setSelectedDate(undefined)} />
+          </>
+        )}
+      </Dialog>
     </Screen>
   );
 }
@@ -97,6 +100,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  monthLabel: {
+    fontSize: 20,
+    lineHeight: 26,
   },
   listContent: {
     gap: Spacing.two,

@@ -1,12 +1,15 @@
+import { format } from 'date-fns';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Alert, FlatList, Image, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, FlatList, Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { Card } from '@/components/card';
+import { Dialog } from '@/components/dialog';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import type { Shift, ShiftRegistrationStatus } from '@/models';
 import { getCalendarProvider } from '@/services/calendar';
 import { useAppStore } from '@/store/useAppStore';
@@ -15,6 +18,8 @@ import { classifyShift } from '@/utils/classifyShifts';
 import { deferNavigation } from '@/utils/deferNavigation';
 import { buildEventTitle } from '@/utils/eventTitle';
 import { formatShiftDate, formatShiftTimeRange } from '@/utils/formatShift';
+
+const DATE_FORMAT = 'yyyy-MM-dd';
 
 const STATUS_LABEL: Record<ShiftRegistrationStatus, string> = {
   new: '新規',
@@ -35,20 +40,48 @@ interface ClassifiedShift {
  * 登録対象を調整してから一括登録する (requirements section 11, 12)。
  */
 export default function CalendarConfirmScreen() {
+  const theme = useTheme();
   const images = useShiftSessionStore((state) => state.images);
   const shifts = useShiftSessionStore((state) => state.shifts);
   const removedShiftIds = useShiftSessionStore((state) => state.removedShiftIds);
-  const addManualShift = useShiftSessionStore((state) => state.addManualShift);
+  const addShift = useShiftSessionStore((state) => state.addShift);
   const removeShift = useShiftSessionStore((state) => state.removeShift);
   const restoreAllShifts = useShiftSessionStore((state) => state.restoreAllShifts);
+  const shiftTypes = useAppStore((state) => state.shiftTypes);
   const calendarEvents = useAppStore((state) => state.calendarEvents);
   const settings = useAppStore((state) => state.user?.settings);
   const recordCalendarEvent = useAppStore((state) => state.recordCalendarEvent);
   const updateCalendarEvent = useAppStore((state) => state.updateCalendarEvent);
 
   const photoUri = images[0]?.uri;
+  const inputStyle = [
+    styles.input,
+    { color: theme.text, backgroundColor: theme.backgroundElement },
+  ];
 
   const [registering, setRegistering] = useState(false);
+  const [isAddDialogOpen, setAddDialogOpen] = useState(false);
+  const [draft, setDraft] = useState<Pick<Shift, 'date' | 'startTime' | 'endTime' | 'shiftType'>>({
+    date: format(new Date(), DATE_FORMAT),
+    startTime: '09:00',
+    endTime: '18:00',
+    shiftType: '',
+  });
+
+  const openAddDialog = () => {
+    setDraft({
+      date: format(new Date(), DATE_FORMAT),
+      startTime: '09:00',
+      endTime: '18:00',
+      shiftType: '',
+    });
+    setAddDialogOpen(true);
+  };
+
+  const handleConfirmAdd = () => {
+    addShift({ ...draft, isOvernight: draft.endTime <= draft.startTime });
+    setAddDialogOpen(false);
+  };
 
   const visible: ClassifiedShift[] = useMemo(
     () =>
@@ -58,10 +91,11 @@ export default function CalendarConfirmScreen() {
     [shifts, removedShiftIds, calendarEvents],
   );
 
-  const counts = visible.reduce(
-    (acc, item) => ({ ...acc, [item.status]: acc[item.status] + 1 }),
-    { new: 0, overwrite: 0, needs_review: 0 } as Record<ShiftRegistrationStatus, number>,
-  );
+  const counts = visible.reduce((acc, item) => ({ ...acc, [item.status]: acc[item.status] + 1 }), {
+    new: 0,
+    overwrite: 0,
+    needs_review: 0,
+  } as Record<ShiftRegistrationStatus, number>);
 
   const handleRegister = async () => {
     if (!settings) return;
@@ -126,9 +160,7 @@ export default function CalendarConfirmScreen() {
     <Screen>
       <ThemedText type="subtitle">登録内容の確認</ThemedText>
 
-      {photoUri && (
-        <Image source={{ uri: photoUri }} style={styles.photo} resizeMode="contain" />
-      )}
+      {photoUri && <Image source={{ uri: photoUri }} style={styles.photo} resizeMode="contain" />}
 
       <View style={styles.summaryRow}>
         <ThemedText themeColor="textSecondary">
@@ -147,7 +179,9 @@ export default function CalendarConfirmScreen() {
         contentContainerStyle={styles.list}
         renderItem={({ item }) => (
           <Card
-            onPress={() => router.push({ pathname: '/shift-review', params: { id: item.shift.id } })}
+            onPress={() =>
+              router.push({ pathname: '/shift-review', params: { id: item.shift.id } })
+            }
             style={styles.card}
           >
             <View style={styles.cardText}>
@@ -172,7 +206,7 @@ export default function CalendarConfirmScreen() {
         )}
       />
 
-      <Pressable onPress={addManualShift} style={styles.addButton}>
+      <Pressable onPress={openAddDialog} style={styles.addButton}>
         <ThemedText type="link">＋ 日付を追加</ThemedText>
       </Pressable>
 
@@ -181,6 +215,74 @@ export default function CalendarConfirmScreen() {
         onPress={handleRegister}
         disabled={registering || visible.length === 0}
       />
+
+      <Dialog visible={isAddDialogOpen} onClose={() => setAddDialogOpen(false)}>
+        <ThemedText type="smallBold">日付を追加</ThemedText>
+
+        {shiftTypes.length > 0 && (
+          <View style={styles.templateBlock}>
+            <ThemedText type="small" themeColor="textSecondary">
+              テンプレートから入力
+            </ThemedText>
+            <View style={styles.templateRow}>
+              {shiftTypes.map((shiftType) => (
+                <Pressable
+                  key={shiftType.id}
+                  onPress={() =>
+                    setDraft((current) => ({
+                      ...current,
+                      shiftType: shiftType.name,
+                      startTime: shiftType.startTime,
+                      endTime: shiftType.endTime,
+                    }))
+                  }
+                  style={[styles.templateChip, { backgroundColor: theme.backgroundElement }]}
+                >
+                  <ThemedText type="small">{shiftType.name}</ThemedText>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        )}
+
+        <View>
+          <ThemedText type="small">日付</ThemedText>
+          <TextInput
+            value={draft.date}
+            onChangeText={(date) => setDraft((current) => ({ ...current, date }))}
+            placeholder="YYYY-MM-DD"
+            style={inputStyle}
+          />
+        </View>
+
+        <View style={styles.timeRow}>
+          <View style={styles.timeField}>
+            <ThemedText type="small">開始時刻</ThemedText>
+            <TextInput
+              value={draft.startTime}
+              onChangeText={(startTime) => setDraft((current) => ({ ...current, startTime }))}
+              placeholder="HH:mm"
+              style={inputStyle}
+            />
+          </View>
+          <View style={styles.timeField}>
+            <ThemedText type="small">終了時刻</ThemedText>
+            <TextInput
+              value={draft.endTime}
+              onChangeText={(endTime) => setDraft((current) => ({ ...current, endTime }))}
+              placeholder="HH:mm"
+              style={inputStyle}
+            />
+          </View>
+        </View>
+
+        <View style={styles.dialogActions}>
+          <Pressable onPress={() => setAddDialogOpen(false)} style={styles.dialogCancel}>
+            <ThemedText themeColor="textSecondary">キャンセル</ThemedText>
+          </Pressable>
+          <PrimaryButton label="追加" onPress={handleConfirmAdd} />
+        </View>
+      </Dialog>
     </Screen>
   );
 }
@@ -214,5 +316,41 @@ const styles = StyleSheet.create({
   },
   addButton: {
     alignSelf: 'flex-start',
+  },
+  templateBlock: {
+    gap: Spacing.two,
+  },
+  templateRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+  templateChip: {
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    borderRadius: Radius.pill,
+  },
+  input: {
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    fontSize: 16,
+  },
+  timeRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  timeField: {
+    flex: 1,
+    gap: Spacing.one,
+  },
+  dialogActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  dialogCancel: {
+    padding: Spacing.two,
   },
 });

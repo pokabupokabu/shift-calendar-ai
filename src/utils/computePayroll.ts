@@ -1,6 +1,6 @@
 import { isSameMonth, parseISO } from 'date-fns';
 
-import type { CalendarEventRecord, ShiftType } from '@/models';
+import type { CalendarEventRecord, WageType } from '@/models';
 
 /** "09:00"→"18:00" is 9h; end <= start is treated as crossing midnight (+24h). */
 export function hoursBetween(startTime: string, endTime: string): number {
@@ -18,85 +18,88 @@ export function hoursBetween(startTime: string, endTime: string): number {
   return (endMinutes - startMinutes) / 60;
 }
 
+/** Every shift earns at the same app-wide rate (section 13: 給与形態), so this never returns undefined. */
+export function computeShiftEarning(
+  hours: number,
+  wageType: WageType,
+  hourlyWage: number,
+  dailyWage: number,
+): number {
+  return wageType === 'daily' ? dailyWage : hourlyWage * hours;
+}
+
 export interface PayrollShiftTypeBreakdown {
   name: string;
   hours: number;
-  hourlyWage: number;
+  count: number;
   subtotal: number;
 }
 
 export interface MonthlyPayroll {
   byShiftType: PayrollShiftTypeBreakdown[];
-  /** Events with no shiftType, an unknown shiftType, or a shiftType with no hourlyWage set. */
-  unclassifiedCount: number;
   total: number;
 }
 
-/** Groups the given month's events by shiftType name and sums wages using each ShiftType's hourlyWage. */
+/** Groups the given month's events by shiftType name and sums wages at the app-wide rate. */
 export function computeMonthlyPayroll(
   events: CalendarEventRecord[],
-  shiftTypes: ShiftType[],
   month: Date,
+  wageType: WageType,
+  hourlyWage: number,
+  dailyWage: number,
 ): MonthlyPayroll {
   const monthEvents = events.filter((event) => isSameMonth(parseISO(event.date), month));
 
   const breakdownByName = new Map<string, PayrollShiftTypeBreakdown>();
-  let unclassifiedCount = 0;
 
   for (const event of monthEvents) {
-    const shiftType = shiftTypes.find((candidate) => candidate.name === event.shiftType);
-    if (!shiftType || shiftType.hourlyWage === undefined) {
-      unclassifiedCount += 1;
-      continue;
-    }
-
     const hours = hoursBetween(event.startTime, event.endTime);
-    const existing = breakdownByName.get(shiftType.name);
+    const earning = computeShiftEarning(hours, wageType, hourlyWage, dailyWage);
+    const name = event.shiftType || '未分類';
+
+    const existing = breakdownByName.get(name);
     if (existing) {
       existing.hours += hours;
-      existing.subtotal += hours * shiftType.hourlyWage;
+      existing.count += 1;
+      existing.subtotal += earning;
     } else {
-      breakdownByName.set(shiftType.name, {
-        name: shiftType.name,
-        hours,
-        hourlyWage: shiftType.hourlyWage,
-        subtotal: hours * shiftType.hourlyWage,
-      });
+      breakdownByName.set(name, { name, hours, count: 1, subtotal: earning });
     }
   }
 
   const byShiftType = [...breakdownByName.values()];
   const total = byShiftType.reduce((sum, entry) => sum + entry.subtotal, 0);
 
-  return { byShiftType, unclassifiedCount, total };
+  return { byShiftType, total };
 }
 
 export interface DailyEarning {
   date: string; // "YYYY-MM-DD"
+  startTime: string; // "HH:mm"
+  endTime: string; // "HH:mm"
   shiftType?: string;
-  hours: number;
-  earnings: number; // 0 if the shift type has no hourlyWage set yet
+  earnings: number;
 }
 
 /** Per-event earnings for the given month, most recent first. */
 export function computeDailyEarnings(
   events: CalendarEventRecord[],
-  shiftTypes: ShiftType[],
   month: Date,
+  wageType: WageType,
+  hourlyWage: number,
+  dailyWage: number,
 ): DailyEarning[] {
   const monthEvents = events.filter((event) => isSameMonth(parseISO(event.date), month));
 
   return monthEvents
     .map((event) => {
-      const shiftType = shiftTypes.find((candidate) => candidate.name === event.shiftType);
       const hours = hoursBetween(event.startTime, event.endTime);
-      const earnings = shiftType?.hourlyWage !== undefined ? hours * shiftType.hourlyWage : 0;
-
       return {
         date: event.date,
+        startTime: event.startTime,
+        endTime: event.endTime,
         shiftType: event.shiftType,
-        hours,
-        earnings,
+        earnings: computeShiftEarning(hours, wageType, hourlyWage, dailyWage),
       };
     })
     .sort((a, b) => b.date.localeCompare(a.date));
