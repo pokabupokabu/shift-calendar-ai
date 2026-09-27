@@ -31,78 +31,73 @@
 - 変更後は `npm run lint` / `npm run typecheck` / `npm run format` を通す。
 - iPhone専用。実機/シミュレータでの確認ができない場合はその旨を明記する。
 
-## 引き継ぎメモ（2026-09-23 22時台時点、次セッション向け）
+## 引き継ぎメモ（2026-09-26 23時台時点、次セッション向け）
 
 ### このプロジェクトの現状
 
-- 最新コミットは`f18c3d1`（5タブ構成への画面リニューアル、前セッションの成果）。**今回のセッションの変更は一切コミットされていない。** `git status --short`で全体像を確認してから着手すること。
-- ローカル動作確認はExpo Web（`npx expo start --web`）で行っている。**重要: 開発サーバーのポートまわりに要注意事項あり、下記「ローカルサーバー・ポートの状態」を必ず読むこと。**
-- 今回のセッションは、前回作った5タブ構成に対するユーザーからの詳細なUIフィードバック（カレンダー・テンプレ・スキャンタブ）を、複数ラウンドに渡って修正した回。プランモードは使わず、都度`AskUserQuestion`で方針を確認しながら直接実装した。
+- 最新コミットは`38d40eb`（前セッション「5タブ画面のUIフィードバック」の成果）。**今回のセッション（本メモが対象とする範囲）の変更は一切コミットされていない。** `git status --short`で全体像を確認してから着手すること（現在: 変更20ファイル・新規4ファイル）。
+- ブランチは`claude/admiring-cerf-egbi9t`（`main`にはまだマージされていない）。
+- ローカル動作確認はExpo Web（ブラウザの`navigate`で`http://localhost:8081`を直接開く方式）で行っている。**重要: 開発サーバーのポートまわりの地雷は前セッションから継続中、下記を必ず読むこと。**
+- 今回のセッションは大きく2部構成：①カレンダー/テンプレ/給与/設定タブへの細かいUIフィードバック対応、②ユーザーがGoogle Stitch（AI UIデザインツール）で作った10画面分のモックアップを、実際のHTML/Tailwindソースコードをそのまま根拠にして正確に反映する大規模ビジュアル改修。プランモードを2回使用（②の一部）。
 
-### ローカルサーバー・ポートの状態（次セッションが必ず踏む可能性がある地雷）
+### ローカルサーバー・ポートの状態（今回も踏んだ地雷、要注意）
 
-- ポート**8081**で、前セッションから動きっぱなしの古いExpoプロセス（PID 75565、`npx expo start --web --clear`）が生きている。**ここに実際のテストデータ（ユーザー登録・シフト・カレンダー登録済みイベントなど）が入っている。**
-- Expo Webの`AsyncStorage`は`localStorage`ベースで、**ポート番号込みのoriginごとに別データ**。今セッション中、`.claude/launch.json`の`expo-web`設定が「8081が使用中なら別の空きポートを自動選択する」仕様（`autoPort: true`）になっていたせいで、`preview_start`を呼ぶたびに新しい空っぽのポート（51550→52165、と2回発生）に飛んでしまい、「データが消えた」ように見える事故が2回起きた。
-- **この対策として、`.claude/launch.json`の`expo-web`設定を`"autoPort": false`に変更済み。** これにより、次に`preview_start({name: "expo-web"})`を呼んだ時、8081が埋まっていれば黙って新ポートに逃げず、エラーで止まるようになっているはず。
-- **次セッションでの正しい動き方**: `preview_start`は使わず、ブラウザの`navigate`で直接`http://localhost:8081`を開くこと。もし`preview_start`を使ってエラーになったら、それは仕様通り（8081が使用中という合図）なので、新ポートに逃げるのではなく8081を直接開き直す。
-- PID 75565自体は今回`kill`していない（`kill`コマンドはClaude Codeの自動許可の壁でブロックされる操作で、ユーザーに毎回確認が必要。前回・今回とも「今は残したままでいい」という結論だった）。ユーザーから明示的に許可が出れば、ターミナルで`kill 75565`してから`preview_start`で正式に8081を再取得する、という手もある。
+- ポート**8081**で、複数セッション前から動きっぱなしの古いExpoプロセス（PID 75565）が今も生きている。**ここに実際のテストデータ（田中さんの登録・9月のシフト・カレンダー登録済みイベントなど）が入っている。**
+- `.claude/launch.json`は`"autoPort": false`のまま（前セッションの対策が維持されている）。**次セッションでの正しい動き方は変わらず**: `preview_start`は使わず、ブラウザの`navigate`で直接`http://localhost:8081`を開くこと。
+- **今回新たに踏んだ事故**: `もっと見る`ボタンの動作確認のため、`javascript_exec`でテスト用シフトを6件追加した後、`id`が`test-`で始まるものだけ除外するはずのフィルタが誤作動し、**実データ2件も含めて`calendarEvents`が全消去される事故が発生した**。ユーザーの許可を得て、日付・時間帯・シフト種別だけを記憶から再現した代替データ（`id`は`restored-1`/`restored-2`、元の`externalEventId`等の内部IDは失われている）で復元済み。今後、`calendarEvents`配列を書き換えるようなフィルタ処理を`javascript_exec`で組むときは、実行前に必ず一度中身をログ出力して確認してから適用すること。
+- PID 75565は今回も`kill`していない（ユーザーの明示許可が必要な操作のため）。
 
 ### 今回のセッションで実装した内容
 
-**カレンダータブ**:
+**① 細かいUIフィードバック対応（コミット`38d40eb`以降、Stitch改修より前）**
 
-- 日付セル内のシフト種別バッジを、日付の右に配置したまま、はみ出さずに省略表示されるよう修正（一度「1行にまとめる」方式に変えて怒られたので、位置は変えずに直す方針に戻した経緯あり）。
-- 前後月の日付も薄く表示し、常に7×5マスの完全な格子になるよう`month-grid.tsx`の`useGridDays`を追加。
-- 日別の時間帯表示を「09:00」「18:00」の2行表示に変更（コンパクトな「9-18」表記をやめた）。
-- 日付タップ時の表示を、画面下部への埋め込みから中央ダイアログ（`src/components/dialog.tsx`）表示に変更。
-- 「カレンダーを見に行く」ボタンを、広告枠のすぐ上（スクロール末尾側）に移動。
+- カレンダー: 日付セル内の「早/早…」表示ゆれを修正（日付が1桁か2桁かで残り幅が変わっていたのが原因。`dateNumber`に`minWidth`を固定）。
+- テンプレ: 給与形態を時給/日給で表示切替、休憩時間（6h→45分/8h→60分、編集可）・深夜手当・早朝手当をON/OFFスイッチ＋編集ダイアログ形式で追加。`UserSettings`に`breakDeductionEnabled`/`breakRules`/`lateNightPremium`/`earlyMorningPremium`を追加（store migration v3→v5）。「カレンダーにはこう登録される」プレビューは削除。全編集項目を「値表示＋鉛筆編集ボタン→ダイアログ」形式に統一。
+- 給与: 「出勤履歴」→「簡易明細一覧」に改称。シフト種別フィルタ・昇順/降順切替・「もっと見る」ページネーション（初期5件）・出勤詳細ダイアログ（実働時間/休憩時間込み）・テンプレート毎の想定給与カードのプルダウンフィルタ＋タップ詳細を追加。`computePayroll.ts`に休憩控除・深夜/早朝手当を考慮した`computeShiftBreakdown`を実装。
+- 給与計算ロジックの数値検算は本セッション中に確認済み（休憩控除後の実働時間×時給で一致）。
 
-**テンプレタブ**（このセッションで最も方針転換が多かった箇所）:
+**② Stitchモックアップの正確な反映（今回のセッションの主眼、`.claude/plans/stitch-wondrous-globe.md`に詳細計画あり）**
 
-- 「表示名」→「登録者キーワード」に改称、値表示＋鉛筆アイコン＋「編集」ラベルの行形式に変更、編集はダイアログで行う。
-- 「登録先カレンダー」→「連携済みカレンダー」に改称。二者択一の横並びピルをやめ、現在の連携先を「連携済み✓」付きのリスト行として表示し、「その他」をタップすると`/settings/calendar-providers`（対応カレンダー一覧）→`/settings/calendar-connect?provider=...`（連携専用ページ、「連携する」ボタン）という画面遷移を実装。**ただし実際の`CalendarProvider.authenticate()`/権限リクエストの呼び出しはまだ繋いでいない、画面遷移とUIのみのモック実装**（ユーザーに確認済みの選択）。
-- シフト種別をテンプレタブ画面に直接インライン表示（名前＋時間帯のリスト、鉛筆＋「編集」でダイアログ編集）。追加は下書き状態にしてから「戻る／追加」を選べる方式（戻ると何も保存されない）。これに伴い旧`src/app/settings/shift-types.tsx`は完全に不要になったため削除した。
-- 給与形態（時給/日給）をシフト種別ごとの設定から**アプリ全体共通の設定**に変更。`UserSettings`に`wageType`/`hourlyWage`（デフォルト1300円）/`dailyWage`（デフォルト10400円）を追加し、テンプレタブの「給与形態」ブロックで両方の金額を常に編集可能にした。`ShiftType`からは`wage`関連フィールドを完全に削除（`id`/`name`/`startTime`/`endTime`のみに戻した）。
-
-**スキャン関連（`calendar-confirm.tsx` / `shift-review.tsx`）**:
-
-- 「日付を追加」ボタンを、テンプレート（早番/遅番/夜勤ボタン、押すと時間が自動入力）＋自由入力（日付・時刻を直接テキストで書き込める）のダイアログに変更。`useShiftSessionStore`の`addManualShift`を`addShift(input)`に置き換えた。
-- **原因究明**: 当初`@expo/ui`のネイティブ`DateTimePicker`を使っていたが、Expo Web上では値が表示されず操作も一切効かない（ユーザーには「固まった」と見えていた）ことが判明。`calendar-confirm.tsx`の追加ダイアログと`shift-review.tsx`の両方から`DateTimePicker`を撤去し、素の`TextInput`（"YYYY-MM-DD"/"HH:mm"）に置き換えた。実機での見た目は自由入力のテキストボックスになる。
-- `shift-review.tsx`の「日をまたぐ（夜勤など）」手動トグルを削除し、`endTime <= startTime`から自動判定するように変更（他の画面と同じロジックに統一）。
-
-**データマイグレーション**: `useAppStore.ts`の永続化バージョンを3に更新。v2→v3で、シフト種別ごとの古い賃金関連フィールドを破棄し、`UserSettings`に新しいデフォルト値（時給1300円・日給10400円など）を補完するマイグレーションを追加済み。ブラウザで実際に既存テストデータが壊れず引き継がれることを確認済み。
-
-**設定タブ・テンプレタブのデザイン比較Artifact**: 「設定・テンプレ改善案」というArtifactを作成し、v1〜v4まで反復してユーザーに提示・共有済み（対応完了、次セッションへの持ち越し作業ではない）。
+- 経緯: 最初に画像の内容を文章で説明してサブエージェント7体に並列実装させたところ、ユーザーから「1割も反映されていない」との指摘。**文章経由では色・余白・フォントの精度が全く再現できないと判明。** ユーザーから10画面分の実際のHTML/Tailwindソースを受け取り、それをそのままサブエージェントのプロンプトに埋め込んで再実装させたところ、大幅に精度が向上（自分の目でブラウザ確認済み）。
+- **共有デザイントークンの刷新**（自分で実施、`src/constants/theme.ts`）: 配色をStitchモックアップの実値に合わせて全面更新。特に**`background`（ページ背景）と`backgroundElement`（カード背景）の関係が反転**した点に注意（旧: 背景=白/カード=薄グレー → 新: 背景=薄グレー`#F2F2F7`/カード=白`#FFFFFF`）。`primary`も`#208AEF`→`#007AFF`（本物のiOSブルー）に変更。`IconBadgeTones`（丸い色付きアイコン背景、`src/components/icon-badge.tsx`+`src/hooks/use-icon-badge-colors.ts`）を新設。`Typography`にiOS標準スケール（headline/subheadline/footnote/caption1/caption2/title1/title2/title3/body/largeTitleMobile）を追加、`ThemedText`の`type`propを`keyof typeof Typography`に拡張。
+- **外観（ライト/ダーク/システム）の実装**: `UserSettings.themeOverride`を追加（store migration v6）、`src/hooks/use-resolved-color-scheme.ts`を新設し`useTheme()`がこれを参照するように変更。設定タブに実際に動くインラインの3択スイッチとして実装済み（ブラウザで動作確認済み）。
+- **10画面すべてを個別のサブエージェントに実HTML付きで再実装させ、完了後に自分で全画面をブラウザ操作して目視確認**（前回サボった検証を今回はきちんと実施）: 写真選択・解析中・候補選択・抽出結果確認・シフト編集・登録完了・カレンダー（月表示+新規リスト表示切替+日付詳細シート）・給与・テンプレ・設定。
+- 明示的に守った制約: ①一致度98%のような数値のAI確信度は非表示（既存ルール、qualitativeな「推奨」バッジのみ）、②カレンダーの「シフト申請」機能は実装しない（ユーザーが却下済み）、③完了画面にメールアドレス等の架空データは追加しない、④設定のバージョン表示は`Constants.expoConfig?.version`の実データを使用、⑤PRO価格¥380/月は表示のみで課金ロジックには繋がない。
+- **カレンダーの新機能**: 月表示⇄リスト表示の切替（`src/components/calendar/month-list.tsx`新設）、日付詳細シートに実働時間・休憩時間・基本時給・給与見込み・外部連携ステータス・編集/削除ボタンを追加（`removeCalendarEvent`アクションを`useAppStore.ts`に新設）。
 
 ### 環境変数の状態
 
-`.env`は`.gitignore`済みで安全。中身（値は伏せる、前回から変更なし）:
+`.env`は`.gitignore`済みで安全。今回のセッションでは変更していないが、**前回の引き継ぎメモとの食い違いを1点発見**:
 
-- `EXPO_PUBLIC_AI_PROVIDER`: 設定済み（`gemini`）
-- `EXPO_PUBLIC_GEMINI_API_KEY`: 設定済み（Google AI Studioの`shift-calendar-ai`プロジェクトで発行、無料枠・請求先アカウント未リンク＝上限超過の課金リスクなし）
+- `EXPO_PUBLIC_AI_PROVIDER`: 設定済み
+- `EXPO_PUBLIC_GEMINI_API_KEY`: 設定済み
 - `EXPO_PUBLIC_GEMINI_MODEL`: 設定済み
-- `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`: 設定済み（同じ`shift-calendar-ai`プロジェクトのOAuthクライアント、iOS bundle identifier `com.pokabu.shiftcalendarai`は**仮**設定、アプリ完成後に正式なものへ見直す約束になっている）
-- `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`: 未設定（現状iOSクライアントのみ使用、Web版OAuthは未対応のまま）
+- `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`: 設定済み
+- `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`: **設定済みに変わっていた**（前回の引き継ぎメモでは「未設定」と書かれていた）。いつ・誰が設定したのか本セッションでは確認できていない。次セッションでユーザーに経緯を確認するとよい（Web版OAuth対応を始めた形跡はコード上ない）。
 
 ### 次にやること（優先順）
 
-1. `git status --short`で今回のセッションの全変更を確認し、ユーザーに内容を説明した上でコミットするか相談する（一度もコミットしていない。なお`assets/expo.icon/icon.json`と`docs/requirements.md`の差分は`npm run format`によるプリティア整形だけで、内容的な変更ではない点に注意）。
-2. カレンダー連携（`/settings/calendar-providers`・`/settings/calendar-connect`）の実認証を本実装するかどうか、ユーザーに確認する。今は画面遷移のみのモックで、`authenticate()`/`requestCalendarPermission()`は繋がっていない。
-3. README.md「8. 不明点・リスク」に残っている項目（Gemini APIキーの扱い方針の最終確定、Google OAuthの実機検証など）の状況を反映するか確認する。
-4. `shift-review.tsx`・`calendar-confirm.tsx`の日付/時刻を自由入力のテキストボックスに変更した実機での見た目は未確認（iPhone専用アプリなので、実機/シミュレータでの確認が必要）。
+1. `git status --short`で今回の全変更（20ファイル変更+4ファイル新規）を確認し、ユーザーに内容を説明した上でコミットするか相談する。
+2. Stitch改修で細部の色をエージェントが独自判断した箇所（例: 遅番のプリセットアイコンが本来オレンジ系のところ紫系になっている等）をユーザーと一緒に見直すか確認する。
+3. 候補選択画面（`user-match-select.tsx`）は実際のAI解析（複数候補が返るケース）を通していないため、複数候補が表示された状態の見た目は未確認。実際の写真スキャンで確認するとよい。
+4. カレンダー連携（`/settings/calendar-providers`・`/settings/calendar-connect`）の実認証実装はまだ未着手（前セッションからの持ち越し）。今も画面遷移のみのモックで、`authenticate()`/`requestCalendarPermission()`は繋がっていない。
+5. README.md「8. 不明点・リスク」に残っている項目（Gemini APIキーの扱い方針の最終確定、Google OAuthの実機検証など）の状況を反映するか確認する。
+6. 実機/シミュレータでの見た目確認は未実施。**このMacにはXcode本体が入っておらず（Command Line Toolsのみ）、`xcrun simctl`が使えないためiOSシミュレータ自体が使用不可**（前セッションから継続、Xcodeのフルインストールにはユーザーのパスワードが必要）。
 
-### Gotchas（このセッションで時間を使って分かったこと）
+### Gotchas（今回のセッションで時間を使って分かったこと）
 
-- **ポート/`AsyncStorage`origin問題は再発しやすい**: 上記「ローカルサーバー・ポートの状態」を参照。`autoPort: false`に変えたことで今後は「エラーで止まる」形になるはずだが、もし別の理由でまた新ポートに飛んでしまったら、まず`lsof -i :8081`で誰が使っているか確認し、新ポートに逃げず8081を直接見に行くこと。
-- **`@expo/ui`のネイティブ`DateTimePicker`はExpo Webで機能しない**（値が見えない・操作もできない）。今回この2画面から完全に撤去したが、もし他の画面で同じコンポーネントを見つけたら同様に注意。
-- **Browser paneの`computer`ツールのクリックが、一部の画面（ダイアログ内など）で毎回30秒タイムアウトしてボタン押下が効かないことがある**（アプリ側のエラーは出ない）。回避策: `javascript_tool`でPressableの実DOM要素に対し`pointerdown→mousedown→pointerup→mouseup→click`のPointerEventを`dispatchEvent`する疑似クリックを使うと確実に動作する。ただし**2つの操作を同じスクリプト内で連続dispatchすると、Reactの状態更新が間に合わず2つ目が古い値を見てしまう**ことがあった（テンプレート選択→追加、を1回のjavascript_execで続けて実行したら反映されなかった）。関連する操作は別々の`javascript_exec`呼び出しに分けること。
-- **祝日の赤字表示はスクリーンショットの見た目だけでは判別しづらい**。疑わしいときは`getComputedStyle`でDOM上の実際の色を確認する。
-- Google Calendar OAuthは`expo-auth-session`のネイティブリダイレクト（`shiftcalendarai://`スキーム）に依存しており、**Expo Go/Expo Webでは動作しない**。実機/シミュレータ向けdevelopment buildでの検証は未実施。
+- **UIモックアップの反映はプロンプトでの文章説明では精度が出ない。実際のHTML/CSS/デザインツールのエクスポートコードを渡すこと。** これが今回最大の教訓。文章だと「なんとなくそれっぽい」止まりになり、ユーザーには「ほぼ反映されていない」ように見える。
+- **並列サブエージェントが同時にlint/typecheckを走らせると、他のエージェントがまだ編集中のファイルを一時的にエラーとして拾うことがある**（実際のバグではない）。全エージェント完了後に自分で通しのlint/typecheck/formatを走らせて確認すること。
+- **`read_console_messages`は同じブラウザタブを使い回すと過去のエラー履歴が溜まり続ける**（HMRで一時的に壊れた状態のエラーが後から見ても残っている）。コンソールエラーを見つけたら、新しいタブで再現するか確認してから本物のバグと判断すること（今回も何度か「エラーだ」と思ったら過去の残骸だった）。
+- **`localStorage`の`calendarEvents`を書き換えるスクリプトは特に慎重に**。フィルタ条件を間違えると実データごと消える（今回発生済み、詳細は上記「ローカルサーバー・ポートの状態」参照）。
+- `theme.ts`の`background`/`backgroundElement`の意味が今回のセッションで反転した（上記参照）。今後この2トークンを使うときは「ページ背景=グレー、カード背景=白」という前提で考えること。
+- 新設した`IconBadge`/`useIconBadgeColors`/`useResolvedColorScheme`は今後のUI追加でも再利用すること（車輪の再発明をしない）。
+- Google Calendar OAuthは`expo-auth-session`のネイティブリダイレクト（`shiftcalendarai://`スキーム）に依存しており、Expo Go/Expo Webでは動作しない（前セッションからの既知事項、変更なし）。
 
 ### 今回のセッションで変更したファイル
 
-**新規**: `src/app/settings/calendar-connect.tsx`, `src/app/settings/calendar-providers.tsx`, `src/components/dialog.tsx`
+**新規**: `src/components/calendar/month-list.tsx`, `src/components/icon-badge.tsx`, `src/hooks/use-icon-badge-colors.ts`, `src/hooks/use-resolved-color-scheme.ts`
 
-**変更**: `.claude/launch.json`（`autoPort: false`）, `CLAUDE.md`, `src/app/(tabs)/_layout.tsx`, `src/app/(tabs)/calendar-view.tsx`, `src/app/(tabs)/payroll.tsx`, `src/app/(tabs)/settings.tsx`, `src/app/(tabs)/template.tsx`, `src/app/_layout.tsx`, `src/app/calendar-confirm.tsx`, `src/app/shift-review.tsx`, `src/components/calendar/month-grid.tsx`, `src/models/shiftType.ts`, `src/models/user.ts`, `src/store/useAppStore.ts`, `src/store/useShiftSessionStore.ts`, `src/utils/computePayroll.ts`（`assets/expo.icon/icon.json`・`docs/requirements.md`もdiffに出るが`npm run format`のプリティア整形のみ）
+**変更**: `src/app/(tabs)/calendar-view.tsx`, `src/app/(tabs)/payroll.tsx`, `src/app/(tabs)/settings.tsx`, `src/app/(tabs)/template.tsx`, `src/app/_layout.tsx`, `src/app/analyzing.tsx`, `src/app/calendar-confirm.tsx`, `src/app/complete.tsx`, `src/app/photo-select.tsx`, `src/app/shift-review.tsx`, `src/app/user-match-select.tsx`, `src/components/ad-placeholder.tsx`, `src/components/calendar/month-grid.tsx`, `src/components/circular-progress.tsx`, `src/components/themed-text.tsx`, `src/constants/theme.ts`, `src/hooks/use-theme.ts`, `src/models/user.ts`, `src/store/useAppStore.ts`, `src/utils/computePayroll.ts`
 
-**削除**: `src/app/settings/shift-types.tsx`（`(tabs)/template.tsx`のインラインシフト種別リストへ統合）
+**参考**: 実装計画の詳細は`.claude/plans/stitch-wondrous-globe.md`に残っている（Stitchモックアップ由来の正確な色・余白・タイポグラフィの値の根拠として引き続き参照可能）。

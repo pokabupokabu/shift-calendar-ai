@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { PrimaryButton } from '@/components/primary-button';
@@ -6,6 +7,8 @@ import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import type { CalendarProviderId } from '@/models';
+import { getCalendarProvider } from '@/services/calendar';
+import { ensureCalendarAccess } from '@/services/calendar/ensureCalendarAccess';
 import { useAppStore } from '@/store/useAppStore';
 
 const PROVIDER_LABEL: Record<CalendarProviderId, string> = {
@@ -14,19 +17,28 @@ const PROVIDER_LABEL: Record<CalendarProviderId, string> = {
 };
 
 /**
- * カレンダーごとの連携専用ページ (仮実装)。
- * 本来はここで各CalendarProviderのauthenticate()/権限リクエストを呼ぶが、
- * 今回は画面遷移とUIのみ用意し、実際の認証呼び出しはまだ繋いでいない。
- * 「連携する」を押すと連携済み扱いにしてテンプレタブへ戻る。
+ * カレンダーごとの連携専用ページ。
+ * Apple/Google両方の実認証・権限リクエスト(ensureCalendarAccess)に接続済み。
+ * Google認証はカスタムスキームのネイティブリダイレクトに依存するため、
+ * Expo Go/Expo Webでは動作しない(失敗時はAlertでその旨が表示される)。
  */
 export default function CalendarConnectScreen() {
   const { provider } = useLocalSearchParams<{ provider: CalendarProviderId }>();
   const updateSettings = useAppStore((state) => state.updateSettings);
   const label = PROVIDER_LABEL[provider] ?? provider;
 
-  const handleConnect = () => {
-    updateSettings({ defaultCalendarProvider: provider });
-    router.replace('/template');
+  const [connecting, setConnecting] = useState(false);
+
+  const handleConnect = async () => {
+    setConnecting(true);
+    try {
+      const calendarProvider = getCalendarProvider(provider);
+      if (!(await ensureCalendarAccess(calendarProvider))) return;
+      updateSettings({ defaultCalendarProvider: provider });
+      router.back();
+    } finally {
+      setConnecting(false);
+    }
   };
 
   return (
@@ -37,7 +49,11 @@ export default function CalendarConnectScreen() {
           {label}への登録を許可すると、シフトの登録先としてすぐに使えるようになります。
         </ThemedText>
       </View>
-      <PrimaryButton label="連携する" onPress={handleConnect} />
+      <PrimaryButton
+        label={connecting ? '連携中…' : '連携する'}
+        onPress={handleConnect}
+        disabled={connecting}
+      />
     </Screen>
   );
 }

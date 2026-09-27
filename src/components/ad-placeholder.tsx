@@ -7,8 +7,8 @@ import { ThemedText } from './themed-text';
 
 export interface AdPlaceholderProps {
   /** Identifies the placement for future ad-SDK wiring/analytics; purely a label today. */
-  slot: 'home' | 'calendar-view' | 'payroll' | 'complete';
-  size?: 'banner' | 'rectangle';
+  slot: 'home' | 'calendar-view' | 'payroll' | 'complete' | 'template' | 'settings';
+  size?: 'banner' | 'rectangle' | 'inline';
   style?: StyleProp<ViewStyle>;
 }
 
@@ -24,7 +24,7 @@ export function AdPlaceholder({ size = 'banner', style }: AdPlaceholderProps) {
     <View
       style={[
         styles.base,
-        size === 'rectangle' ? styles.rectangle : styles.banner,
+        size === 'rectangle' ? styles.rectangle : size === 'inline' ? styles.inline : styles.banner,
         { backgroundColor: theme.backgroundElement },
         style,
       ]}
@@ -48,5 +48,9 @@ const styles = StyleSheet.create({
   },
   rectangle: {
     height: 250,
+  },
+  inline: {
+    height: 40,
+    width: 120,
   },
 });

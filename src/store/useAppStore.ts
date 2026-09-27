@@ -26,13 +26,16 @@ interface AppState {
   hasSeenTutorial: boolean;
 
   setShiftName: (shiftName: string) => void;
+  setDisplayName: (displayName: string) => void;
   setHasSeenTutorial: () => void;
   updateSettings: (settings: Partial<UserSettings>) => void;
   upsertShiftType: (shiftType: ShiftType) => void;
   removeShiftType: (id: string) => void;
   recordCalendarEvent: (event: CalendarEventRecord) => void;
   updateCalendarEvent: (id: string, patch: Partial<CalendarEventRecord>) => void;
+  removeCalendarEvent: (id: string) => void;
   findCalendarEventForDate: (date: string) => CalendarEventRecord | undefined;
+  resetAll: () => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -50,6 +53,11 @@ export const useAppStore = create<AppState>()(
           user: state.user
             ? { ...state.user, shiftName }
             : { shiftName, settings: DEFAULT_USER_SETTINGS },
+        })),
+
+      setDisplayName: (displayName) =>
+        set((state) => ({
+          user: state.user ? { ...state.user, displayName } : null,
         })),
 
       updateSettings: (settings) =>
@@ -82,12 +90,25 @@ export const useAppStore = create<AppState>()(
           ),
         })),
 
+      removeCalendarEvent: (id) =>
+        set((state) => ({
+          calendarEvents: state.calendarEvents.filter((event) => event.id !== id),
+        })),
+
       findCalendarEventForDate: (date) => get().calendarEvents.find((e) => e.date === date),
+
+      resetAll: () =>
+        set({
+          user: null,
+          shiftTypes: DEFAULT_SHIFT_TYPES,
+          calendarEvents: [],
+          hasSeenTutorial: false,
+        }),
     }),
     {
       name: 'shift-calendar-ai-store',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 3,
+      version: 7,
       migrate: (persisted, version) => {
         const state = persisted as AppState;
         if (version < 1) {
@@ -110,6 +131,43 @@ export const useAppStore = create<AppState>()(
             startTime,
             endTime,
           }));
+        }
+        if (version < 4) {
+          // Added break-time auto-deduction and late-night/early-morning wage
+          // premiums; backfill the new settings fields with their defaults.
+          if (state.user) {
+            state.user.settings = { ...DEFAULT_USER_SETTINGS, ...state.user.settings };
+          }
+        }
+        if (version < 5) {
+          // Break deduction and each premium became individually toggleable;
+          // backfill the new "enabled" flags (defaulting to on, matching the
+          // always-on behavior these settings had before the toggle existed).
+          if (state.user) {
+            const prev = state.user.settings;
+            state.user.settings = {
+              ...DEFAULT_USER_SETTINGS,
+              ...prev,
+              breakDeductionEnabled: prev.breakDeductionEnabled ?? true,
+              lateNightPremium: {
+                ...DEFAULT_USER_SETTINGS.lateNightPremium,
+                ...prev.lateNightPremium,
+              },
+              earlyMorningPremium: {
+                ...DEFAULT_USER_SETTINGS.earlyMorningPremium,
+                ...prev.earlyMorningPremium,
+              },
+            };
+          }
+        }
+        if (version < 6) {
+          // Added a manual light/dark/system override; backfill the default.
+          if (state.user) {
+            state.user.settings.themeOverride ??= DEFAULT_USER_SETTINGS.themeOverride;
+          }
+        }
+        if (version < 7) {
+          // ShiftType に icon フィールド追加、任意項目のため backfill 不要。
         }
         return state;
       },

@@ -1,5 +1,6 @@
 import { Check, ChevronRight } from 'lucide-react-native';
 import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Card } from '@/components/card';
@@ -8,7 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSize, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { CalendarProviderId } from '@/models';
-import { useAppStore } from '@/store/useAppStore';
+import { getConnectedProviders } from '@/services/calendar/getConnectedProviders';
 
 const PROVIDERS: { id: CalendarProviderId; label: string }[] = [
   { id: 'apple', label: 'Apple カレンダー' },
@@ -21,7 +22,11 @@ const PROVIDERS: { id: CalendarProviderId; label: string }[] = [
  */
 export default function CalendarProvidersScreen() {
   const theme = useTheme();
-  const connectedProvider = useAppStore((state) => state.user?.settings.defaultCalendarProvider);
+  const [connectedIds, setConnectedIds] = useState<CalendarProviderId[]>(['apple']);
+
+  useEffect(() => {
+    getConnectedProviders().then(setConnectedIds);
+  }, []);
 
   return (
     <Screen>
@@ -32,7 +37,7 @@ export default function CalendarProvidersScreen() {
 
       <Card style={styles.group}>
         {PROVIDERS.map((provider, index) => {
-          const isConnected = provider.id === connectedProvider;
+          const isConnected = connectedIds.includes(provider.id);
           return (
             <Pressable
               key={provider.id}

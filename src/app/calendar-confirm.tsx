@@ -1,17 +1,19 @@
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { router } from 'expo-router';
+import { ChevronRight, Trash2 } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { Alert, FlatList, Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
-import { Card } from '@/components/card';
 import { Dialog } from '@/components/dialog';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { IconSize, Radius, Spacing, type ThemeColor } from '@/constants/theme';
+import { useIconBadgeColors } from '@/hooks/use-icon-badge-colors';
 import { useTheme } from '@/hooks/use-theme';
 import type { Shift, ShiftRegistrationStatus } from '@/models';
 import { getCalendarProvider } from '@/services/calendar';
+import { ensureCalendarAccess } from '@/services/calendar/ensureCalendarAccess';
 import { useAppStore } from '@/store/useAppStore';
 import { useShiftSessionStore } from '@/store/useShiftSessionStore';
 import { classifyShift } from '@/utils/classifyShifts';
@@ -27,7 +29,13 @@ const STATUS_LABEL: Record<ShiftRegistrationStatus, string> = {
   needs_review: '要確認',
 };
 
-const PHOTO_HEIGHT = 220;
+const STATUS_COLOR: Record<ShiftRegistrationStatus, ThemeColor> = {
+  new: 'textSecondary',
+  overwrite: 'primary',
+  needs_review: 'danger',
+};
+
+const PHOTO_HEIGHT = 120;
 
 interface ClassifiedShift {
   shift: Shift;
@@ -36,11 +44,12 @@ interface ClassifiedShift {
 
 /**
  * 抽出結果の目視確認とカレンダー登録確認を兼ねる画面 (旧shift-results.tsx廃止に伴い統合)。
- * 選択式ではなく、個別編集(/shift-review)・削除(消)・全復元(元に戻す)・追加(日付を追加)で
+ * 選択式ではなく、個別編集(/shift-review)・削除(ゴミ箱アイコン)・全復元(元に戻す)・追加(日付を追加)で
  * 登録対象を調整してから一括登録する (requirements section 11, 12)。
  */
 export default function CalendarConfirmScreen() {
   const theme = useTheme();
+  const badgeColors = useIconBadgeColors('blue');
   const images = useShiftSessionStore((state) => state.images);
   const shifts = useShiftSessionStore((state) => state.shifts);
   const removedShiftIds = useShiftSessionStore((state) => state.removedShiftIds);
@@ -56,7 +65,7 @@ export default function CalendarConfirmScreen() {
   const photoUri = images[0]?.uri;
   const inputStyle = [
     styles.input,
-    { color: theme.text, backgroundColor: theme.backgroundElement },
+    { color: theme.text, backgroundColor: theme.background, borderColor: theme.border },
   ];
 
   const [registering, setRegistering] = useState(false);
@@ -97,24 +106,12 @@ export default function CalendarConfirmScreen() {
     needs_review: 0,
   } as Record<ShiftRegistrationStatus, number>);
 
+  const monthLabel = format(visible[0] ? parseISO(visible[0].shift.date) : new Date(), 'yyyy年M月');
+
   const handleRegister = async () => {
     if (!settings) return;
     const provider = getCalendarProvider(settings.defaultCalendarProvider);
-
-    if (provider.requiresAuthentication && !(await provider.isAuthenticated())) {
-      try {
-        await provider.authenticate();
-      } catch (error) {
-        Alert.alert('Google認証に失敗しました', error instanceof Error ? error.message : undefined);
-        return;
-      }
-    }
-
-    const permitted = await provider.requestCalendarPermission();
-    if (!permitted) {
-      Alert.alert('カレンダーへのアクセスが許可されていません', '設定アプリから許可してください。');
-      return;
-    }
+    if (!(await ensureCalendarAccess(provider))) return;
 
     setRegistering(true);
     let successCount = 0;
@@ -158,56 +155,112 @@ export default function CalendarConfirmScreen() {
 
   return (
     <Screen>
-      <ThemedText type="subtitle">登録内容の確認</ThemedText>
+      <View style={[styles.summaryCard, { backgroundColor: theme.backgroundElement }]}>
+        <View style={styles.summaryHeaderRow}>
+          <ThemedText type="subheadline" themeColor="textSecondary">
+            {monthLabel}
+          </ThemedText>
+          <ThemedText type="headline">合計{visible.length}件</ThemedText>
+        </View>
+        <View style={[styles.breakdownRow, { borderTopColor: theme.border }]}>
+          <ThemedText type="footnote" themeColor="textSecondary">
+            新規 {counts.new}件
+          </ThemedText>
+          <ThemedText type="footnote" themeColor="primary">
+            上書き {counts.overwrite}件
+          </ThemedText>
+          <ThemedText type="footnote" themeColor="danger">
+            要確認 {counts.needs_review}件
+          </ThemedText>
+        </View>
+      </View>
 
       {photoUri && <Image source={{ uri: photoUri }} style={styles.photo} resizeMode="contain" />}
 
-      <View style={styles.summaryRow}>
-        <ThemedText themeColor="textSecondary">
-          新規：{counts.new}件　上書き：{counts.overwrite}件　要確認：{counts.needs_review}件
+      {removedShiftIds.length > 0 && (
+        <Pressable onPress={restoreAllShifts} style={styles.restoreRow} hitSlop={Spacing.two}>
+          <ThemedText type="footnote" themeColor="primary">
+            元に戻す（{removedShiftIds.length}件）
+          </ThemedText>
+        </Pressable>
+      )}
+
+      <View style={styles.listHeaderRow}>
+        <ThemedText type="caption1" themeColor="textSecondary" style={styles.listHeaderCaption}>
+          抽出済みシフト一覧
         </ThemedText>
-        {removedShiftIds.length > 0 && (
-          <Pressable onPress={restoreAllShifts}>
-            <ThemedText type="link">元に戻す</ThemedText>
-          </Pressable>
-        )}
+        <ThemedText type="caption1" themeColor="textSecondary">
+          タップして編集
+        </ThemedText>
       </View>
 
       <FlatList
         data={visible}
         keyExtractor={(item) => item.shift.id}
-        contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          <Card
-            onPress={() =>
-              router.push({ pathname: '/shift-review', params: { id: item.shift.id } })
-            }
-            style={styles.card}
-          >
-            <View style={styles.cardText}>
-              <ThemedText type="smallBold">
-                {formatShiftDate(item.shift.date)} {item.shift.shiftType}
-              </ThemedText>
-              <ThemedText themeColor="textSecondary" type="small">
-                {formatShiftTimeRange(
-                  item.shift.startTime,
-                  item.shift.endTime,
-                  item.shift.isOvernight,
-                )}
-              </ThemedText>
-            </View>
-            <View style={styles.cardActions}>
-              <ThemedText type="smallBold">{STATUS_LABEL[item.status]}</ThemedText>
-              <Pressable onPress={() => removeShift(item.shift.id)} hitSlop={Spacing.two}>
-                <ThemedText themeColor="danger">消</ThemedText>
-              </Pressable>
-            </View>
-          </Card>
+        style={[styles.listContainer, { backgroundColor: theme.backgroundElement }]}
+        ItemSeparatorComponent={() => (
+          <View style={[styles.separator, { backgroundColor: theme.border }]} />
         )}
+        renderItem={({ item }) => {
+          const parsedDate = parseISO(item.shift.date);
+          return (
+            <Pressable
+              onPress={() =>
+                router.push({ pathname: '/shift-review', params: { id: item.shift.id } })
+              }
+              style={styles.row}
+            >
+              <View style={[styles.dayBadge, { backgroundColor: badgeColors.background }]}>
+                <ThemedText type="caption2" themeColor="primary" style={styles.dayBadgeMonth}>
+                  {format(parsedDate, 'M月')}
+                </ThemedText>
+                <ThemedText type="headline" themeColor="primary" style={styles.dayBadgeNum}>
+                  {format(parsedDate, 'd')}
+                </ThemedText>
+              </View>
+              <View style={styles.rowContent}>
+                <View style={styles.dateTimeRow}>
+                  <ThemedText type="headline" style={styles.dateText}>
+                    {formatShiftDate(item.shift.date)}
+                  </ThemedText>
+                  <ThemedText type="body" themeColor="textSecondary" style={styles.timeText}>
+                    {formatShiftTimeRange(
+                      item.shift.startTime,
+                      item.shift.endTime,
+                      item.shift.isOvernight,
+                    )}
+                  </ThemedText>
+                </View>
+                <View style={styles.tagRow}>
+                  {item.status === 'overwrite' && (
+                    <View style={[styles.tag, { backgroundColor: badgeColors.background }]}>
+                      <ThemedText type="caption2" themeColor="primary">
+                        {item.shift.shiftType}
+                      </ThemedText>
+                    </View>
+                  )}
+                  <ThemedText type="caption1" themeColor={STATUS_COLOR[item.status]}>
+                    {STATUS_LABEL[item.status]}
+                  </ThemedText>
+                </View>
+              </View>
+              <Pressable
+                onPress={() => removeShift(item.shift.id)}
+                hitSlop={Spacing.two}
+                style={styles.deleteButton}
+              >
+                <Trash2 size={IconSize.small} color={theme.danger} />
+              </Pressable>
+              <ChevronRight size={20} color={theme.textSecondary} />
+            </Pressable>
+          );
+        }}
       />
 
       <Pressable onPress={openAddDialog} style={styles.addButton}>
-        <ThemedText type="link">＋ 日付を追加</ThemedText>
+        <ThemedText type="headline" themeColor="primary">
+          ＋ 日付を追加
+        </ThemedText>
       </Pressable>
 
       <PrimaryButton
@@ -217,36 +270,54 @@ export default function CalendarConfirmScreen() {
       />
 
       <Dialog visible={isAddDialogOpen} onClose={() => setAddDialogOpen(false)}>
-        <ThemedText type="smallBold">日付を追加</ThemedText>
+        <ThemedText type="headline" style={styles.dialogTitle}>
+          日付を追加
+        </ThemedText>
 
         {shiftTypes.length > 0 && (
           <View style={styles.templateBlock}>
-            <ThemedText type="small" themeColor="textSecondary">
+            <ThemedText type="footnote" themeColor="textSecondary">
               テンプレートから入力
             </ThemedText>
             <View style={styles.templateRow}>
-              {shiftTypes.map((shiftType) => (
-                <Pressable
-                  key={shiftType.id}
-                  onPress={() =>
-                    setDraft((current) => ({
-                      ...current,
-                      shiftType: shiftType.name,
-                      startTime: shiftType.startTime,
-                      endTime: shiftType.endTime,
-                    }))
-                  }
-                  style={[styles.templateChip, { backgroundColor: theme.backgroundElement }]}
-                >
-                  <ThemedText type="small">{shiftType.name}</ThemedText>
-                </Pressable>
-              ))}
+              {shiftTypes.map((shiftType) => {
+                const selected = draft.shiftType === shiftType.name;
+                return (
+                  <Pressable
+                    key={shiftType.id}
+                    onPress={() =>
+                      setDraft((current) => ({
+                        ...current,
+                        shiftType: shiftType.name,
+                        startTime: shiftType.startTime,
+                        endTime: shiftType.endTime,
+                      }))
+                    }
+                    style={[
+                      styles.templateChip,
+                      {
+                        backgroundColor: selected ? badgeColors.background : theme.background,
+                      },
+                    ]}
+                  >
+                    <ThemedText
+                      type="footnote"
+                      themeColor={selected ? 'primary' : 'text'}
+                      style={styles.templateChipText}
+                    >
+                      {shiftType.name}
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
             </View>
           </View>
         )}
 
         <View>
-          <ThemedText type="small">日付</ThemedText>
+          <ThemedText type="footnote" themeColor="textSecondary">
+            日付
+          </ThemedText>
           <TextInput
             value={draft.date}
             onChangeText={(date) => setDraft((current) => ({ ...current, date }))}
@@ -257,7 +328,9 @@ export default function CalendarConfirmScreen() {
 
         <View style={styles.timeRow}>
           <View style={styles.timeField}>
-            <ThemedText type="small">開始時刻</ThemedText>
+            <ThemedText type="footnote" themeColor="textSecondary">
+              開始時刻
+            </ThemedText>
             <TextInput
               value={draft.startTime}
               onChangeText={(startTime) => setDraft((current) => ({ ...current, startTime }))}
@@ -266,7 +339,9 @@ export default function CalendarConfirmScreen() {
             />
           </View>
           <View style={styles.timeField}>
-            <ThemedText type="small">終了時刻</ThemedText>
+            <ThemedText type="footnote" themeColor="textSecondary">
+              終了時刻
+            </ThemedText>
             <TextInput
               value={draft.endTime}
               onChangeText={(endTime) => setDraft((current) => ({ ...current, endTime }))}
@@ -278,7 +353,9 @@ export default function CalendarConfirmScreen() {
 
         <View style={styles.dialogActions}>
           <Pressable onPress={() => setAddDialogOpen(false)} style={styles.dialogCancel}>
-            <ThemedText themeColor="textSecondary">キャンセル</ThemedText>
+            <ThemedText type="body" themeColor="textSecondary">
+              キャンセル
+            </ThemedText>
           </Pressable>
           <PrimaryButton label="追加" onPress={handleConfirmAdd} />
         </View>
@@ -293,29 +370,100 @@ const styles = StyleSheet.create({
     height: PHOTO_HEIGHT,
     borderRadius: Radius.medium,
   },
-  summaryRow: {
+  summaryCard: {
+    borderRadius: Radius.smallLarge,
+    padding: Spacing.three,
+    gap: Spacing.one,
+  },
+  summaryHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    paddingTop: Spacing.two,
+    marginTop: Spacing.one,
+  },
+  restoreRow: {
+    alignSelf: 'flex-end',
+  },
+  listHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: Spacing.one,
   },
-  list: {
+  listHeaderCaption: {
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    fontWeight: '600',
+  },
+  listContainer: {
+    flex: 1,
+    borderRadius: Radius.smallLarge,
+    overflow: 'hidden',
+  },
+  separator: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 64,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 14,
+  },
+  dayBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  dayBadgeMonth: {
+    lineHeight: 12,
+  },
+  dayBadgeNum: {
+    lineHeight: 20,
+    fontWeight: '700',
+  },
+  rowContent: {
+    flex: 1,
+    gap: Spacing.half,
+    minWidth: 0,
+  },
+  dateTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    flexWrap: 'wrap',
+    gap: Spacing.one,
+  },
+  dateText: {
+    fontWeight: '700',
+  },
+  timeText: {
+    fontWeight: '600',
+  },
+  tagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: Spacing.two,
   },
-  card: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  tag: {
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.half,
+    borderRadius: Radius.small,
   },
-  cardText: {
-    gap: Spacing.half,
-  },
-  cardActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
+  deleteButton: {
+    padding: Spacing.one,
   },
   addButton: {
-    alignSelf: 'flex-start',
+    alignSelf: 'center',
   },
   templateBlock: {
     gap: Spacing.two,
@@ -330,11 +478,19 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
     borderRadius: Radius.pill,
   },
+  templateChipText: {
+    fontWeight: '600',
+  },
+  dialogTitle: {
+    textAlign: 'center',
+  },
   input: {
-    borderRadius: Spacing.three,
+    borderRadius: Radius.small,
+    borderWidth: 1,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     fontSize: 16,
+    marginTop: Spacing.one,
   },
   timeRow: {
     flexDirection: 'row',

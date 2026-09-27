@@ -3,6 +3,7 @@ import { Animated, StyleSheet, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
 import { ThemedText } from '@/components/themed-text';
+import type { Typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -14,6 +15,8 @@ export interface CircularProgressProps {
   strokeWidth?: number;
   color?: string;
   trackColor?: string;
+  /** ThemedText `type` for the centered percentage label. Defaults to "subtitle". */
+  textType?: keyof typeof Typography;
 }
 
 export function CircularProgress({
@@ -22,6 +25,7 @@ export function CircularProgress({
   strokeWidth = 12,
   color,
   trackColor,
+  textType = 'subtitle',
 }: CircularProgressProps) {
   const theme = useTheme();
   const resolvedColor = color ?? theme.primary;
@@ -82,7 +86,7 @@ export function CircularProgress({
         </Svg>
       </View>
       <View style={[StyleSheet.absoluteFill, styles.center]}>
-        <ThemedText type="subtitle">{`${displayPercent}%`}</ThemedText>
+        <ThemedText type={textType}>{`${displayPercent}%`}</ThemedText>
       </View>
     </View>
   );

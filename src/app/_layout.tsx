@@ -17,9 +17,17 @@ export default function RootLayout() {
         <Stack.Screen name="photo-select" options={{ title: 'シフト表を選択' }} />
         <Stack.Screen
           name="analyzing"
-          options={{ title: '解析中', headerBackVisible: false, gestureEnabled: false }}
+          options={{
+            title: '解析中',
+            headerShown: false,
+            headerBackVisible: false,
+            gestureEnabled: false,
+          }}
         />
-        <Stack.Screen name="user-match-select" options={{ title: '本人確認' }} />
+        <Stack.Screen
+          name="user-match-select"
+          options={{ title: '本人確認', headerShown: false }}
+        />
         <Stack.Screen name="shift-review" options={{ title: '要確認・編集' }} />
         <Stack.Screen name="calendar-confirm" options={{ title: 'カレンダー登録の確認' }} />
         <Stack.Screen
@@ -28,6 +36,11 @@ export default function RootLayout() {
         />
         <Stack.Screen name="settings/calendar-providers" options={{ title: '対応カレンダー' }} />
         <Stack.Screen name="settings/calendar-connect" options={{ title: 'カレンダー連携' }} />
+        <Stack.Screen name="settings/account" options={{ title: 'アカウント設定' }} />
+        <Stack.Screen
+          name="paywall"
+          options={{ title: 'PROにアップグレード', presentation: 'modal' }}
+        />
       </Stack>
     </ThemeProvider>
   );
