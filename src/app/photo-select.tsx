@@ -2,6 +2,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import {
   Camera,
+  Check,
   ChevronDown,
   ChevronUp,
   Image as ImageIcon,
@@ -184,6 +185,7 @@ export default function PhotoSelectScreen() {
   const [images, setImages] = useState<ShiftImage[]>([]);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const setSessionImages = useShiftSessionStore((state) => state.setImages);
+  const setScanWorkplaceId = useShiftSessionStore((state) => state.setScanWorkplaceId);
   const displayName = useAppStore(
     (state) => state.user?.displayName || state.user?.shiftName || '',
   );
@@ -191,6 +193,10 @@ export default function PhotoSelectScreen() {
   const scanUsage = useAppStore((state) => state.scanUsage);
   const remainingScans = remainingFreeScans(scanUsage);
   const quotaExceeded = !isPro && remainingScans <= 0;
+  const workplaces = useAppStore((state) => state.user?.workplaces) ?? [];
+  const activeWorkplaceId = useAppStore((state) => state.user?.activeWorkplaceId ?? '');
+  const [selectedWorkplaceId, setSelectedWorkplaceId] = useState('');
+  const effectiveWorkplaceId = selectedWorkplaceId || activeWorkplaceId || workplaces[0]?.id || '';
 
   const pickFromLibrary = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -211,6 +217,7 @@ export default function PhotoSelectScreen() {
 
   const handleNext = () => {
     setSessionImages(images);
+    setScanWorkplaceId(effectiveWorkplaceId);
     router.push('/analyzing');
   };
 
@@ -289,6 +296,25 @@ export default function PhotoSelectScreen() {
             ? `${displayName}さんのシフト表として読み取ります。`
             : 'ご自身のシフト表として読み取ります。'}
         </ThemedText>
+
+        {workplaces.length > 1 && (
+          <View style={styles.workplacePicker}>
+            <ThemedText style={styles.workplacePickerLabel}>読み取る勤務先</ThemedText>
+            {workplaces.map((workplace) => (
+              <Pressable
+                key={workplace.id}
+                onPress={() => setSelectedWorkplaceId(workplace.id)}
+                style={styles.workplaceRow}
+              >
+                <ThemedText style={{ color: MOCK_COLORS.heading }}>{workplace.name}</ThemedText>
+                {workplace.id === effectiveWorkplaceId && (
+                  <Check size={IconSize.small} color={MOCK_COLORS.blue} />
+                )}
+              </Pressable>
+            ))}
+          </View>
+        )}
+
         <View style={styles.dialogActions}>
           <Pressable onPress={() => setConfirmDialogOpen(false)} style={styles.dialogCancel}>
             <ThemedText style={{ color: MOCK_COLORS.body }}>キャンセル</ThemedText>
@@ -541,6 +567,29 @@ const styles = StyleSheet.create({
   dialogText: {
     color: MOCK_COLORS.body,
     textAlign: 'center',
+  },
+  workplacePicker: {
+    borderRadius: Radius.small,
+    borderWidth: 1,
+    borderColor: MOCK_COLORS.borderCard,
+    overflow: 'hidden',
+  },
+  workplacePickerLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: MOCK_COLORS.muted,
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.two,
+    paddingBottom: 4,
+  },
+  workplaceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: MOCK_COLORS.borderCard,
   },
   dialogActions: {
     flexDirection: 'row',

@@ -129,14 +129,18 @@ function ChecklistRow({
 export default function AnalyzingScreen() {
   const theme = useTheme();
   const images = useShiftSessionStore((state) => state.images);
+  const scanWorkplaceId = useShiftSessionStore((state) => state.scanWorkplaceId);
   const setAnalysisResult = useShiftSessionStore((state) => state.setAnalysisResult);
   const setAnalysisError = useShiftSessionStore((state) => state.setAnalysisError);
   const analysisError = useShiftSessionStore((state) => state.analysisError);
   const shiftName = useAppStore((state) => state.user?.shiftName ?? '');
   const user = useAppStore((state) => state.user);
   const recordScanUsage = useAppStore((state) => state.recordScanUsage);
+  // 写真選択画面で選んだ勤務先（未指定なら従来通りactiveWorkplaceにフォールバック）。
   const activeWorkplace =
-    user?.workplaces.find((w) => w.id === user.activeWorkplaceId) ?? user?.workplaces[0];
+    user?.workplaces.find((w) => w.id === scanWorkplaceId) ??
+    user?.workplaces.find((w) => w.id === user.activeWorkplaceId) ??
+    user?.workplaces[0];
   const knownShiftTypes = activeWorkplace?.shiftTypes ?? [];
   const [progressAnim] = useState(() => new Animated.Value(0));
   const [progress, setProgress] = useState(0);
