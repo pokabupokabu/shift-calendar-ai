@@ -22,7 +22,7 @@
 ## セキュリティ・環境変数
 
 - `EXPO_PUBLIC_*`はJSバンドルに平文で埋め込まれる。書き込み権限や従量課金が発生するシークレットは絶対に入れない。
-- Gemini APIキーの扱い（クライアント直接呼び出し vs プロキシ経由）はREADME「8. 不明点・リスク」1番目が未確定。この方針に関わる実装（呼び出し方式の変更など）に着手する前は必ずユーザーに確認する。
+- Gemini APIキーの扱いはプロキシ経由に確定済み（`server/gemini-proxy/`のCloudflare Workers）。クライアントは`EXPO_PUBLIC_AI_PROXY_URL`/`EXPO_PUBLIC_AI_PROXY_SECRET`のみ持ち、実際のGemini APIキーはWorker側のシークレットにのみ存在する。詳細はREADME「8. 不明点・リスク」1番目。
 - `.env`や実際のAPIキーをコミットしない。
 
 ## 開発フロー

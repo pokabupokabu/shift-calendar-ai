@@ -7,7 +7,10 @@
 export const env = {
   ai: {
     provider: process.env.EXPO_PUBLIC_AI_PROVIDER ?? 'gemini',
-    geminiApiKey: process.env.EXPO_PUBLIC_GEMINI_API_KEY ?? '',
+    // Cloudflare Workers proxy in front of Gemini (server/gemini-proxy) — the
+    // real Gemini API key lives only in that Worker's secrets, never here.
+    proxyUrl: process.env.EXPO_PUBLIC_AI_PROXY_URL ?? '',
+    proxySecret: process.env.EXPO_PUBLIC_AI_PROXY_SECRET ?? '',
     // Gemini model names change frequently; keep it swappable without a code change.
     geminiModel: process.env.EXPO_PUBLIC_GEMINI_MODEL ?? 'gemini-3-flash-preview',
   },

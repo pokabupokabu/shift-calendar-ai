@@ -3,8 +3,6 @@ import type { ShiftAnalysisResult } from '@/models';
 
 import type { AIProvider, AnalyzeShiftImagesInput } from './types';
 
-const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
-
 /**
  * OpenAPI-subset schema Gemini must fill in (responseSchema), mirroring
  * ShiftAnalysisResult (src/models/aiAnalysis.ts) field-for-field so the
@@ -132,21 +130,25 @@ function assertShiftAnalysisResult(value: unknown): asserts value is ShiftAnalys
 }
 
 /**
- * Phase 1: sends the shift table image(s) straight to the Gemini API from the
- * client (PoC — see README "8. 不明点・リスク" 1 for the API-key-exposure risk
- * accepted for this phase) and parses its JSON response into a ShiftAnalysisResult.
+ * Sends the shift table image(s) to Gemini via the gemini-shift-proxy Cloudflare
+ * Worker (server/gemini-proxy) — the real Gemini API key lives only in that
+ * Worker's secrets, never in this client bundle (see README "8. 不明点・リスク" 1).
+ * Parses the JSON response into a ShiftAnalysisResult.
  */
 export class GeminiProvider implements AIProvider {
   readonly id = 'gemini';
 
   constructor(
-    private readonly apiKey: string = env.ai.geminiApiKey,
+    private readonly proxyUrl: string = env.ai.proxyUrl,
+    private readonly proxySecret: string = env.ai.proxySecret,
     private readonly model: string = env.ai.geminiModel,
   ) {}
 
   async analyzeShiftImages(input: AnalyzeShiftImagesInput): Promise<ShiftAnalysisResult> {
-    if (!this.apiKey) {
-      throw new Error('EXPO_PUBLIC_GEMINI_API_KEY is not set. Add it to .env (see .env.example).');
+    if (!this.proxyUrl || !this.proxySecret) {
+      throw new Error(
+        'EXPO_PUBLIC_AI_PROXY_URL / EXPO_PUBLIC_AI_PROXY_SECRET is not set. Add it to .env (see .env.example).',
+      );
     }
     if (input.images.length === 0) {
       throw new Error('解析する画像がありません。');
@@ -173,11 +175,11 @@ export class GeminiProvider implements AIProvider {
 
     let response: Response;
     try {
-      response = await fetch(`${GEMINI_API_BASE}/${this.model}:generateContent`, {
+      response = await fetch(`${this.proxyUrl}/v1beta/models/${this.model}:generateContent`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-goog-api-key': this.apiKey,
+          'x-app-secret': this.proxySecret,
         },
         body: JSON.stringify(requestBody),
       });

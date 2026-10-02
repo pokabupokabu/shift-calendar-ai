@@ -40,6 +40,9 @@ apps/shift-calendar-ai/
     utils/
 ```
 
+Expoアプリとは別に、リポジトリ直下に`server/gemini-proxy/`（Cloudflare Workers、Gemini APIキーを
+クライアントから隠す薄いプロキシ。8節リスク1参照）がある。
+
 ## 2. 使用技術・依存関係
 
 | 領域                   | 選定                                                                 | 理由                                                                                 |
@@ -136,18 +139,24 @@ interface AIProvider {
 
 ## 8. 不明点・リスク
 
-1. **AI APIキーをクライアントに埋め込む設計のリスク**：要件定義書は「画像をクラウドAIへ直接送信」とだけ規定しており、
+1. ~~**AI APIキーをクライアントに埋め込む設計のリスク**：要件定義書は「画像をクラウドAIへ直接送信」とだけ規定しており、
    バックエンドを挟むかどうかは未確定。`EXPO_PUBLIC_*`環境変数はJSバンドルに平文で埋め込まれるため、
    このままGemini API keyを`EXPO_PUBLIC_GEMINI_API_KEY`に入れて配信すると、アプリを解凍した第三者が
-   キーを読み取れる（無制限に使われる／課金される恐れ）。Phase 1着手前に、
-   (a) 薄いプロキシ（Supabase Edge Function等）を挟むか、
-   (b) Google CloudのAPIキー制限（アプリのbundle ID/署名で制限）で許容できるリスクに収めるか、
-   を決める必要がある。現状の`.env.example`はPoC用の直接呼び出し前提。
-2. **Google Calendar OAuthのクライアントID**：コード側（`GoogleCalendarProvider`、Phase 5）は実装済みだが、
-   `expo-auth-session`でのiOS向けOAuthクライアントIDが未発行のため、実際には動かせない。
-   Google Cloud Console側の設定（OAuth同意画面・「iOS」タイプのクライアントID発行、bundle identifierの登録）が必要
-   （既存のNext.jsアプリ用プロジェクトを流用するか、新規プロジェクトを切るか要判断。発行したクライアントIDを
-   `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`に設定する）。またExpo Goでは動作しないため、development buildが必要。
+   キーを読み取れる（無制限に使われる／課金される恐れ）。~~
+   → 解消済み。(a) 薄いプロキシを挟む方針に決定し、`server/gemini-proxy/`にCloudflare Workers製の
+   透過プロキシを実装した。実際のGemini APIキーはそのWorkerのシークレットとしてのみ保持され、
+   クライアントはWorkerのURL(`EXPO_PUBLIC_AI_PROXY_URL`)と、乱用防止用の共有シークレット
+   (`EXPO_PUBLIC_AI_PROXY_SECRET`、IPベースの簡易レート制限と組み合わせ)だけを持つ。
+   デプロイ手順は`server/gemini-proxy/README.md`参照（Cloudflareアカウントでの`wrangler login`等、
+   ユーザー自身の操作が必要）。
+2. ~~**Google Calendar OAuthのクライアントID**：コード側（`GoogleCalendarProvider`、Phase 5）は実装済みだが、
+   `expo-auth-session`でのiOS向けOAuthクライアントIDが未発行のため、実際には動かせない。~~
+   → クライアントID自体は発行済み（Google Cloud Console、プロジェクト`shift-calendar-ai`、
+   `shift-calendar-ai-ios`、`EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`に設定済み）。ただし公開ステータスが
+   「テスト中」のままなので、Google Cloud Console上で登録した**テストユーザー以外はサインインできない**
+   （本番公開するとGoogleの審査が必要になる可能性あり、所要日数が読みにくいため、実機検証（Phase 4/6）が
+   終わってから着手する方針）。またExpo Goでは動作しないため、development buildが必要（EAS Build、ロードマップ
+   フェーズB）。
 3. **上書き判定はアプリ内記録のみに依存**：`CalendarEventRecord`はローカル永続化のみなので、
    アプリを削除・再インストールすると「アプリが以前作成したイベント」の記録が失われ、
    重複登録される可能性がある。要件定義書12節の想定どおりだが、ユーザーには伝わりにくいため、
@@ -163,5 +172,6 @@ interface AIProvider {
 ## 9. 環境変数
 
 `.env.example`参照。`EXPO_PUBLIC_`接頭辞の変数はビルド時にJSバンドルへ埋め込まれるため、
-上記リスク1を解消するまでは実際のAPIキーをコミットしないことはもちろん、
-本番配信ビルドにも入れないよう注意する。
+書き込み権限や従量課金が発生する実際の秘密情報（Gemini APIキー本体など）はコミットはもちろん、
+本番配信ビルドにも絶対に入れない（`EXPO_PUBLIC_AI_PROXY_SECRET`はWorker側の合言葉と同じ扱いの
+準秘密情報であり、Gemini APIキー本体ではないが、それでも実運用の値を気軽にコミットしないこと）。
