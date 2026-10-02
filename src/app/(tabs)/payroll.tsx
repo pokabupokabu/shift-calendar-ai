@@ -71,6 +71,9 @@ export default function PayrollTab() {
     (state) => state.user?.settings.dependencyAlertEnabled ?? true,
   );
   const { month, goToPrevMonth, goToNextMonth, label } = useMonthNavigation();
+  // 無料プランは当月のみ閲覧可能。ボタンは残しつつ、タップ時にペイウォールへ誘導する。
+  const handlePrevMonth = () => (isPro ? goToPrevMonth() : router.push('/paywall'));
+  const handleNextMonth = () => (isPro ? goToNextMonth() : router.push('/paywall'));
   const [shiftTypeFilter, setShiftTypeFilter] = useState<string>(ALL_SHIFT_TYPES_FILTER);
   const [selectedEntry, setSelectedEntry] = useState<DailyEarning | null>(null);
   const [templateFilter, setTemplateFilter] = useState<string>(ALL_SHIFT_TYPES_FILTER);
@@ -202,13 +205,13 @@ export default function PayrollTab() {
   return (
     <Screen>
       <View style={styles.header}>
-        <Pressable onPress={goToPrevMonth} hitSlop={Spacing.two} style={styles.navButton}>
+        <Pressable onPress={handlePrevMonth} hitSlop={Spacing.two} style={styles.navButton}>
           <ChevronLeft size={IconSize.medium} color={theme.primary} />
         </Pressable>
         <ThemedText type="headline" style={styles.monthLabel}>
           {label}
         </ThemedText>
-        <Pressable onPress={goToNextMonth} hitSlop={Spacing.two} style={styles.navButton}>
+        <Pressable onPress={handleNextMonth} hitSlop={Spacing.two} style={styles.navButton}>
           <ChevronRight size={IconSize.medium} color={theme.primary} />
         </Pressable>
       </View>

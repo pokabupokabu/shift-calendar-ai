@@ -12,6 +12,7 @@ import {
   type Workplace,
   type WorkplaceSettings,
 } from '@/models';
+import { DEFAULT_SCAN_USAGE, nextScanUsage, type ScanUsage } from '@/utils/scanQuota';
 
 /** Seed values from requirements section 8, editable by the user afterwards. */
 const DEFAULT_SHIFT_TYPES: ShiftType[] = [
@@ -41,6 +42,8 @@ interface AppState {
   calendarEvents: CalendarEventRecord[];
   /** Gates the first-launch tutorial; backfilled to true for pre-existing users, see migrate below. */
   hasSeenTutorial: boolean;
+  /** Free-plan monthly AI scan count (section: 画像シフト読み取り枠 PRO limit), unused for PRO users. */
+  scanUsage: ScanUsage;
 
   setShiftName: (shiftName: string) => void;
   setDisplayName: (displayName: string) => void;
@@ -57,6 +60,7 @@ interface AppState {
   updateCalendarEvent: (id: string, patch: Partial<CalendarEventRecord>) => void;
   removeCalendarEvent: (id: string) => void;
   findCalendarEventForDate: (date: string) => CalendarEventRecord | undefined;
+  recordScanUsage: () => void;
   resetAll: () => void;
 }
 
@@ -66,6 +70,7 @@ export const useAppStore = create<AppState>()(
       user: null,
       calendarEvents: [],
       hasSeenTutorial: false,
+      scanUsage: DEFAULT_SCAN_USAGE,
 
       setHasSeenTutorial: () => set({ hasSeenTutorial: true }),
 
@@ -196,17 +201,20 @@ export const useAppStore = create<AppState>()(
 
       findCalendarEventForDate: (date) => get().calendarEvents.find((e) => e.date === date),
 
+      recordScanUsage: () => set((state) => ({ scanUsage: nextScanUsage(state.scanUsage) })),
+
       resetAll: () =>
         set({
           user: null,
           calendarEvents: [],
           hasSeenTutorial: false,
+          scanUsage: DEFAULT_SCAN_USAGE,
         }),
     }),
     {
       name: 'shift-calendar-ai-store',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 10,
+      version: 11,
       migrate: (persisted, version) => {
         // Migration spans many historical shapes (pre-workplace, pre-isPro, etc.),
         // so this intentionally works on an untyped view rather than `AppState`.
@@ -329,6 +337,10 @@ export const useAppStore = create<AppState>()(
             state.user.settings.dependencyAlertEnabled ??=
               DEFAULT_USER_SETTINGS.dependencyAlertEnabled;
           }
+        }
+        if (version < 11) {
+          // 無料プランの画像シフト読み取り月4回制限用カウンター追加。
+          state.scanUsage ??= DEFAULT_SCAN_USAGE;
         }
         return state;
       },

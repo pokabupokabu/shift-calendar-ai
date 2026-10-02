@@ -23,6 +23,7 @@ import { useTheme } from '@/hooks/use-theme';
 import type { ShiftImage } from '@/services/ai';
 import { useAppStore } from '@/store/useAppStore';
 import { useShiftSessionStore } from '@/store/useShiftSessionStore';
+import { FREE_SCAN_MONTHLY_LIMIT, remainingFreeScans } from '@/utils/scanQuota';
 
 const TIPS = [
   '真上から影が入らないように明るい場所で撮影してください。',
@@ -186,6 +187,10 @@ export default function PhotoSelectScreen() {
   const displayName = useAppStore(
     (state) => state.user?.displayName || state.user?.shiftName || '',
   );
+  const isPro = useAppStore((state) => state.user?.settings.isPro ?? false);
+  const scanUsage = useAppStore((state) => state.scanUsage);
+  const remainingScans = remainingFreeScans(scanUsage);
+  const quotaExceeded = !isPro && remainingScans <= 0;
 
   const pickFromLibrary = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -210,6 +215,14 @@ export default function PhotoSelectScreen() {
   };
 
   const canAnalyze = images.length > 0;
+
+  const handlePressAnalyze = () => {
+    if (quotaExceeded) {
+      router.push('/paywall');
+      return;
+    }
+    setConfirmDialogOpen(true);
+  };
 
   return (
     <Screen style={styles.screen}>
@@ -238,11 +251,24 @@ export default function PhotoSelectScreen() {
           <ActionButton
             icon={ScanLine}
             label="解析する"
-            onPress={() => setConfirmDialogOpen(true)}
+            onPress={handlePressAnalyze}
             disabled={!canAnalyze}
             variant={canAnalyze ? 'primary' : 'disabled'}
           />
         </View>
+
+        {!isPro && (
+          <ThemedText
+            style={[
+              styles.quotaNote,
+              { color: quotaExceeded ? MOCK_COLORS.tipsBadgeIcon : MOCK_COLORS.muted },
+            ]}
+          >
+            {quotaExceeded
+              ? `今月の無料解析回数（${FREE_SCAN_MONTHLY_LIMIT}回）を使い切りました。PROで無制限に利用できます。`
+              : `今月の無料解析: 残り${remainingScans}/${FREE_SCAN_MONTHLY_LIMIT}回`}
+          </ThemedText>
+        )}
 
         <TipsSection />
 
@@ -400,6 +426,13 @@ const styles = StyleSheet.create({
   },
   buttonRow: {
     gap: 12,
+    marginBottom: 16,
+  },
+  quotaNote: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '500',
+    textAlign: 'center',
     marginBottom: 16,
   },
   actionButton: {

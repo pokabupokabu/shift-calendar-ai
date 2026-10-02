@@ -134,6 +134,7 @@ export default function AnalyzingScreen() {
   const analysisError = useShiftSessionStore((state) => state.analysisError);
   const shiftName = useAppStore((state) => state.user?.shiftName ?? '');
   const user = useAppStore((state) => state.user);
+  const recordScanUsage = useAppStore((state) => state.recordScanUsage);
   const activeWorkplace =
     user?.workplaces.find((w) => w.id === user.activeWorkplaceId) ?? user?.workplaces[0];
   const knownShiftTypes = activeWorkplace?.shiftTypes ?? [];
@@ -157,6 +158,7 @@ export default function AnalyzingScreen() {
         useNativeDriver: false,
       }).start();
       try {
+        recordScanUsage();
         const result = await getAiProvider().analyzeShiftImages({
           images,
           shiftName,
