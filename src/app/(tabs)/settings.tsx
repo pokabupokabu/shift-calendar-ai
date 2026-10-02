@@ -271,7 +271,7 @@ export default function SettingsTab() {
           </ThemedText>
           <View style={styles.proPriceRow}>
             <View style={styles.proPrice}>
-              <ThemedText style={styles.proPriceAmount}>¥380</ThemedText>
+              <ThemedText style={styles.proPriceAmount}>¥300</ThemedText>
               <ThemedText style={[styles.proPriceUnit, { color: theme.textSecondary }]}>
                 / 月
               </ThemedText>

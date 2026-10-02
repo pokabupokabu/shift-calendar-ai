@@ -48,7 +48,7 @@ export default function PaywallScreen() {
         </View>
 
         <View style={styles.priceRow}>
-          <ThemedText style={styles.priceAmount}>¥380</ThemedText>
+          <ThemedText style={styles.priceAmount}>¥300</ThemedText>
           <ThemedText style={[styles.priceUnit, { color: theme.textSecondary }]}>/ 月</ThemedText>
         </View>
 
