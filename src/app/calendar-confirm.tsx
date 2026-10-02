@@ -56,9 +56,12 @@ export default function CalendarConfirmScreen() {
   const addShift = useShiftSessionStore((state) => state.addShift);
   const removeShift = useShiftSessionStore((state) => state.removeShift);
   const restoreAllShifts = useShiftSessionStore((state) => state.restoreAllShifts);
-  const shiftTypes = useAppStore((state) => state.shiftTypes);
+  const user = useAppStore((state) => state.user);
+  const activeWorkplace =
+    user?.workplaces.find((w) => w.id === user.activeWorkplaceId) ?? user?.workplaces[0];
+  const shiftTypes = activeWorkplace?.shiftTypes ?? [];
   const calendarEvents = useAppStore((state) => state.calendarEvents);
-  const settings = useAppStore((state) => state.user?.settings);
+  const settings = activeWorkplace?.settings;
   const recordCalendarEvent = useAppStore((state) => state.recordCalendarEvent);
   const updateCalendarEvent = useAppStore((state) => state.updateCalendarEvent);
 
@@ -88,7 +91,10 @@ export default function CalendarConfirmScreen() {
   };
 
   const handleConfirmAdd = () => {
-    addShift({ ...draft, isOvernight: draft.endTime <= draft.startTime });
+    addShift(
+      { ...draft, isOvernight: draft.endTime <= draft.startTime },
+      activeWorkplace?.id ?? '',
+    );
     setAddDialogOpen(false);
   };
 
@@ -109,7 +115,7 @@ export default function CalendarConfirmScreen() {
   const monthLabel = format(visible[0] ? parseISO(visible[0].shift.date) : new Date(), 'yyyy年M月');
 
   const handleRegister = async () => {
-    if (!settings) return;
+    if (!settings || !activeWorkplace) return;
     const provider = getCalendarProvider(settings.defaultCalendarProvider);
     if (!(await ensureCalendarAccess(provider))) return;
 
@@ -132,11 +138,17 @@ export default function CalendarConfirmScreen() {
           updateCalendarEvent(existing.id, {
             ...input,
             shiftId: shift.id,
+            workplaceId: activeWorkplace.id,
             shiftType: shift.shiftType,
           });
         } else {
           const record = await provider.createEvent(input);
-          recordCalendarEvent({ ...record, shiftId: shift.id, shiftType: shift.shiftType });
+          recordCalendarEvent({
+            ...record,
+            shiftId: shift.id,
+            workplaceId: activeWorkplace.id,
+            shiftType: shift.shiftType,
+          });
         }
         successCount += 1;
       }

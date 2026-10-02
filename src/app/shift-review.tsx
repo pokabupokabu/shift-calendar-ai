@@ -24,7 +24,10 @@ export default function ShiftReviewScreen() {
   const shift = useShiftSessionStore((state) => state.shifts.find((item) => item.id === id));
   const updateShift = useShiftSessionStore((state) => state.updateShift);
   const removeShift = useShiftSessionStore((state) => state.removeShift);
-  const shiftTypes = useAppStore((state) => state.shiftTypes);
+  const user = useAppStore((state) => state.user);
+  const activeWorkplace =
+    user?.workplaces.find((w) => w.id === user.activeWorkplaceId) ?? user?.workplaces[0];
+  const shiftTypes = activeWorkplace?.shiftTypes ?? [];
   const theme = useTheme();
   const badgeColors = useIconBadgeColors('blue');
   const neutralColors = useIconBadgeColors('neutral');

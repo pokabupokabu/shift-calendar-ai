@@ -5,10 +5,12 @@ import { StyleSheet, View } from 'react-native';
 import { Card } from '@/components/card';
 import { IconBadge } from '@/components/icon-badge';
 import { ThemedText } from '@/components/themed-text';
-import { IconSize, Spacing } from '@/constants/theme';
-import { useIconBadgeColors } from '@/hooks/use-icon-badge-colors';
+import { IconBadgeTones, IconSize, Spacing } from '@/constants/theme';
+import { useResolvedColorScheme } from '@/hooks/use-resolved-color-scheme';
 import type { CalendarEventRecord } from '@/models';
+import { useAppStore } from '@/store/useAppStore';
 import { formatShiftDate, formatShiftTimeRange } from '@/utils/formatShift';
+import { resolveShiftTypeTone } from '@/utils/resolveShiftTypeTone';
 
 export interface MonthListProps {
   month: Date;
@@ -19,7 +21,8 @@ export interface MonthListProps {
 
 /** カレンダータブの「リスト」表示: その月にシフトがある日だけを日付順に縦一列で並べる。 */
 export function MonthList({ month, eventsByDate, selectedDate, onSelectDate }: MonthListProps) {
-  const blueBadge = useIconBadgeColors('blue');
+  const colorScheme = useResolvedColorScheme();
+  const workplaces = useAppStore((state) => state.user?.workplaces);
 
   const dateKeys = Object.keys(eventsByDate)
     .filter((dateKey) => eventsByDate[dateKey].length > 0 && isSameMonth(parseISO(dateKey), month))
@@ -41,6 +44,10 @@ export function MonthList({ month, eventsByDate, selectedDate, onSelectDate }: M
         const events = eventsByDate[dateKey];
         const [first, ...rest] = events;
         const selected = dateKey === selectedDate;
+        const tone = workplaces
+          ? resolveShiftTypeTone(workplaces, first.workplaceId, first.shiftType)
+          : 'blue';
+        const badgeColors = IconBadgeTones[colorScheme][tone];
 
         return (
           <Card
@@ -49,8 +56,8 @@ export function MonthList({ month, eventsByDate, selectedDate, onSelectDate }: M
             selected={selected}
             style={styles.row}
           >
-            <IconBadge tone="blue" size={32}>
-              <CalendarDays size={IconSize.small} color={blueBadge.icon} />
+            <IconBadge tone={tone} size={32}>
+              <CalendarDays size={IconSize.small} color={badgeColors.icon} />
             </IconBadge>
             <View style={styles.rowText}>
               <ThemedText type="headline">{formatShiftDate(dateKey)}</ThemedText>

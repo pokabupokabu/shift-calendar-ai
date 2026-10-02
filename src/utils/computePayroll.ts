@@ -1,6 +1,6 @@
 import { isSameMonth, parseISO } from 'date-fns';
 
-import type { BreakRule, CalendarEventRecord, PremiumRule, WageType } from '@/models';
+import type { BreakRule, CalendarEventRecord, PremiumRule, WageType, Workplace } from '@/models';
 
 /** "09:00"→"18:00" is 9h; end <= start is treated as crossing midnight (+24h). */
 export function hoursBetween(startTime: string, endTime: string): number {
@@ -132,9 +132,12 @@ export function computeShiftBreakdown(
 }
 
 export interface PayrollShiftTypeBreakdown {
+  workplaceId: string;
+  workplaceName: string;
   name: string;
   hours: number;
   count: number;
+  days: number;
   subtotal: number;
 }
 
@@ -143,6 +146,7 @@ export interface MonthlyPayroll {
   total: number;
 }
 
+/** @deprecated computeMonthlyPayroll/computeDailyEarnings now take `workplaces: Workplace[]` instead. */
 export interface PayrollSettings {
   wageType: WageType;
   hourlyWage: number;
@@ -153,17 +157,31 @@ export interface PayrollSettings {
   earlyMorningPremium: PremiumRule;
 }
 
-/** Groups the given month's events by shiftType name and sums wages at the app-wide rate. */
+/** Composite key that keeps same-name shift types at different workplaces from being merged together. */
+export function shiftTypeKey(workplaceId: string, shiftTypeName: string): string {
+  return `${workplaceId}::${shiftTypeName}`;
+}
+
+/**
+ * Groups the given month's events by workplace + shiftType name and sums wages at each
+ * event's own workplace's rate. Events whose workplaceId no longer matches any workplace
+ * (e.g. the workplace was deleted) are skipped.
+ */
 export function computeMonthlyPayroll(
   events: CalendarEventRecord[],
   month: Date,
-  settings: PayrollSettings,
+  workplaces: Workplace[],
 ): MonthlyPayroll {
   const monthEvents = events.filter((event) => isSameMonth(parseISO(event.date), month));
 
-  const breakdownByName = new Map<string, PayrollShiftTypeBreakdown>();
+  const breakdownByKey = new Map<string, PayrollShiftTypeBreakdown>();
+  const datesByKey = new Map<string, Set<string>>();
 
   for (const event of monthEvents) {
+    const workplace = workplaces.find((w) => w.id === event.workplaceId);
+    if (!workplace) continue;
+
+    const { settings } = workplace;
     const breakdown = computeShiftBreakdown(
       event.startTime,
       event.endTime,
@@ -176,23 +194,34 @@ export function computeMonthlyPayroll(
       settings.earlyMorningPremium,
     );
     const name = event.shiftType || '未分類';
+    const key = shiftTypeKey(workplace.id, name);
 
-    const existing = breakdownByName.get(name);
+    const dateSet = datesByKey.get(key) ?? new Set<string>();
+    dateSet.add(event.date);
+    datesByKey.set(key, dateSet);
+
+    const existing = breakdownByKey.get(key);
     if (existing) {
       existing.hours += breakdown.workedHours;
       existing.count += 1;
       existing.subtotal += breakdown.earnings;
     } else {
-      breakdownByName.set(name, {
+      breakdownByKey.set(key, {
+        workplaceId: workplace.id,
+        workplaceName: workplace.name,
         name,
         hours: breakdown.workedHours,
         count: 1,
+        days: 0,
         subtotal: breakdown.earnings,
       });
     }
   }
 
-  const byShiftType = [...breakdownByName.values()];
+  const byShiftType = [...breakdownByKey.entries()].map(([key, entry]) => ({
+    ...entry,
+    days: datesByKey.get(key)?.size ?? entry.count,
+  }));
   const total = byShiftType.reduce((sum, entry) => sum + entry.subtotal, 0);
 
   return { byShiftType, total };
@@ -203,21 +232,30 @@ export interface DailyEarning {
   startTime: string; // "HH:mm"
   endTime: string; // "HH:mm"
   shiftType?: string;
+  workplaceId: string;
+  workplaceName: string;
   workedHours: number;
   breakMinutes: number;
   earnings: number;
 }
 
-/** Per-event earnings for the given month, earliest date first. */
+/**
+ * Per-event earnings for the given month, earliest date first. Events whose workplaceId
+ * no longer matches any workplace (e.g. the workplace was deleted) are skipped.
+ */
 export function computeDailyEarnings(
   events: CalendarEventRecord[],
   month: Date,
-  settings: PayrollSettings,
+  workplaces: Workplace[],
 ): DailyEarning[] {
   const monthEvents = events.filter((event) => isSameMonth(parseISO(event.date), month));
 
   return monthEvents
-    .map((event) => {
+    .flatMap((event) => {
+      const workplace = workplaces.find((w) => w.id === event.workplaceId);
+      if (!workplace) return [];
+
+      const { settings } = workplace;
       const breakdown = computeShiftBreakdown(
         event.startTime,
         event.endTime,
@@ -229,15 +267,19 @@ export function computeDailyEarnings(
         settings.lateNightPremium,
         settings.earlyMorningPremium,
       );
-      return {
-        date: event.date,
-        startTime: event.startTime,
-        endTime: event.endTime,
-        shiftType: event.shiftType,
-        workedHours: breakdown.workedHours,
-        breakMinutes: breakdown.breakMinutes,
-        earnings: breakdown.earnings,
-      };
+      return [
+        {
+          date: event.date,
+          startTime: event.startTime,
+          endTime: event.endTime,
+          shiftType: event.shiftType,
+          workplaceId: workplace.id,
+          workplaceName: workplace.name,
+          workedHours: breakdown.workedHours,
+          breakMinutes: breakdown.breakMinutes,
+          earnings: breakdown.earnings,
+        },
+      ];
     })
     .sort((a, b) => a.date.localeCompare(b.date));
 }

@@ -12,7 +12,7 @@ import {
   Clock,
   Wallet,
 } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AdPlaceholder } from '@/components/ad-placeholder';
@@ -26,10 +26,12 @@ import { BottomTabInset, IconSize, Radius, Spacing } from '@/constants/theme';
 import { useIconBadgeColors } from '@/hooks/use-icon-badge-colors';
 import { useMonthNavigation } from '@/hooks/use-month-navigation';
 import { useTheme } from '@/hooks/use-theme';
-import { DEFAULT_USER_SETTINGS } from '@/models';
+import type { ShiftType, Workplace } from '@/models';
 import {
   computeDailyEarnings,
   computeMonthlyPayroll,
+  computeShiftBreakdown,
+  shiftTypeKey,
   type DailyEarning,
   type PayrollShiftTypeBreakdown,
 } from '@/utils/computePayroll';
@@ -51,13 +53,14 @@ const HISTORY_PAGE_SIZE = 5;
 /** シフト種別カードの色分け（2つ目以降を視覚的に区別するための循環パレット）。 */
 const SERIES_COLOR_KEYS = ['primary', 'orange', 'purple'] as const;
 
+const EMPTY_WORKPLACES: Workplace[] = [];
+
 /** 給与計算タブ: 月ごとの合計見込み・簡易明細一覧・シフト種別別の想定給与を表示する。 */
 export default function PayrollTab() {
   const theme = useTheme();
   const badgeBlue = useIconBadgeColors('blue');
   const calendarEvents = useAppStore((state) => state.calendarEvents);
-  const shiftTypes = useAppStore((state) => state.shiftTypes);
-  const settings = useAppStore((state) => state.user?.settings) ?? DEFAULT_USER_SETTINGS;
+  const workplaces = useAppStore((state) => state.user?.workplaces) ?? EMPTY_WORKPLACES;
   const { month, goToPrevMonth, goToNextMonth, label } = useMonthNavigation();
   const [shiftTypeFilter, setShiftTypeFilter] = useState<string>(ALL_SHIFT_TYPES_FILTER);
   const [selectedEntry, setSelectedEntry] = useState<DailyEarning | null>(null);
@@ -68,27 +71,14 @@ export default function PayrollTab() {
   const [selectedShiftTypeEntry, setSelectedShiftTypeEntry] =
     useState<PayrollShiftTypeBreakdown | null>(null);
 
-  const payrollSettings = useMemo(
-    () => ({
-      wageType: settings.wageType,
-      hourlyWage: settings.hourlyWage,
-      dailyWage: settings.dailyWage,
-      breakDeductionEnabled: settings.breakDeductionEnabled,
-      breakRules: settings.breakRules,
-      lateNightPremium: settings.lateNightPremium,
-      earlyMorningPremium: settings.earlyMorningPremium,
-    }),
-    [settings],
-  );
-
   const payroll = useMemo(
-    () => computeMonthlyPayroll(calendarEvents, month, payrollSettings),
-    [calendarEvents, month, payrollSettings],
+    () => computeMonthlyPayroll(calendarEvents, month, workplaces),
+    [calendarEvents, month, workplaces],
   );
 
   const dailyEarnings = useMemo(
-    () => computeDailyEarnings(calendarEvents, month, payrollSettings),
-    [calendarEvents, month, payrollSettings],
+    () => computeDailyEarnings(calendarEvents, month, workplaces),
+    [calendarEvents, month, workplaces],
   );
 
   const shiftTypeOptions = useMemo(
@@ -101,10 +91,35 @@ export default function PayrollTab() {
   );
 
   // シフト種別マスタの時間帯（テンプレート毎の想定給与に「早番 (9:00〜18:00)」の形で添えるための参照のみ、
-  // 集計ロジックには影響しない）。
-  const shiftTypeTimesByName = useMemo(
-    () => new Map(shiftTypes.map((shiftType) => [shiftType.name, shiftType])),
-    [shiftTypes],
+  // 集計ロジックには影響しない）。勤務先をまたいで同名のシフト種別が混ざらないよう、
+  // 勤務先ID+シフト種別名の複合キーで管理する。
+  const shiftTypeTimesByKey = useMemo(() => {
+    const map = new Map<string, ShiftType>();
+    for (const workplace of workplaces) {
+      for (const shiftType of workplace.shiftTypes) {
+        map.set(shiftTypeKey(workplace.id, shiftType.name), shiftType);
+      }
+    }
+    return map;
+  }, [workplaces]);
+
+  // 同じ名前のシフト種別が複数の勤務先にまたがって存在する場合だけ、表示名に勤務先名を付記する。
+  const shiftTypeNameWorkplaceCount = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const entry of payroll.byShiftType) {
+      const workplaceIds = map.get(entry.name) ?? new Set<string>();
+      workplaceIds.add(entry.workplaceId);
+      map.set(entry.name, workplaceIds);
+    }
+    return map;
+  }, [payroll.byShiftType]);
+
+  const displayShiftTypeName = useCallback(
+    (entry: PayrollShiftTypeBreakdown) => {
+      const workplaceCount = shiftTypeNameWorkplaceCount.get(entry.name)?.size ?? 1;
+      return workplaceCount > 1 ? `${entry.name}（${entry.workplaceName}）` : entry.name;
+    },
+    [shiftTypeNameWorkplaceCount],
   );
 
   const filteredEarnings =
@@ -121,15 +136,51 @@ export default function PayrollTab() {
   const filteredByShiftType =
     templateFilter === ALL_SHIFT_TYPES_FILTER
       ? payroll.byShiftType
-      : payroll.byShiftType.filter((entry) => entry.name === templateFilter);
+      : payroll.byShiftType.filter(
+          (entry) => shiftTypeKey(entry.workplaceId, entry.name) === templateFilter,
+        );
+
+  const templateFilterLabel = useMemo(() => {
+    if (templateFilter === ALL_SHIFT_TYPES_FILTER) return 'すべて';
+    const matched = payroll.byShiftType.find(
+      (entry) => shiftTypeKey(entry.workplaceId, entry.name) === templateFilter,
+    );
+    return matched ? displayShiftTypeName(matched) : 'すべて';
+  }, [templateFilter, payroll.byShiftType, displayShiftTypeName]);
 
   const monthLabel = format(month, 'M月', { locale: ja });
 
-  // 月間の勤務日数・実働時間・（日給制の場合のみ）時給換算額。ドリルダウンの絞り込みには影響させず、
+  const selectedShiftTypeWorkplace = useMemo(
+    () => workplaces.find((w) => w.id === selectedShiftTypeEntry?.workplaceId) ?? null,
+    [selectedShiftTypeEntry, workplaces],
+  );
+
+  // 想定給与ダイアログの「1日あたり」行: シフト種別マスタの時間帯と該当勤務先の給与設定から1日分の給与見込みを算出する。
+  const selectedShiftTypeDayBreakdown = useMemo(() => {
+    if (!selectedShiftTypeEntry || !selectedShiftTypeWorkplace) return null;
+    const shiftTypeMeta = shiftTypeTimesByKey.get(
+      shiftTypeKey(selectedShiftTypeEntry.workplaceId, selectedShiftTypeEntry.name),
+    );
+    if (!shiftTypeMeta) return null;
+    const { settings } = selectedShiftTypeWorkplace;
+    return computeShiftBreakdown(
+      shiftTypeMeta.startTime,
+      shiftTypeMeta.endTime,
+      settings.wageType,
+      settings.hourlyWage,
+      settings.dailyWage,
+      settings.breakDeductionEnabled,
+      settings.breakRules,
+      settings.lateNightPremium,
+      settings.earlyMorningPremium,
+    );
+  }, [selectedShiftTypeEntry, selectedShiftTypeWorkplace, shiftTypeTimesByKey]);
+
+  // 月間の勤務日数・実働時間・時給換算額。ドリルダウンの絞り込みには影響させず、
   // 常に月全体（dailyEarnings）から算出する。
   const totalWorkedDays = new Set(dailyEarnings.map((entry) => entry.date)).size;
   const totalWorkedHours = dailyEarnings.reduce((sum, entry) => sum + entry.workedHours, 0);
-  const showEffectiveHourlyRate = settings.wageType === 'daily' && totalWorkedHours > 0;
+  const showEffectiveHourlyRate = totalWorkedHours > 0;
   const effectiveHourlyRate = showEffectiveHourlyRate ? payroll.total / totalWorkedHours : 0;
 
   return (
@@ -320,11 +371,11 @@ export default function PayrollTab() {
 
         <View style={[styles.sectionHeadingRow, styles.sectionHeading]}>
           <ThemedText type="headline" style={styles.sectionTitle}>
-            テンプレート毎の想定給与
+            シフト種別毎の想定給与
           </ThemedText>
           <Pressable onPress={() => setTemplateFilterOpen(true)} style={styles.dropdown}>
             <ThemedText type="footnote" themeColor="textSecondary">
-              {templateFilter === ALL_SHIFT_TYPES_FILTER ? 'すべて' : templateFilter}
+              {templateFilterLabel}
             </ThemedText>
             <ChevronDown size={IconSize.small} color={theme.textSecondary} />
           </Pressable>
@@ -336,13 +387,18 @@ export default function PayrollTab() {
               const share = payroll.total > 0 ? entry.subtotal / payroll.total : 0;
               const seriesColor =
                 theme[SERIES_COLOR_KEYS[index % SERIES_COLOR_KEYS.length]] ?? theme.primary;
-              const shiftTypeMeta = shiftTypeTimesByName.get(entry.name);
+              const shiftTypeMeta = shiftTypeTimesByKey.get(
+                shiftTypeKey(entry.workplaceId, entry.name),
+              );
+              const entryWorkplace = workplaces.find((w) => w.id === entry.workplaceId);
               const countLabel =
-                settings.wageType === 'daily' ? `${entry.count}日` : `${entry.count}回`;
+                entryWorkplace?.settings.wageType === 'daily'
+                  ? `${entry.days}日`
+                  : `${entry.count}回`;
 
               return (
                 <Pressable
-                  key={entry.name}
+                  key={shiftTypeKey(entry.workplaceId, entry.name)}
                   onPress={() => setSelectedShiftTypeEntry(entry)}
                   style={[
                     styles.templateEntry,
@@ -356,7 +412,7 @@ export default function PayrollTab() {
                     <View style={styles.templateNameGroup}>
                       <View style={[styles.seriesDot, { backgroundColor: seriesColor }]} />
                       <ThemedText type="subheadline" style={styles.templateName}>
-                        {entry.name}
+                        {displayShiftTypeName(entry)}
                         {shiftTypeMeta
                           ? ` (${formatShiftTimeRange(
                               shiftTypeMeta.startTime,
@@ -447,34 +503,36 @@ export default function PayrollTab() {
 
       <Dialog visible={isTemplateFilterOpen} onClose={() => setTemplateFilterOpen(false)}>
         <ThemedText type="headline">シフト種別で絞り込み</ThemedText>
-        {[ALL_SHIFT_TYPES_FILTER, ...payroll.byShiftType.map((entry) => entry.name)].map(
-          (option) => (
-            <Pressable
-              key={option}
-              onPress={() => {
-                setTemplateFilter(option);
-                setTemplateFilterOpen(false);
-              }}
-              style={styles.dialogOptionRow}
-            >
-              <ThemedText type="subheadline">
-                {option === ALL_SHIFT_TYPES_FILTER ? 'すべて' : option}
-              </ThemedText>
-              {option === templateFilter && <Check size={IconSize.small} color={theme.primary} />}
-            </Pressable>
-          ),
-        )}
+        {[
+          { key: ALL_SHIFT_TYPES_FILTER, label: 'すべて' },
+          ...payroll.byShiftType.map((entry) => ({
+            key: shiftTypeKey(entry.workplaceId, entry.name),
+            label: displayShiftTypeName(entry),
+          })),
+        ].map((option) => (
+          <Pressable
+            key={option.key}
+            onPress={() => {
+              setTemplateFilter(option.key);
+              setTemplateFilterOpen(false);
+            }}
+            style={styles.dialogOptionRow}
+          >
+            <ThemedText type="subheadline">{option.label}</ThemedText>
+            {option.key === templateFilter && <Check size={IconSize.small} color={theme.primary} />}
+          </Pressable>
+        ))}
       </Dialog>
 
       <Dialog visible={!!selectedShiftTypeEntry} onClose={() => setSelectedShiftTypeEntry(null)}>
         {selectedShiftTypeEntry && (
           <>
-            <ThemedText type="headline">{selectedShiftTypeEntry.name}</ThemedText>
+            <ThemedText type="headline">{displayShiftTypeName(selectedShiftTypeEntry)}</ThemedText>
             <View style={styles.detailRow}>
               <ThemedText type="subheadline" themeColor="textSecondary">
-                回数
+                日数
               </ThemedText>
-              <ThemedText type="subheadline">{selectedShiftTypeEntry.count}回</ThemedText>
+              <ThemedText type="subheadline">{selectedShiftTypeEntry.days}日</ThemedText>
             </View>
             <View style={styles.detailRow}>
               <ThemedText type="subheadline" themeColor="textSecondary">
@@ -484,16 +542,32 @@ export default function PayrollTab() {
                 {formatHours(selectedShiftTypeEntry.hours)}時間
               </ThemedText>
             </View>
-            <View style={styles.detailRow}>
-              <ThemedText type="subheadline" themeColor="textSecondary">
-                {settings.wageType === 'daily' ? WAGE_TYPE_LABEL.daily : WAGE_TYPE_LABEL.hourly}
-              </ThemedText>
-              <ThemedText type="subheadline">
-                {formatYen(
-                  settings.wageType === 'daily' ? settings.dailyWage : settings.hourlyWage,
-                )}
-              </ThemedText>
-            </View>
+            {selectedShiftTypeWorkplace && (
+              <View style={styles.detailRow}>
+                <ThemedText type="subheadline" themeColor="textSecondary">
+                  {selectedShiftTypeWorkplace.settings.wageType === 'daily'
+                    ? WAGE_TYPE_LABEL.daily
+                    : WAGE_TYPE_LABEL.hourly}
+                </ThemedText>
+                <ThemedText type="subheadline">
+                  {formatYen(
+                    selectedShiftTypeWorkplace.settings.wageType === 'daily'
+                      ? selectedShiftTypeWorkplace.settings.dailyWage
+                      : selectedShiftTypeWorkplace.settings.hourlyWage,
+                  )}
+                </ThemedText>
+              </View>
+            )}
+            {selectedShiftTypeDayBreakdown && (
+              <View style={styles.detailRow}>
+                <ThemedText type="subheadline" themeColor="textSecondary">
+                  1日あたり
+                </ThemedText>
+                <ThemedText type="subheadline">
+                  {formatYen(selectedShiftTypeDayBreakdown.earnings)}
+                </ThemedText>
+              </View>
+            )}
             <View style={styles.detailRow}>
               <ThemedText type="subheadline" themeColor="textSecondary">
                 給与見込み

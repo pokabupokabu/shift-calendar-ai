@@ -4,7 +4,6 @@ import {
   Bell,
   ChevronRight,
   ClipboardList,
-  DatabaseBackup,
   FileText,
   LifeBuoy,
   MessageCircle,
@@ -16,11 +15,14 @@ import {
   UserCog,
   type LucideIcon,
 } from 'lucide-react-native';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { AdPlaceholder } from '@/components/ad-placeholder';
 import { Card } from '@/components/card';
+import { Dialog } from '@/components/dialog';
 import { IconBadge } from '@/components/icon-badge';
+import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { BottomTabInset, Radius, Spacing, type IconBadgeTone } from '@/constants/theme';
@@ -43,7 +45,6 @@ const ROW_ICON_SIZE = 18;
 
 const ACCOUNT_ROWS: SettingsRow[] = [
   { icon: UserCog, tone: 'blue', label: 'アカウント設定', route: '/settings/account' },
-  { icon: DatabaseBackup, tone: 'green', label: 'データのバックアップ・引き継ぎ' },
 ];
 
 // 「外観」だけは実際のインライン切り替えUI (AppearanceRow) として別枠で描画するため、
@@ -81,7 +82,6 @@ const SUPPORT_AND_LEGAL_ROWS: SettingsRow[] = [
 ];
 
 const THEME_OPTIONS = [
-  { value: 'system', label: 'システム' },
   { value: 'light', label: 'ライト' },
   { value: 'dark', label: 'ダーク' },
 ] as const;
@@ -148,7 +148,7 @@ function AppearanceRow({ withTopSeparator }: { withTopSeparator: boolean }) {
   const theme = useTheme();
   const user = useAppStore((state) => state.user);
   const updateSettings = useAppStore((state) => state.updateSettings);
-  const themeOverride = user?.settings.themeOverride ?? 'system';
+  const themeOverride = user?.settings.themeOverride ?? 'light';
 
   return (
     <View>
@@ -201,6 +201,20 @@ export default function SettingsTab() {
   const profileName = useAppStore(
     (state) => state.user?.displayName || state.user?.shiftName || '匿名ユーザー',
   );
+  const isPro = useAppStore((state) => state.user?.settings.isPro ?? false);
+  const setDisplayName = useAppStore((state) => state.setDisplayName);
+  const [isNameDialogOpen, setNameDialogOpen] = useState(false);
+  const [nameDraft, setNameDraft] = useState(profileName);
+
+  const handleOpenNameDialog = () => {
+    setNameDraft(profileName);
+    setNameDialogOpen(true);
+  };
+
+  const handleSaveName = () => {
+    setDisplayName(nameDraft.trim());
+    setNameDialogOpen(false);
+  };
 
   return (
     <Screen>
@@ -211,7 +225,7 @@ export default function SettingsTab() {
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Card
-          onPress={() => router.push('/settings/account')}
+          onPress={handleOpenNameDialog}
           style={[
             styles.profileCard,
             { backgroundColor: theme.backgroundElement },
@@ -219,12 +233,28 @@ export default function SettingsTab() {
           ]}
         >
           <View style={styles.profileRow}>
-            <View style={[styles.avatar, { backgroundColor: theme.backgroundSelected }]}>
-              <User size={36} color={theme.textSecondary} />
+            <View
+              style={[
+                styles.avatar,
+                { backgroundColor: isPro ? theme.orange : theme.backgroundSelected },
+              ]}
+            >
+              {isPro ? (
+                <Star size={32} color="#FFFFFF" fill="#FFFFFF" />
+              ) : (
+                <User size={36} color={theme.textSecondary} />
+              )}
             </View>
-            <ThemedText type="headline" style={styles.profileName}>
-              {profileName}
-            </ThemedText>
+            <View style={styles.profileNameColumn}>
+              <ThemedText type="headline" style={styles.profileName}>
+                {profileName}
+              </ThemedText>
+              {isPro && (
+                <View style={[styles.proPill, { backgroundColor: theme.orange }]}>
+                  <ThemedText style={styles.proPillLabel}>PRO</ThemedText>
+                </View>
+              )}
+            </View>
             <ChevronRight size={20} color={theme.disabled} />
           </View>
         </Card>
@@ -246,12 +276,18 @@ export default function SettingsTab() {
                 / 月
               </ThemedText>
             </View>
-            <Pressable
-              onPress={() => router.push('/paywall')}
-              style={[styles.proButton, { backgroundColor: '#1C1C1E' }, styles.cardShadow]}
-            >
-              <ThemedText style={styles.proButtonLabel}>PROにアップグレード</ThemedText>
-            </Pressable>
+            {isPro ? (
+              <View style={[styles.proButton, { backgroundColor: theme.disabled }]}>
+                <ThemedText style={styles.proButtonLabel}>ご利用中です</ThemedText>
+              </View>
+            ) : (
+              <Pressable
+                onPress={() => router.push('/paywall')}
+                style={[styles.proButton, { backgroundColor: '#1C1C1E' }, styles.cardShadow]}
+              >
+                <ThemedText style={styles.proButtonLabel}>PROにアップグレード</ThemedText>
+              </Pressable>
+            )}
           </View>
         </Card>
 
@@ -283,6 +319,26 @@ export default function SettingsTab() {
           </ThemedText>
         </View>
       </ScrollView>
+
+      <Dialog visible={isNameDialogOpen} onClose={() => setNameDialogOpen(false)}>
+        <ThemedText type="smallBold">表示名を編集</ThemedText>
+        <TextInput
+          value={nameDraft}
+          onChangeText={setNameDraft}
+          placeholder="表示名を入力"
+          placeholderTextColor={theme.textSecondary}
+          style={[
+            styles.nameInput,
+            { color: theme.text, backgroundColor: theme.backgroundElement },
+          ]}
+          autoFocus
+        />
+        <PrimaryButton
+          label="保存"
+          onPress={handleSaveName}
+          disabled={nameDraft.trim().length === 0}
+        />
+      </Dialog>
     </Screen>
   );
 }
@@ -319,9 +375,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  profileName: {
+  profileNameColumn: {
     flex: 1,
     minWidth: 0,
+    gap: Spacing.one,
+  },
+  profileName: {
+    minWidth: 0,
+  },
+  proPill: {
+    alignSelf: 'flex-start',
+    borderRadius: Radius.pill,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 2,
+  },
+  proPillLabel: {
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  nameInput: {
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.three,
+    fontSize: 16,
   },
   proCard: {
     borderRadius: Radius.medium,

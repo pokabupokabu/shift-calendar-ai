@@ -35,7 +35,10 @@ export default function UserMatchSelectScreen() {
   const analysisResult = useShiftSessionStore((state) => state.analysisResult);
   const setAnalysisResult = useShiftSessionStore((state) => state.setAnalysisResult);
   const shiftName = useAppStore((state) => state.user?.shiftName ?? '');
-  const knownShiftTypes = useAppStore((state) => state.shiftTypes);
+  const user = useAppStore((state) => state.user);
+  const activeWorkplace =
+    user?.workplaces.find((w) => w.id === user.activeWorkplaceId) ?? user?.workplaces[0];
+  const knownShiftTypes = activeWorkplace?.shiftTypes ?? [];
 
   const status = analysisResult?.userMatch.status;
   const candidates = analysisResult?.userMatch.candidates ?? [];
@@ -68,7 +71,7 @@ export default function UserMatchSelectScreen() {
         knownShiftTypes,
         confirmedRowLabel: rowLabel.trim(),
       });
-      setAnalysisResult(result);
+      setAnalysisResult(result, activeWorkplace?.id ?? '');
       if (result.userMatch.status === 'matched') {
         deferNavigation(() => router.replace('/calendar-confirm'));
       } else {

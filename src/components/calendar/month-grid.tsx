@@ -15,10 +15,13 @@ import holiday_jp from '@holiday-jp/holiday_jp';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { IconBadgeTones, Radius, Spacing, type IconBadgeTone } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useIconBadgeColors } from '@/hooks/use-icon-badge-colors';
-import type { CalendarEventRecord } from '@/models';
+import { useResolvedColorScheme } from '@/hooks/use-resolved-color-scheme';
+import type { CalendarEventRecord, Workplace } from '@/models';
+import { useAppStore } from '@/store/useAppStore';
+import { resolveShiftTypeTone } from '@/utils/resolveShiftTypeTone';
 
 const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
 
@@ -78,9 +81,20 @@ function useGridDays(month: Date): Date[] {
   return [...leadingDays, ...monthDays, ...trailingDays];
 }
 
+function resolveDayTone(
+  workplaces: Workplace[] | undefined,
+  events: CalendarEventRecord[],
+): IconBadgeTone {
+  const [first] = events;
+  if (!workplaces || !first) return 'blue';
+  return resolveShiftTypeTone(workplaces, first.workplaceId, first.shiftType);
+}
+
 export function MonthGrid({ month, eventsByDate, selectedDate, onSelectDate }: MonthGridProps) {
   const theme = useTheme();
+  const colorScheme = useResolvedColorScheme();
   const blueBadge = useIconBadgeColors('blue');
+  const workplaces = useAppStore((state) => state.user?.workplaces);
   const days = useGridDays(month);
 
   return (
@@ -132,6 +146,9 @@ export function MonthGrid({ month, eventsByDate, selectedDate, onSelectDate }: M
 
             const dayEvents = eventsByDate[dateKey];
             const dayLabel = dayEvents && dayEvents.length > 0 ? toDayLabel(dayEvents) : undefined;
+            const dayTone =
+              dayEvents && dayEvents.length > 0 ? resolveDayTone(workplaces, dayEvents) : 'blue';
+            const dayBadge = IconBadgeTones[colorScheme][dayTone];
             const selected = dateKey === selectedDate;
             const today = isToday(day);
             const weekday = getDay(day);
@@ -173,8 +190,10 @@ export function MonthGrid({ month, eventsByDate, selectedDate, onSelectDate }: M
                   </ThemedText>
                   {dayLabel?.shiftTypeLabel && (
                     <ThemedText
-                      themeColor="onPrimary"
-                      style={[styles.shiftTypeLabel, { backgroundColor: theme.primary }]}
+                      style={[
+                        styles.shiftTypeLabel,
+                        { backgroundColor: dayBadge.icon, color: theme.onPrimary },
+                      ]}
                       numberOfLines={1}
                     >
                       {dayLabel.shiftTypeLabel}
@@ -182,11 +201,11 @@ export function MonthGrid({ month, eventsByDate, selectedDate, onSelectDate }: M
                   )}
                 </View>
                 {dayLabel && (
-                  <View style={[styles.timeBlock, { backgroundColor: blueBadge.background }]}>
-                    <ThemedText themeColor="primary" style={styles.timeLabel}>
+                  <View style={[styles.timeBlock, { backgroundColor: dayBadge.background }]}>
+                    <ThemedText style={[styles.timeLabel, { color: dayBadge.icon }]}>
                       {dayLabel.startTime}
                     </ThemedText>
-                    <ThemedText themeColor="primary" style={styles.timeLabel}>
+                    <ThemedText style={[styles.timeLabel, { color: dayBadge.icon }]}>
                       {dayLabel.endTime}
                       {dayLabel.suffix}
                     </ThemedText>

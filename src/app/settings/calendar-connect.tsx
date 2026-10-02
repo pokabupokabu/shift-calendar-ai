@@ -24,17 +24,21 @@ const PROVIDER_LABEL: Record<CalendarProviderId, string> = {
  */
 export default function CalendarConnectScreen() {
   const { provider } = useLocalSearchParams<{ provider: CalendarProviderId }>();
-  const updateSettings = useAppStore((state) => state.updateSettings);
+  const user = useAppStore((state) => state.user);
+  const updateWorkplaceSettings = useAppStore((state) => state.updateWorkplaceSettings);
+  const activeWorkplace =
+    user?.workplaces.find((w) => w.id === user.activeWorkplaceId) ?? user?.workplaces[0];
   const label = PROVIDER_LABEL[provider] ?? provider;
 
   const [connecting, setConnecting] = useState(false);
 
   const handleConnect = async () => {
+    if (!activeWorkplace) return;
     setConnecting(true);
     try {
       const calendarProvider = getCalendarProvider(provider);
       if (!(await ensureCalendarAccess(calendarProvider))) return;
-      updateSettings({ defaultCalendarProvider: provider });
+      updateWorkplaceSettings(activeWorkplace.id, { defaultCalendarProvider: provider });
       router.back();
     } finally {
       setConnecting(false);

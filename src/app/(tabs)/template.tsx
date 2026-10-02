@@ -1,30 +1,20 @@
 import {
-  Briefcase,
   CheckCircle2,
   ChevronRight,
-  Clock,
   Coffee,
   Coins,
-  Home,
   Info,
   Moon,
-  MoonStar,
   Pencil,
   Plus,
   SlidersHorizontal,
-  Star,
-  Sun,
   Sunrise,
-  Sunset,
-  Umbrella,
   User,
   Wallet,
-  Zap,
-  type LucideIcon,
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 
 import { AdPlaceholder } from '@/components/ad-placeholder';
 import { Card } from '@/components/card';
@@ -33,10 +23,16 @@ import { IconBadge } from '@/components/icon-badge';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
-import { BottomTabInset, IconSize, Radius, Spacing, type IconBadgeTone } from '@/constants/theme';
+import { SHIFT_TYPE_ICON_PRESETS } from '@/constants/shiftTypeIcons';
+import { BottomTabInset, type IconBadgeTone, IconSize, Radius, Spacing } from '@/constants/theme';
 import { useIconBadgeColors } from '@/hooks/use-icon-badge-colors';
 import { useTheme } from '@/hooks/use-theme';
-import { DEFAULT_USER_SETTINGS, type BreakRule, type PremiumRule } from '@/models';
+import {
+  DEFAULT_WORKPLACE_SETTINGS,
+  type BreakRule,
+  type PremiumRule,
+  type Workplace,
+} from '@/models';
 import { useAppStore } from '@/store/useAppStore';
 import { computeShiftBreakdown, hoursBetween } from '@/utils/computePayroll';
 import { formatShiftTimeRange } from '@/utils/formatShift';
@@ -59,20 +55,6 @@ interface ShiftTypeFields {
 
 /** 名前変更・削除ができない基本3種別(早番/遅番/夜勤、時間だけ編集可)。 */
 const BASE_SHIFT_TYPE_IDS = new Set(['early', 'late', 'night']);
-
-/** シフト種別カードのアイコン選択肢。`key`をShiftType.iconに保存し、未設定分はindexで循環表示する。 */
-const SHIFT_TYPE_ICON_PRESETS: { key: string; Icon: LucideIcon; tone: IconBadgeTone }[] = [
-  { key: 'sun', Icon: Sun, tone: 'orange' },
-  { key: 'sunset', Icon: Sunset, tone: 'purple' },
-  { key: 'moon-star', Icon: MoonStar, tone: 'blue' },
-  { key: 'coffee', Icon: Coffee, tone: 'green' },
-  { key: 'briefcase', Icon: Briefcase, tone: 'red' },
-  { key: 'star', Icon: Star, tone: 'neutral' },
-  { key: 'umbrella', Icon: Umbrella, tone: 'orange' },
-  { key: 'zap', Icon: Zap, tone: 'purple' },
-  { key: 'home', Icon: Home, tone: 'blue' },
-  { key: 'clock', Icon: Clock, tone: 'green' },
-];
 
 const ROW_ICON_SIZE = 20;
 
@@ -130,12 +112,20 @@ export default function TemplateTab() {
     neutral: neutralBadge,
   };
   const user = useAppStore((state) => state.user);
-  const shiftTypes = useAppStore((state) => state.shiftTypes);
   const setShiftName = useAppStore((state) => state.setShiftName);
-  const updateSettings = useAppStore((state) => state.updateSettings);
+  const addWorkplace = useAppStore((state) => state.addWorkplace);
+  const removeWorkplace = useAppStore((state) => state.removeWorkplace);
+  const renameWorkplace = useAppStore((state) => state.renameWorkplace);
+  const setActiveWorkplace = useAppStore((state) => state.setActiveWorkplace);
+  const updateWorkplaceSettings = useAppStore((state) => state.updateWorkplaceSettings);
   const upsertShiftType = useAppStore((state) => state.upsertShiftType);
   const removeShiftType = useAppStore((state) => state.removeShiftType);
-  const settings = user?.settings ?? DEFAULT_USER_SETTINGS;
+
+  const activeWorkplace =
+    user?.workplaces.find((workplace) => workplace.id === user.activeWorkplaceId) ??
+    user?.workplaces[0];
+  const settings = activeWorkplace?.settings ?? DEFAULT_WORKPLACE_SETTINGS;
+  const shiftTypes = activeWorkplace?.shiftTypes ?? [];
 
   const [isNameDialogOpen, setNameDialogOpen] = useState(false);
   const [editingShiftTypeId, setEditingShiftTypeId] = useState<string | null>(null);
@@ -146,6 +136,10 @@ export default function TemplateTab() {
   const [isBreakDialogOpen, setBreakDialogOpen] = useState(false);
   const [isLateNightDialogOpen, setLateNightDialogOpen] = useState(false);
   const [isEarlyMorningDialogOpen, setEarlyMorningDialogOpen] = useState(false);
+  const [isAddWorkplaceDialogOpen, setAddWorkplaceDialogOpen] = useState(false);
+  const [newWorkplaceName, setNewWorkplaceName] = useState('');
+  const [renameTarget, setRenameTarget] = useState<Workplace | null>(null);
+  const [renameDraft, setRenameDraft] = useState('');
 
   const inputStyle = [
     styles.input,
@@ -155,21 +149,21 @@ export default function TemplateTab() {
   const editingShiftType = shiftTypes.find((item) => item.id === editingShiftTypeId);
 
   const updateBreakRule = (index: number, patch: Partial<BreakRule>) => {
+    if (!activeWorkplace) return;
     const breakRules = settings.breakRules.map((rule, i) =>
       i === index ? { ...rule, ...patch } : rule,
     );
-    updateSettings({ breakRules });
+    updateWorkplaceSettings(activeWorkplace.id, { breakRules });
   };
 
   const updatePremium = (
     key: 'lateNightPremium' | 'earlyMorningPremium',
     patch: Partial<PremiumRule>,
   ) => {
-    updateSettings({ [key]: { ...settings[key], ...patch } });
+    if (!activeWorkplace) return;
+    updateWorkplaceSettings(activeWorkplace.id, { [key]: { ...settings[key], ...patch } });
   };
 
-  // Pro課金導入後、「新しいシフト種別を追加」ボタンの遷移先をこの関数に戻す想定で残している。
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleStartAdd = () => {
     setAddDraft({
       id: `custom-${Date.now()}`,
@@ -181,8 +175,60 @@ export default function TemplateTab() {
   };
 
   const handleConfirmAdd = () => {
-    if (addDraft) upsertShiftType(addDraft);
+    if (addDraft && activeWorkplace) upsertShiftType(activeWorkplace.id, addDraft);
     setAddDraft(null);
+  };
+
+  const handlePressAddWorkplace = () => {
+    if (user?.settings.isPro) {
+      setNewWorkplaceName('');
+      setAddWorkplaceDialogOpen(true);
+    } else {
+      router.push('/paywall');
+    }
+  };
+
+  const handleConfirmAddWorkplace = () => {
+    const name = newWorkplaceName.trim();
+    if (name) addWorkplace(name);
+    setAddWorkplaceDialogOpen(false);
+    setNewWorkplaceName('');
+  };
+
+  const handleConfirmRemoveWorkplace = (workplace: Workplace) => {
+    if ((user?.workplaces.length ?? 0) <= 1) {
+      Alert.alert('削除できません', '最後の勤務先は削除できません。');
+      return;
+    }
+    Alert.alert('この勤務先を削除しますか？', `「${workplace.name}」を削除します。`, [
+      { text: 'キャンセル', style: 'cancel' },
+      { text: '削除', style: 'destructive', onPress: () => removeWorkplace(workplace.id) },
+    ]);
+  };
+
+  const handleLongPressWorkplace = (workplace: Workplace) => {
+    Alert.alert(workplace.name, undefined, [
+      {
+        text: '名前を変更',
+        onPress: () => {
+          setRenameTarget(workplace);
+          setRenameDraft(workplace.name);
+        },
+      },
+      {
+        text: 'この勤務先を削除',
+        style: 'destructive',
+        onPress: () => handleConfirmRemoveWorkplace(workplace),
+      },
+      { text: 'キャンセル', style: 'cancel' },
+    ]);
+  };
+
+  const handleConfirmRenameWorkplace = () => {
+    const name = renameDraft.trim();
+    if (renameTarget && name) renameWorkplace(renameTarget.id, name);
+    setRenameTarget(null);
+    setRenameDraft('');
   };
 
   const renderShiftTypeFields = (
@@ -222,6 +268,40 @@ export default function TemplateTab() {
         <ThemedText type="subtitle">テンプレ</ThemedText>
         <AdPlaceholder slot="template" size="inline" />
       </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.workplaceScrollView}
+        contentContainerStyle={styles.workplaceTabsContent}
+      >
+        <View style={[styles.workplaceTabs, { backgroundColor: theme.background }]}>
+          {user?.workplaces.map((workplace) => {
+            const isActive = workplace.id === activeWorkplace?.id;
+            return (
+              <Pressable
+                key={workplace.id}
+                onPress={() => setActiveWorkplace(workplace.id)}
+                onLongPress={() => handleLongPressWorkplace(workplace)}
+                style={[
+                  styles.workplaceTab,
+                  isActive && [
+                    styles.workplaceTabSelected,
+                    { backgroundColor: theme.backgroundElement },
+                  ],
+                ]}
+              >
+                <ThemedText type="subheadline" style={isActive && styles.boldWeight}>
+                  {workplace.name}
+                </ThemedText>
+              </Pressable>
+            );
+          })}
+          <Pressable onPress={handlePressAddWorkplace} style={styles.workplaceAddButton}>
+            <Plus size={IconSize.small} color={theme.primary} />
+          </Pressable>
+        </View>
+      </ScrollView>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.block}>
@@ -287,7 +367,10 @@ export default function TemplateTab() {
                 {(['hourly', 'daily'] as const).map((option) => (
                   <Pressable
                     key={option}
-                    onPress={() => updateSettings({ wageType: option })}
+                    onPress={() =>
+                      activeWorkplace &&
+                      updateWorkplaceSettings(activeWorkplace.id, { wageType: option })
+                    }
                     style={[
                       styles.wageTypeChoice,
                       settings.wageType === option && [
@@ -350,7 +433,10 @@ export default function TemplateTab() {
                 </ThemedText>
                 <Switch
                   value={settings.breakDeductionEnabled}
-                  onValueChange={(value) => updateSettings({ breakDeductionEnabled: value })}
+                  onValueChange={(value) =>
+                    activeWorkplace &&
+                    updateWorkplaceSettings(activeWorkplace.id, { breakDeductionEnabled: value })
+                  }
                   trackColor={{ false: theme.border, true: theme.success }}
                 />
               </View>
@@ -622,7 +708,13 @@ export default function TemplateTab() {
         </View>
 
         <Pressable
-          onPress={() => router.push('/paywall')}
+          onPress={() => {
+            if (user?.settings.isPro) {
+              handleStartAdd();
+            } else {
+              router.push('/paywall');
+            }
+          }}
           style={[styles.addBigButton, { backgroundColor: blueBadge.background }]}
         >
           <Plus size={IconSize.medium} color={blueBadge.icon} />
@@ -647,6 +739,48 @@ export default function TemplateTab() {
         <PrimaryButton label="閉じる" onPress={() => setNameDialogOpen(false)} />
       </Dialog>
 
+      <Dialog visible={isAddWorkplaceDialogOpen} onClose={() => setAddWorkplaceDialogOpen(false)}>
+        <ThemedText type="smallBold">勤務先を追加</ThemedText>
+        <TextInput
+          value={newWorkplaceName}
+          onChangeText={setNewWorkplaceName}
+          placeholder="勤務先の名前"
+          style={inputStyle}
+          autoFocus
+        />
+        <View style={styles.dialogActions}>
+          <Pressable
+            onPress={() => setAddWorkplaceDialogOpen(false)}
+            style={styles.editAffordance}
+            hitSlop={Spacing.two}
+          >
+            <ThemedText themeColor="textSecondary">戻る</ThemedText>
+          </Pressable>
+          <PrimaryButton label="追加" onPress={handleConfirmAddWorkplace} />
+        </View>
+      </Dialog>
+
+      <Dialog visible={!!renameTarget} onClose={() => setRenameTarget(null)}>
+        <ThemedText type="smallBold">勤務先の名前を変更</ThemedText>
+        <TextInput
+          value={renameDraft}
+          onChangeText={setRenameDraft}
+          placeholder="勤務先の名前"
+          style={inputStyle}
+          autoFocus
+        />
+        <View style={styles.dialogActions}>
+          <Pressable
+            onPress={() => setRenameTarget(null)}
+            style={styles.editAffordance}
+            hitSlop={Spacing.two}
+          >
+            <ThemedText themeColor="textSecondary">戻る</ThemedText>
+          </Pressable>
+          <PrimaryButton label="保存" onPress={handleConfirmRenameWorkplace} />
+        </View>
+      </Dialog>
+
       <Dialog visible={!!editingShiftType} onClose={() => setEditingShiftTypeId(null)}>
         {editingShiftType &&
           (() => {
@@ -656,14 +790,17 @@ export default function TemplateTab() {
                 <ThemedText type="smallBold">シフト種別を編集</ThemedText>
                 {renderShiftTypeFields(
                   editingShiftType,
-                  (patch) => upsertShiftType({ ...editingShiftType, ...patch }),
+                  (patch) =>
+                    activeWorkplace &&
+                    upsertShiftType(activeWorkplace.id, { ...editingShiftType, ...patch }),
                   !isBaseShiftType,
                 )}
                 <View style={[styles.dialogActions, isBaseShiftType && styles.dialogActionsSingle]}>
                   {!isBaseShiftType && (
                     <Pressable
                       onPress={() => {
-                        removeShiftType(editingShiftType.id);
+                        if (activeWorkplace)
+                          removeShiftType(activeWorkplace.id, editingShiftType.id);
                         setEditingShiftTypeId(null);
                       }}
                       style={styles.editAffordance}
@@ -737,7 +874,9 @@ export default function TemplateTab() {
               settings.wageType === 'hourly' ? settings.hourlyWage : settings.dailyWage,
             )}
             onChangeText={(value) =>
-              updateSettings(
+              activeWorkplace &&
+              updateWorkplaceSettings(
+                activeWorkplace.id,
                 settings.wageType === 'hourly'
                   ? { hourlyWage: Number(value) || 0 }
                   : { dailyWage: Number(value) || 0 },
@@ -847,6 +986,38 @@ const styles = StyleSheet.create({
   scrollContent: {
     gap: Spacing.four,
     paddingBottom: BottomTabInset,
+  },
+  workplaceScrollView: {
+    flexGrow: 0,
+    flexShrink: 0,
+  },
+  workplaceTabsContent: {
+    paddingVertical: Spacing.two,
+  },
+  workplaceTabs: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.half,
+    borderRadius: Radius.small,
+    padding: 2,
+  },
+  workplaceTab: {
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one,
+    borderRadius: Radius.small - 2,
+  },
+  workplaceTabSelected: {
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
+  },
+  workplaceAddButton: {
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.one,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   group: {
     padding: 0,

@@ -213,6 +213,7 @@ export class GoogleCalendarProvider implements CalendarProvider {
     return {
       id: event.id,
       shiftId: '', // caller fills this in when linking the record back to its Shift
+      workplaceId: '', // caller fills this in when linking the record back to its Workplace
       date: input.date,
       startTime: input.startTime,
       endTime: input.endTime,

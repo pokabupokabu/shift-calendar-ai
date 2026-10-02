@@ -17,11 +17,12 @@ interface ShiftSessionState {
   removedShiftIds: string[];
 
   setImages: (images: ShiftImage[]) => void;
-  setAnalysisResult: (result: ShiftAnalysisResult) => void;
+  setAnalysisResult: (result: ShiftAnalysisResult, workplaceId: string) => void;
   setAnalysisError: (message: string) => void;
   updateShift: (id: string, patch: Partial<Shift>) => void;
   addShift: (
     input: Pick<Shift, 'date' | 'startTime' | 'endTime' | 'shiftType' | 'isOvernight'>,
+    workplaceId: string,
   ) => void;
   removeShift: (id: string) => void;
   restoreAllShifts: () => void;
@@ -44,13 +45,14 @@ export const useShiftSessionStore = create<ShiftSessionState>((set) => ({
   setImages: (images) =>
     set({ images, analysisResult: null, analysisError: null, shifts: [], removedShiftIds: [] }),
 
-  setAnalysisResult: (result) =>
+  setAnalysisResult: (result, workplaceId) =>
     set({
       analysisResult: result,
       analysisError: null,
       removedShiftIds: [],
       shifts: result.shifts.map((raw) => ({
         id: createLocalShiftId(),
+        workplaceId,
         date: raw.date,
         startTime: raw.startTime,
         endTime: raw.endTime,
@@ -70,12 +72,13 @@ export const useShiftSessionStore = create<ShiftSessionState>((set) => ({
       ),
     })),
 
-  addShift: (input) =>
+  addShift: (input, workplaceId) =>
     set((state) => ({
       shifts: [
         ...state.shifts,
         {
           id: createLocalShiftId(),
+          workplaceId,
           ...input,
           confidence: 1,
           source: 'manual' as const,

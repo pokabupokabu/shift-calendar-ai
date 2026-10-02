@@ -8,6 +8,8 @@ export type CalendarProviderId = 'apple' | 'google';
 export interface CalendarEventRecord {
   id: string;
   shiftId: string;
+  /** Which workplace (掛け持ち job) this shift belongs to; resolves wage settings and shift-type colors. */
+  workplaceId: string;
   date: string; // "YYYY-MM-DD"
   startTime: string; // "HH:mm"
   endTime: string; // "HH:mm"

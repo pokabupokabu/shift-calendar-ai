@@ -133,7 +133,10 @@ export default function AnalyzingScreen() {
   const setAnalysisError = useShiftSessionStore((state) => state.setAnalysisError);
   const analysisError = useShiftSessionStore((state) => state.analysisError);
   const shiftName = useAppStore((state) => state.user?.shiftName ?? '');
-  const knownShiftTypes = useAppStore((state) => state.shiftTypes);
+  const user = useAppStore((state) => state.user);
+  const activeWorkplace =
+    user?.workplaces.find((w) => w.id === user.activeWorkplaceId) ?? user?.workplaces[0];
+  const knownShiftTypes = activeWorkplace?.shiftTypes ?? [];
   const [progressAnim] = useState(() => new Animated.Value(0));
   const [progress, setProgress] = useState(0);
 
@@ -165,7 +168,7 @@ export default function AnalyzingScreen() {
           duration: 300,
           useNativeDriver: false,
         }).start();
-        setAnalysisResult(result);
+        setAnalysisResult(result, activeWorkplace?.id ?? '');
         deferNavigation(() => {
           if (cancelled) return;
           router.replace(

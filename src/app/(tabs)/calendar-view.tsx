@@ -26,7 +26,7 @@ import { BottomTabInset, IconSize, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useIconBadgeColors } from '@/hooks/use-icon-badge-colors';
 import { useMonthNavigation } from '@/hooks/use-month-navigation';
-import { DEFAULT_USER_SETTINGS } from '@/models';
+import { DEFAULT_WORKPLACE_SETTINGS } from '@/models';
 import { getCalendarProvider } from '@/services/calendar';
 import { getConnectedProviders } from '@/services/calendar/getConnectedProviders';
 import { useAppStore } from '@/store/useAppStore';
@@ -61,8 +61,10 @@ export default function CalendarViewTab() {
   const greenBadge = useIconBadgeColors('green');
   const { month, goToPrevMonth, goToNextMonth, label } = useMonthNavigation();
   const calendarEvents = useAppStore((state) => state.calendarEvents);
-  const provider = useAppStore((state) => state.user?.settings.defaultCalendarProvider ?? 'apple');
-  const settings = useAppStore((state) => state.user?.settings) ?? DEFAULT_USER_SETTINGS;
+  const workplaces = useAppStore((state) => state.user?.workplaces);
+  const provider = useAppStore(
+    (state) => state.user?.workplaces[0]?.settings.defaultCalendarProvider ?? 'apple',
+  );
   const updateCalendarEvent = useAppStore((state) => state.updateCalendarEvent);
   const removeCalendarEvent = useAppStore((state) => state.removeCalendarEvent);
 
@@ -272,16 +274,19 @@ export default function CalendarViewTab() {
             ) : (
               selectedEvents.map((event) => {
                 const isOvernight = event.endTime <= event.startTime;
+                const workplaceSettings =
+                  workplaces?.find((w) => w.id === event.workplaceId)?.settings ??
+                  DEFAULT_WORKPLACE_SETTINGS;
                 const breakdown = computeShiftBreakdown(
                   event.startTime,
                   event.endTime,
-                  settings.wageType,
-                  settings.hourlyWage,
-                  settings.dailyWage,
-                  settings.breakDeductionEnabled,
-                  settings.breakRules,
-                  settings.lateNightPremium,
-                  settings.earlyMorningPremium,
+                  workplaceSettings.wageType,
+                  workplaceSettings.hourlyWage,
+                  workplaceSettings.dailyWage,
+                  workplaceSettings.breakDeductionEnabled,
+                  workplaceSettings.breakRules,
+                  workplaceSettings.lateNightPremium,
+                  workplaceSettings.earlyMorningPremium,
                 );
                 const isEditing = editingEventId === event.id;
                 const isConfirmingDelete = confirmDeleteId === event.id;
@@ -398,7 +403,7 @@ export default function CalendarViewTab() {
                             <ThemedText style={styles.detailValueMedium}>
                               {breakdown.breakMinutes}分
                             </ThemedText>
-                            {settings.breakDeductionEnabled && (
+                            {workplaceSettings.breakDeductionEnabled && (
                               <View style={[styles.tagPill, { backgroundColor: theme.border }]}>
                                 <ThemedText
                                   style={[styles.tagPillLabel, { color: theme.textSecondary }]}
@@ -415,14 +420,14 @@ export default function CalendarViewTab() {
                           <View style={styles.detailLabelGroup}>
                             <CircleDollarSign size={IconSize.small} color={theme.textSecondary} />
                             <ThemedText type="footnote" themeColor="textSecondary">
-                              {settings.wageType === 'daily' ? '基本日給' : '基本時給'}
+                              {workplaceSettings.wageType === 'daily' ? '基本日給' : '基本時給'}
                             </ThemedText>
                           </View>
                           <ThemedText style={styles.detailValueMedium}>
                             {formatYen(
-                              settings.wageType === 'daily'
-                                ? settings.dailyWage
-                                : settings.hourlyWage,
+                              workplaceSettings.wageType === 'daily'
+                                ? workplaceSettings.dailyWage
+                                : workplaceSettings.hourlyWage,
                             )}
                           </ThemedText>
                         </View>

@@ -6,6 +6,7 @@ import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useAppStore } from '@/store/useAppStore';
 
 const FEATURES = [
   '月別の勤務時間・給与を自動集計',
@@ -20,6 +21,7 @@ function showComingSoon() {
 
 export default function PaywallScreen() {
   const theme = useTheme();
+  const isPro = useAppStore((state) => state.user?.settings.isPro ?? false);
 
   return (
     <Screen>
@@ -50,7 +52,13 @@ export default function PaywallScreen() {
           <ThemedText style={[styles.priceUnit, { color: theme.textSecondary }]}>/ 月</ThemedText>
         </View>
 
-        <PrimaryButton label="アップグレード" onPress={showComingSoon} />
+        {isPro ? (
+          <ThemedText type="subheadline" themeColor="textSecondary" style={styles.subtitle}>
+            すでにProプランをご利用中です
+          </ThemedText>
+        ) : (
+          <PrimaryButton label="アップグレード" onPress={showComingSoon} />
+        )}
       </ScrollView>
     </Screen>
   );

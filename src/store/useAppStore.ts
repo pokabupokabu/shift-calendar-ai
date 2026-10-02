@@ -5,9 +5,12 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import {
   type CalendarEventRecord,
   DEFAULT_USER_SETTINGS,
+  DEFAULT_WORKPLACE_SETTINGS,
   type ShiftType,
   type User,
   type UserSettings,
+  type Workplace,
+  type WorkplaceSettings,
 } from '@/models';
 
 /** Seed values from requirements section 8, editable by the user afterwards. */
@@ -17,9 +20,23 @@ const DEFAULT_SHIFT_TYPES: ShiftType[] = [
   { id: 'night', name: '夜勤', startTime: '22:00', endTime: '07:00' },
 ];
 
+function createWorkplace(id: string, name: string): Workplace {
+  return {
+    id,
+    name,
+    settings: { ...DEFAULT_WORKPLACE_SETTINGS },
+    shiftTypes: DEFAULT_SHIFT_TYPES.map((shiftType) => ({ ...shiftType })),
+  };
+}
+
+let nextWorkplaceSuffix = 0;
+function nextWorkplaceId(): string {
+  nextWorkplaceSuffix += 1;
+  return `workplace-${Date.now()}-${nextWorkplaceSuffix}`;
+}
+
 interface AppState {
   user: User | null;
-  shiftTypes: ShiftType[];
   /** Events the app itself created, used for overwrite detection (section 12, 14). */
   calendarEvents: CalendarEventRecord[];
   /** Gates the first-launch tutorial; backfilled to true for pre-existing users, see migrate below. */
@@ -29,8 +46,13 @@ interface AppState {
   setDisplayName: (displayName: string) => void;
   setHasSeenTutorial: () => void;
   updateSettings: (settings: Partial<UserSettings>) => void;
-  upsertShiftType: (shiftType: ShiftType) => void;
-  removeShiftType: (id: string) => void;
+  addWorkplace: (name: string) => void;
+  removeWorkplace: (id: string) => void;
+  renameWorkplace: (id: string, name: string) => void;
+  setActiveWorkplace: (id: string) => void;
+  updateWorkplaceSettings: (workplaceId: string, settings: Partial<WorkplaceSettings>) => void;
+  upsertShiftType: (workplaceId: string, shiftType: ShiftType) => void;
+  removeShiftType: (workplaceId: string, id: string) => void;
   recordCalendarEvent: (event: CalendarEventRecord) => void;
   updateCalendarEvent: (id: string, patch: Partial<CalendarEventRecord>) => void;
   removeCalendarEvent: (id: string) => void;
@@ -42,18 +64,24 @@ export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
       user: null,
-      shiftTypes: DEFAULT_SHIFT_TYPES,
       calendarEvents: [],
       hasSeenTutorial: false,
 
       setHasSeenTutorial: () => set({ hasSeenTutorial: true }),
 
       setShiftName: (shiftName) =>
-        set((state) => ({
-          user: state.user
-            ? { ...state.user, shiftName }
-            : { shiftName, settings: DEFAULT_USER_SETTINGS },
-        })),
+        set((state) => {
+          if (state.user) return { user: { ...state.user, shiftName } };
+          const defaultWorkplace = createWorkplace('default', '勤務先1');
+          return {
+            user: {
+              shiftName,
+              settings: { ...DEFAULT_USER_SETTINGS },
+              workplaces: [defaultWorkplace],
+              activeWorkplaceId: defaultWorkplace.id,
+            },
+          };
+        }),
 
       setDisplayName: (displayName) =>
         set((state) => ({
@@ -67,18 +95,89 @@ export const useAppStore = create<AppState>()(
             : null,
         })),
 
-      upsertShiftType: (shiftType) =>
+      addWorkplace: (name) =>
         set((state) => {
-          const exists = state.shiftTypes.some((t) => t.id === shiftType.id);
+          if (!state.user) return {};
+          const workplace = createWorkplace(nextWorkplaceId(), name);
           return {
-            shiftTypes: exists
-              ? state.shiftTypes.map((t) => (t.id === shiftType.id ? shiftType : t))
-              : [...state.shiftTypes, shiftType],
+            user: {
+              ...state.user,
+              workplaces: [...state.user.workplaces, workplace],
+              activeWorkplaceId: workplace.id,
+            },
           };
         }),
 
-      removeShiftType: (id) =>
-        set((state) => ({ shiftTypes: state.shiftTypes.filter((t) => t.id !== id) })),
+      removeWorkplace: (id) =>
+        set((state) => {
+          if (!state.user || state.user.workplaces.length <= 1) return {};
+          const workplaces = state.user.workplaces.filter((w) => w.id !== id);
+          const activeWorkplaceId =
+            state.user.activeWorkplaceId === id ? workplaces[0].id : state.user.activeWorkplaceId;
+          return { user: { ...state.user, workplaces, activeWorkplaceId } };
+        }),
+
+      renameWorkplace: (id, name) =>
+        set((state) => {
+          if (!state.user) return {};
+          return {
+            user: {
+              ...state.user,
+              workplaces: state.user.workplaces.map((w) => (w.id === id ? { ...w, name } : w)),
+            },
+          };
+        }),
+
+      setActiveWorkplace: (id) =>
+        set((state) => (state.user ? { user: { ...state.user, activeWorkplaceId: id } } : {})),
+
+      updateWorkplaceSettings: (workplaceId, settings) =>
+        set((state) => {
+          if (!state.user) return {};
+          return {
+            user: {
+              ...state.user,
+              workplaces: state.user.workplaces.map((w) =>
+                w.id === workplaceId ? { ...w, settings: { ...w.settings, ...settings } } : w,
+              ),
+            },
+          };
+        }),
+
+      upsertShiftType: (workplaceId, shiftType) =>
+        set((state) => {
+          if (!state.user) return {};
+          return {
+            user: {
+              ...state.user,
+              workplaces: state.user.workplaces.map((w) => {
+                if (w.id !== workplaceId) return w;
+                const exists = w.shiftTypes.some((t) => t.id === shiftType.id);
+                return {
+                  ...w,
+                  shiftTypes: exists
+                    ? w.shiftTypes.map((t) => (t.id === shiftType.id ? shiftType : t))
+                    : [...w.shiftTypes, shiftType],
+                };
+              }),
+            },
+          };
+        }),
+
+      removeShiftType: (workplaceId, id) =>
+        set((state) => {
+          if (!state.user) return {};
+          return {
+            user: {
+              ...state.user,
+              workplaces: state.user.workplaces.map((w) =>
+                w.id === workplaceId
+                  ? { ...w, shiftTypes: w.shiftTypes.filter((t) => t.id !== id) }
+                  : w,
+              ),
+            },
+          };
+        }),
 
       recordCalendarEvent: (event) =>
         set((state) => ({ calendarEvents: [...state.calendarEvents, event] })),
@@ -100,7 +199,6 @@ export const useAppStore = create<AppState>()(
       resetAll: () =>
         set({
           user: null,
-          shiftTypes: DEFAULT_SHIFT_TYPES,
           calendarEvents: [],
           hasSeenTutorial: false,
         }),
@@ -108,9 +206,11 @@ export const useAppStore = create<AppState>()(
     {
       name: 'shift-calendar-ai-store',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 7,
+      version: 9,
       migrate: (persisted, version) => {
-        const state = persisted as AppState;
+        // Migration spans many historical shapes (pre-workplace, pre-isPro, etc.),
+        // so this intentionally works on an untyped view rather than `AppState`.
+        const state = persisted as any;
         if (version < 1) {
           // Anyone who already finished the old onboarding flow has clearly
           // already "gotten it" - don't show them the new tutorial retroactively.
@@ -125,12 +225,9 @@ export const useAppStore = create<AppState>()(
           if (state.user) {
             state.user.settings = { ...DEFAULT_USER_SETTINGS, ...state.user.settings };
           }
-          state.shiftTypes = state.shiftTypes.map(({ id, name, startTime, endTime }) => ({
-            id,
-            name,
-            startTime,
-            endTime,
-          }));
+          state.shiftTypes = (state.shiftTypes ?? []).map(
+            ({ id, name, startTime, endTime }: ShiftType) => ({ id, name, startTime, endTime }),
+          );
         }
         if (version < 4) {
           // Added break-time auto-deduction and late-night/early-morning wage
@@ -150,11 +247,11 @@ export const useAppStore = create<AppState>()(
               ...prev,
               breakDeductionEnabled: prev.breakDeductionEnabled ?? true,
               lateNightPremium: {
-                ...DEFAULT_USER_SETTINGS.lateNightPremium,
+                ...DEFAULT_WORKPLACE_SETTINGS.lateNightPremium,
                 ...prev.lateNightPremium,
               },
               earlyMorningPremium: {
-                ...DEFAULT_USER_SETTINGS.earlyMorningPremium,
+                ...DEFAULT_WORKPLACE_SETTINGS.earlyMorningPremium,
                 ...prev.earlyMorningPremium,
               },
             };
@@ -168,6 +265,63 @@ export const useAppStore = create<AppState>()(
         }
         if (version < 7) {
           // ShiftType に icon フィールド追加、任意項目のため backfill 不要。
+        }
+        if (version < 8) {
+          // isPro フラグ追加、および themeOverride の 'system' 選択肢廃止。
+          if (state.user) {
+            state.user.settings.isPro ??= false;
+            if (state.user.settings.themeOverride === 'system') {
+              state.user.settings.themeOverride = 'light';
+            }
+          }
+        }
+        if (version < 9) {
+          // 複数勤務先プロファイル対応: それまで単一だった user.settings の勤務先依存
+          // フィールドと、トップレベルの shiftTypes 配列を、1つの Workplace にまとめる。
+          // isPro/themeOverride だけが User.settings に残る。
+          if (state.user) {
+            const legacy = state.user.settings ?? {};
+            const legacyShiftTypes: ShiftType[] = Array.isArray(state.shiftTypes)
+              ? state.shiftTypes
+              : DEFAULT_SHIFT_TYPES;
+            const defaultWorkplace: Workplace = {
+              id: 'default',
+              name: '勤務先1',
+              settings: {
+                defaultCalendarProvider:
+                  legacy.defaultCalendarProvider ??
+                  DEFAULT_WORKPLACE_SETTINGS.defaultCalendarProvider,
+                eventTitleTemplate:
+                  legacy.eventTitleTemplate ?? DEFAULT_WORKPLACE_SETTINGS.eventTitleTemplate,
+                createDayOffEvents:
+                  legacy.createDayOffEvents ?? DEFAULT_WORKPLACE_SETTINGS.createDayOffEvents,
+                wageType: legacy.wageType ?? DEFAULT_WORKPLACE_SETTINGS.wageType,
+                hourlyWage: legacy.hourlyWage ?? DEFAULT_WORKPLACE_SETTINGS.hourlyWage,
+                dailyWage: legacy.dailyWage ?? DEFAULT_WORKPLACE_SETTINGS.dailyWage,
+                breakDeductionEnabled:
+                  legacy.breakDeductionEnabled ?? DEFAULT_WORKPLACE_SETTINGS.breakDeductionEnabled,
+                breakRules: legacy.breakRules ?? DEFAULT_WORKPLACE_SETTINGS.breakRules,
+                lateNightPremium:
+                  legacy.lateNightPremium ?? DEFAULT_WORKPLACE_SETTINGS.lateNightPremium,
+                earlyMorningPremium:
+                  legacy.earlyMorningPremium ?? DEFAULT_WORKPLACE_SETTINGS.earlyMorningPremium,
+              },
+              shiftTypes: legacyShiftTypes,
+            };
+            state.user.settings = {
+              themeOverride: legacy.themeOverride ?? DEFAULT_USER_SETTINGS.themeOverride,
+              isPro: legacy.isPro ?? DEFAULT_USER_SETTINGS.isPro,
+            };
+            state.user.workplaces = [defaultWorkplace];
+            state.user.activeWorkplaceId = defaultWorkplace.id;
+          }
+          delete state.shiftTypes;
+          if (Array.isArray(state.calendarEvents)) {
+            state.calendarEvents = state.calendarEvents.map((event: CalendarEventRecord) => ({
+              ...event,
+              workplaceId: (event as { workplaceId?: string }).workplaceId ?? 'default',
+            }));
+          }
         }
         return state;
       },

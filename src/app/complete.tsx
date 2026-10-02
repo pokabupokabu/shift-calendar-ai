@@ -26,7 +26,12 @@ export default function CompleteScreen() {
   const theme = useTheme();
   const providerBadgeColors = useIconBadgeColors('blue');
   const { count } = useLocalSearchParams<{ count: string }>();
-  const provider = useAppStore((state) => state.user?.settings.defaultCalendarProvider ?? 'apple');
+  const provider = useAppStore((state) => {
+    const user = state.user;
+    const activeWorkplace =
+      user?.workplaces.find((w) => w.id === user.activeWorkplaceId) ?? user?.workplaces[0];
+    return activeWorkplace?.settings.defaultCalendarProvider ?? 'apple';
+  });
   const resetSession = useShiftSessionStore((state) => state.reset);
   const shifts = useShiftSessionStore((state) => state.shifts);
   const removedShiftIds = useShiftSessionStore((state) => state.removedShiftIds);
