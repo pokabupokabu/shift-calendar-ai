@@ -5,6 +5,8 @@ export interface UserSettings {
   themeOverride: 'light' | 'dark';
   /** Local dev flag for toggling Pro features before real billing exists. */
   isPro: boolean;
+  /** Whether the 扶養の壁 alert card shows on the 給与 tab (PRO feature, user-dismissible). */
+  dependencyAlertEnabled: boolean;
 }
 
 export interface User {
@@ -22,4 +24,5 @@ export interface User {
 export const DEFAULT_USER_SETTINGS: UserSettings = {
   themeOverride: 'light',
   isPro: false,
+  dependencyAlertEnabled: true,
 };

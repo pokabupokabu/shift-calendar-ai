@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
 
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
@@ -26,6 +26,9 @@ export default function AccountSettingsScreen() {
   const setDisplayName = useAppStore((s) => s.setDisplayName);
   const [name, setName] = useState(displayName);
   const isPro = useAppStore((s) => s.user?.settings.isPro ?? false);
+  const dependencyAlertEnabled = useAppStore(
+    (s) => s.user?.settings.dependencyAlertEnabled ?? true,
+  );
   const updateSettings = useAppStore((s) => s.updateSettings);
   const [promoCode, setPromoCode] = useState('');
 
@@ -81,6 +84,21 @@ export default function AccountSettingsScreen() {
       </View>
 
       <View style={styles.section}>
+        <View style={styles.switchRow}>
+          <View style={styles.switchLabelGroup}>
+            <ThemedText type="headline">扶養の壁アラート</ThemedText>
+            <ThemedText type="footnote" themeColor="textSecondary">
+              給与タブに年収と103万/106万/130万円の壁までの目安を表示します（PRO機能）
+            </ThemedText>
+          </View>
+          <Switch
+            value={dependencyAlertEnabled}
+            onValueChange={(value) => updateSettings({ dependencyAlertEnabled: value })}
+          />
+        </View>
+      </View>
+
+      <View style={styles.section}>
         <ThemedText type="headline">プロモーションコード</ThemedText>
         <ThemedText type="footnote" themeColor="textSecondary">
           本物の課金機能が実装されるまでの開発用プレースホルダーです。
@@ -124,6 +142,16 @@ export default function AccountSettingsScreen() {
 const styles = StyleSheet.create({
   section: {
     gap: Spacing.two,
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.three,
+  },
+  switchLabelGroup: {
+    flex: 1,
+    gap: 2,
   },
   input: {
     borderRadius: Spacing.three,

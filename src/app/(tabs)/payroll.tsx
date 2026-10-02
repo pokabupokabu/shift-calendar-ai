@@ -1,5 +1,6 @@
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
+import { router } from 'expo-router';
 import {
   ArrowDown,
   ArrowUp,
@@ -10,6 +11,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Lock,
+  TriangleAlert,
   Wallet,
 } from 'lucide-react-native';
 import { useCallback, useMemo, useState } from 'react';
@@ -23,6 +26,7 @@ import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { BottomTabInset, IconSize, Radius, Spacing } from '@/constants/theme';
+import { DEPENDENCY_WALLS } from '@/constants/dependencyWalls';
 import { useIconBadgeColors } from '@/hooks/use-icon-badge-colors';
 import { useMonthNavigation } from '@/hooks/use-month-navigation';
 import { useTheme } from '@/hooks/use-theme';
@@ -31,6 +35,7 @@ import {
   computeDailyEarnings,
   computeMonthlyPayroll,
   computeShiftBreakdown,
+  computeYearlyIncome,
   shiftTypeKey,
   type DailyEarning,
   type PayrollShiftTypeBreakdown,
@@ -61,6 +66,10 @@ export default function PayrollTab() {
   const badgeBlue = useIconBadgeColors('blue');
   const calendarEvents = useAppStore((state) => state.calendarEvents);
   const workplaces = useAppStore((state) => state.user?.workplaces) ?? EMPTY_WORKPLACES;
+  const isPro = useAppStore((state) => state.user?.settings.isPro ?? false);
+  const dependencyAlertEnabled = useAppStore(
+    (state) => state.user?.settings.dependencyAlertEnabled ?? true,
+  );
   const { month, goToPrevMonth, goToNextMonth, label } = useMonthNavigation();
   const [shiftTypeFilter, setShiftTypeFilter] = useState<string>(ALL_SHIFT_TYPES_FILTER);
   const [selectedEntry, setSelectedEntry] = useState<DailyEarning | null>(null);
@@ -79,6 +88,13 @@ export default function PayrollTab() {
   const dailyEarnings = useMemo(
     () => computeDailyEarnings(calendarEvents, month, workplaces),
     [calendarEvents, month, workplaces],
+  );
+
+  // 扶養の壁アラート: 表示中の月に関わらず、常に実際の「今年」（暦年）の年収見込みを見る。
+  const currentYear = new Date().getFullYear();
+  const yearlyIncome = useMemo(
+    () => computeYearlyIncome(calendarEvents, currentYear, workplaces),
+    [calendarEvents, currentYear, workplaces],
   );
 
   const shiftTypeOptions = useMemo(
@@ -251,6 +267,97 @@ export default function PayrollTab() {
             )}
           </View>
         </Card>
+
+        {isPro && dependencyAlertEnabled && (
+          <Card style={styles.dependencyCard}>
+            <View style={styles.totalHeaderRow}>
+              <IconBadge tone="orange" size={28}>
+                <TriangleAlert size={17} color={theme.orange} />
+              </IconBadge>
+              <ThemedText
+                type="subheadline"
+                themeColor="textSecondary"
+                style={styles.totalHeaderLabel}
+              >
+                {currentYear}年の年収見込みと扶養の壁
+              </ThemedText>
+            </View>
+
+            {DEPENDENCY_WALLS.map((wall) => {
+              const ratio = Math.min(yearlyIncome / wall.threshold, 1);
+              const remaining = wall.threshold - yearlyIncome;
+              const isOver = remaining <= 0;
+              const isNear = !isOver && ratio >= 0.9;
+              const barColor = isOver ? theme.danger : isNear ? theme.orange : theme.primary;
+
+              return (
+                <View key={wall.threshold} style={styles.wallRow}>
+                  <View style={styles.wallHeaderRow}>
+                    <ThemedText type="subheadline" style={styles.wallLabel}>
+                      {wall.label}
+                    </ThemedText>
+                    <ThemedText
+                      type="footnote"
+                      themeColor={isOver ? 'danger' : 'textSecondary'}
+                      style={isNear && !isOver ? { color: theme.orange } : undefined}
+                    >
+                      {isOver
+                        ? `${formatYen(Math.abs(remaining))}超過`
+                        : `残り${formatYen(remaining)}`}
+                    </ThemedText>
+                  </View>
+                  <View style={[styles.progressTrack, { backgroundColor: theme.border }]}>
+                    <View
+                      style={[
+                        styles.progressFill,
+                        { width: `${Math.round(ratio * 100)}%`, backgroundColor: barColor },
+                      ]}
+                    />
+                  </View>
+                  <ThemedText type="caption2" themeColor="textSecondary">
+                    {wall.description}
+                  </ThemedText>
+                </View>
+              );
+            })}
+
+            <View style={[styles.statsFooter, { borderTopColor: theme.border }]}>
+              <ThemedText type="footnote" themeColor="textSecondary">
+                {currentYear}年の合計見込み
+              </ThemedText>
+              <ThemedText type="headline">{formatYen(yearlyIncome)}</ThemedText>
+            </View>
+            <ThemedText type="caption2" themeColor="textSecondary">
+              登録済みのシフトのみの集計です。条件は働き方や勤務先によって異なるため目安としてご覧ください。
+            </ThemedText>
+          </Card>
+        )}
+
+        {!isPro && (
+          <Card style={styles.dependencyCard}>
+            <View style={styles.totalHeaderRow}>
+              <IconBadge tone="orange" size={28}>
+                <Lock size={17} color={theme.orange} />
+              </IconBadge>
+              <ThemedText
+                type="subheadline"
+                themeColor="textSecondary"
+                style={styles.totalHeaderLabel}
+              >
+                扶養の壁アラート
+              </ThemedText>
+              <View style={[styles.proPill, { backgroundColor: theme.orange }]}>
+                <ThemedText type="caption2" style={{ color: theme.onPrimary }}>
+                  PRO
+                </ThemedText>
+              </View>
+            </View>
+            <ThemedText type="footnote" themeColor="textSecondary">
+              複数勤務先の年収を自動合算し、103万・106万・130万円の壁への接近をお知らせします。
+            </ThemedText>
+            <PrimaryButton label="PROにアップグレード" onPress={() => router.push('/paywall')} />
+          </Card>
+        )}
 
         {shiftTypeOptions.length > 0 && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -604,6 +711,26 @@ const styles = StyleSheet.create({
   },
   totalCard: {
     gap: Spacing.one,
+  },
+  dependencyCard: {
+    gap: Spacing.two,
+  },
+  wallRow: {
+    gap: Spacing.half,
+  },
+  wallHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  wallLabel: {
+    fontWeight: '600',
+  },
+  proPill: {
+    marginLeft: 'auto',
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 2,
+    borderRadius: Radius.pill,
   },
   totalHeaderRow: {
     flexDirection: 'row',

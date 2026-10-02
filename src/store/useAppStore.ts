@@ -206,7 +206,7 @@ export const useAppStore = create<AppState>()(
     {
       name: 'shift-calendar-ai-store',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 9,
+      version: 10,
       migrate: (persisted, version) => {
         // Migration spans many historical shapes (pre-workplace, pre-isPro, etc.),
         // so this intentionally works on an untyped view rather than `AppState`.
@@ -321,6 +321,13 @@ export const useAppStore = create<AppState>()(
               ...event,
               workplaceId: (event as { workplaceId?: string }).workplaceId ?? 'default',
             }));
+          }
+        }
+        if (version < 10) {
+          // 扶養の壁アラート表示トグル追加; backfill the default (on).
+          if (state.user) {
+            state.user.settings.dependencyAlertEnabled ??=
+              DEFAULT_USER_SETTINGS.dependencyAlertEnabled;
           }
         }
         return state;

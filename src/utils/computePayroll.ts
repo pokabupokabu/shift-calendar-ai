@@ -1,4 +1,4 @@
-import { isSameMonth, parseISO } from 'date-fns';
+import { getYear, isSameMonth, parseISO } from 'date-fns';
 
 import type { BreakRule, CalendarEventRecord, PremiumRule, WageType, Workplace } from '@/models';
 
@@ -225,6 +225,39 @@ export function computeMonthlyPayroll(
   const total = byShiftType.reduce((sum, entry) => sum + entry.subtotal, 0);
 
   return { byShiftType, total };
+}
+
+/**
+ * Total earnings across all workplaces for every registered event in the given calendar
+ * year (103万/106万/130万円 are all yearly thresholds). Only counts events already on the
+ * calendar, so a year that isn't fully scanned yet understates the eventual total. Events
+ * whose workplaceId no longer matches any workplace are skipped, same as the monthly variant.
+ */
+export function computeYearlyIncome(
+  events: CalendarEventRecord[],
+  year: number,
+  workplaces: Workplace[],
+): number {
+  const yearEvents = events.filter((event) => getYear(parseISO(event.date)) === year);
+
+  return yearEvents.reduce((sum, event) => {
+    const workplace = workplaces.find((w) => w.id === event.workplaceId);
+    if (!workplace) return sum;
+
+    const { settings } = workplace;
+    const breakdown = computeShiftBreakdown(
+      event.startTime,
+      event.endTime,
+      settings.wageType,
+      settings.hourlyWage,
+      settings.dailyWage,
+      settings.breakDeductionEnabled,
+      settings.breakRules,
+      settings.lateNightPremium,
+      settings.earlyMorningPremium,
+    );
+    return sum + breakdown.earnings;
+  }, 0);
 }
 
 export interface DailyEarning {
