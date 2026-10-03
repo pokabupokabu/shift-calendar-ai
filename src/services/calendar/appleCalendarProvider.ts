@@ -35,19 +35,14 @@ export class AppleCalendarProvider implements CalendarProvider {
   }
 
   async requestCalendarPermission(): Promise<boolean> {
-    const { status } = await Calendar.requestCalendarPermissionsAsync();
+    const { status } = await Calendar.requestCalendarPermissions();
     return status === 'granted';
   }
 
-  private async getDefaultCalendarId(): Promise<string> {
-    const defaultCalendar = await Calendar.getDefaultCalendarAsync();
-    return defaultCalendar.id;
-  }
-
   async createEvent(input: CreateCalendarEventInput): Promise<CalendarEventRecord> {
-    const calendarId = await this.getDefaultCalendarId();
+    const calendar = Calendar.getDefaultCalendarSync();
     const isOvernight = input.endTime <= input.startTime;
-    const externalEventId = await Calendar.createEventAsync(calendarId, {
+    const event = await calendar.createEvent({
       title: input.title,
       startDate: toDate(input.date, input.startTime, false),
       endDate: toDate(input.date, input.endTime, isOvernight),
@@ -55,21 +50,23 @@ export class AppleCalendarProvider implements CalendarProvider {
     });
 
     return {
-      id: externalEventId,
+      id: event.id,
       shiftId: '', // caller fills this in when linking the record back to its Shift
+      workplaceId: '', // caller fills this in when linking the record back to its Workplace
 
       date: input.date,
       startTime: input.startTime,
       endTime: input.endTime,
       title: input.title,
       calendarProvider: this.id,
-      externalEventId,
+      externalEventId: event.id,
     };
   }
 
   async updateEvent(externalEventId: string, input: CreateCalendarEventInput): Promise<void> {
     const isOvernight = input.endTime <= input.startTime;
-    await Calendar.updateEventAsync(externalEventId, {
+    const event = await Calendar.ExpoCalendarEvent.get(externalEventId);
+    await event.update({
       title: input.title,
       startDate: toDate(input.date, input.startTime, false),
       endDate: toDate(input.date, input.endTime, isOvernight),
@@ -78,7 +75,8 @@ export class AppleCalendarProvider implements CalendarProvider {
   }
 
   async deleteEvent(externalEventId: string): Promise<void> {
-    await Calendar.deleteEventAsync(externalEventId);
+    const event = await Calendar.ExpoCalendarEvent.get(externalEventId);
+    await event.delete();
   }
 
   async openCalendarApp(): Promise<void> {

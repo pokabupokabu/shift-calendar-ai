@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "expo-web",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "npx expo start --web --port \"$PORT\""],
+      "port": 8081,
+      "autoPort": false
+    }
+  ]
+}

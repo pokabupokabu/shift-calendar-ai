@@ -8,7 +8,8 @@
     "scheme": "shiftcalendarai",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.pokabu.shiftcalendarai"
     },
     "android": {
       "adaptiveIcon": {
@@ -31,6 +32,12 @@
           "backgroundColor": "#208AEF",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
+        }
+      ],
+      [
+        "react-native-google-mobile-ads",
+        {
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
         }
       ]
     ],

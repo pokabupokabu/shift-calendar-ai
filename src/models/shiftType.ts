@@ -1,3 +1,5 @@
+export type WageType = 'hourly' | 'daily';
+
 /**
  * User-editable master mapping a shift type name (e.g. "早番") to its default
  * time range, so the AI's per-shift confidence can improve after a user
@@ -8,4 +10,5 @@ export interface ShiftType {
   name: string;
   startTime: string; // "HH:mm"
   endTime: string; // "HH:mm", may be earlier than startTime for overnight shifts
+  icon?: string;
 }

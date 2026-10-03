@@ -12,6 +12,13 @@ export interface AnalyzeShiftImagesInput {
   shiftName: string;
   /** Learned shiftType -> time mappings, passed in as hints so a repeat "早番" needs no re-guessing (section 8). */
   knownShiftTypes: ShiftType[];
+  /**
+   * Set on a re-run after the user picked (or typed) which row is theirs from an
+   * earlier `ambiguous`/`not_found` result (section 7 candidate confirmation UI).
+   * When present, the provider must treat this exact row label as the confirmed
+   * match instead of re-judging ambiguity.
+   */
+  confirmedRowLabel?: string;
 }
 
 /**

@@ -6,6 +6,8 @@ export type ShiftSource = 'ai_extracted' | 'manual';
  */
 export interface Shift {
   id: string;
+  /** Which workplace (掛け持ち job) this shift was scanned/created under. */
+  workplaceId: string;
   date: string; // "YYYY-MM-DD"
   startTime: string; // "HH:mm"
   endTime: string; // "HH:mm"
