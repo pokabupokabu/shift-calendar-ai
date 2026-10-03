@@ -12,7 +12,7 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import { useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Dialog } from '@/components/dialog';
 import { IconBadge } from '@/components/icon-badge';
@@ -24,7 +24,9 @@ import { useTheme } from '@/hooks/use-theme';
 import type { ShiftImage } from '@/services/ai';
 import { useAppStore } from '@/store/useAppStore';
 import { useShiftSessionStore } from '@/store/useShiftSessionStore';
-import { FREE_SCAN_MONTHLY_LIMIT, remainingFreeScans } from '@/utils/scanQuota';
+import { resizeShiftImage } from '@/utils/resizeShiftImage';
+import { showRewardedAd } from '@/utils/rewardedAd';
+import { canEarnBonusScan, FREE_SCAN_MONTHLY_LIMIT, remainingFreeScans } from '@/utils/scanQuota';
 
 const TIPS = [
   '真上から影が入らないように明るい場所で撮影してください。',
@@ -54,11 +56,7 @@ const MOCK_COLORS = {
 
 async function toShiftImages(result: ImagePicker.ImagePickerResult): Promise<ShiftImage[]> {
   if (result.canceled) return [];
-  return result.assets.map((asset) => ({
-    uri: asset.uri,
-    base64: asset.base64 ?? '',
-    mimeType: asset.mimeType ?? 'image/jpeg',
-  }));
+  return Promise.all(result.assets.map(resizeShiftImage));
 }
 
 const PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
@@ -184,6 +182,7 @@ function TipsSection() {
 export default function PhotoSelectScreen() {
   const [images, setImages] = useState<ShiftImage[]>([]);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [watchingAd, setWatchingAd] = useState(false);
   const setSessionImages = useShiftSessionStore((state) => state.setImages);
   const setScanWorkplaceId = useShiftSessionStore((state) => state.setScanWorkplaceId);
   const displayName = useAppStore(
@@ -191,8 +190,10 @@ export default function PhotoSelectScreen() {
   );
   const isPro = useAppStore((state) => state.user?.settings.isPro ?? false);
   const scanUsage = useAppStore((state) => state.scanUsage);
+  const recordBonusScan = useAppStore((state) => state.recordBonusScan);
   const remainingScans = remainingFreeScans(scanUsage);
   const quotaExceeded = !isPro && remainingScans <= 0;
+  const canWatchAdForBonus = quotaExceeded && canEarnBonusScan(scanUsage);
   const workplaces = useAppStore((state) => state.user?.workplaces) ?? [];
   const activeWorkplaceId = useAppStore((state) => state.user?.activeWorkplaceId ?? '');
   const [selectedWorkplaceId, setSelectedWorkplaceId] = useState('');
@@ -200,7 +201,13 @@ export default function PhotoSelectScreen() {
 
   const pickFromLibrary = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) return;
+    if (!permission.granted) {
+      Alert.alert(
+        '写真ライブラリへのアクセスが許可されていません',
+        '設定アプリから許可してください。',
+      );
+      return;
+    }
     const result = await ImagePicker.launchImageLibraryAsync({
       ...PICKER_OPTIONS,
       allowsMultipleSelection: true,
@@ -210,7 +217,10 @@ export default function PhotoSelectScreen() {
 
   const pickFromCamera = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permission.granted) return;
+    if (!permission.granted) {
+      Alert.alert('カメラへのアクセスが許可されていません', '設定アプリから許可してください。');
+      return;
+    }
     const result = await ImagePicker.launchCameraAsync(PICKER_OPTIONS);
     setImages(await toShiftImages(result));
   };
@@ -223,8 +233,28 @@ export default function PhotoSelectScreen() {
 
   const canAnalyze = images.length > 0;
 
+  const handleWatchAdForBonusScan = async () => {
+    setWatchingAd(true);
+    const result = await showRewardedAd();
+    setWatchingAd(false);
+    if (result.success) {
+      recordBonusScan();
+      setConfirmDialogOpen(true);
+    } else if (result.error) {
+      Alert.alert('広告を表示できませんでした', result.error);
+    }
+  };
+
   const handlePressAnalyze = () => {
     if (quotaExceeded) {
+      if (canWatchAdForBonus) {
+        Alert.alert('今月の無料解析回数を使い切りました', '広告を見るとあと1回スキャンできます。', [
+          { text: 'キャンセル', style: 'cancel' },
+          { text: 'PROを見る', onPress: () => router.push('/paywall') },
+          { text: '広告を見る', onPress: handleWatchAdForBonusScan },
+        ]);
+        return;
+      }
       router.push('/paywall');
       return;
     }
@@ -257,10 +287,10 @@ export default function PhotoSelectScreen() {
           />
           <ActionButton
             icon={ScanLine}
-            label="解析する"
+            label={watchingAd ? '広告を読み込み中…' : '解析する'}
             onPress={handlePressAnalyze}
-            disabled={!canAnalyze}
-            variant={canAnalyze ? 'primary' : 'disabled'}
+            disabled={!canAnalyze || watchingAd}
+            variant={canAnalyze && !watchingAd ? 'primary' : 'disabled'}
           />
         </View>
 
@@ -272,7 +302,9 @@ export default function PhotoSelectScreen() {
             ]}
           >
             {quotaExceeded
-              ? `今月の無料解析回数（${FREE_SCAN_MONTHLY_LIMIT}回）を使い切りました。PROで無制限に利用できます。`
+              ? canWatchAdForBonus
+                ? `今月の無料解析回数（${FREE_SCAN_MONTHLY_LIMIT}回）を使い切りました。広告を見るか、PROで無制限に利用できます。`
+                : `今月の無料解析回数（${FREE_SCAN_MONTHLY_LIMIT}回）を使い切りました。PROで無制限に利用できます。`
               : `今月の無料解析: 残り${remainingScans}/${FREE_SCAN_MONTHLY_LIMIT}回`}
           </ThemedText>
         )}

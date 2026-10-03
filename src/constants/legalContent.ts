@@ -10,6 +10,10 @@ export const LEGAL_PAGES: Record<LegalSlug, { title: string; body: string }> = {
       'A. 設定タブの「本人情報」から登録名を変更できます。\n\n' +
       'Q. カレンダーへの反映が遅れることがあります。\n' +
       'A. AppleカレンダーまたはGoogleカレンダーとの同期状況によって反映まで時間がかかる場合があります。\n\n' +
+      'Q. Jorte・Lifebear・Fantasticalなど、他のカレンダーアプリでもシフトを見たいです。\n' +
+      'A. 本アプリが直接対応しているのはApple CalendarとGoogle Calendarのみですが、お使いのカレンダーアプリ側に' +
+      '「Googleカレンダーと同期する」設定がある場合、そちらをオンにしていただくことで、本アプリが登録したシフトが' +
+      'そのアプリ上にも表示されます。設定方法は各アプリのヘルプをご確認ください。\n\n' +
       '（このページはダミーの本文です。実際のFAQ内容は別途差し替え予定です。）',
   },
   contact: {

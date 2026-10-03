@@ -1,5 +1,6 @@
 import { CheckCircle2, Star } from 'lucide-react-native';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
@@ -7,6 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAppStore } from '@/store/useAppStore';
+import { getProPriceString, purchasePro, restorePurchases } from '@/utils/purchases';
 
 const FEATURES = [
   '月別の勤務時間・給与を自動集計',
@@ -15,13 +17,40 @@ const FEATURES = [
   '画像シフト読み取り枠が無制限',
 ];
 
-function showComingSoon() {
-  Alert.alert('準備中', 'この機能は近日公開予定です。');
-}
+const FALLBACK_PRICE = '¥300';
 
 export default function PaywallScreen() {
   const theme = useTheme();
   const isPro = useAppStore((state) => state.user?.settings.isPro ?? false);
+  const [priceString, setPriceString] = useState<string | null>(null);
+  const [purchasing, setPurchasing] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    getProPriceString().then((price) => {
+      if (!cancelled) setPriceString(price);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handlePurchase = async () => {
+    setPurchasing(true);
+    const result = await purchasePro();
+    setPurchasing(false);
+    if (result.error) {
+      Alert.alert('購入できませんでした', result.error);
+    }
+  };
+
+  const handleRestore = async () => {
+    setRestoring(true);
+    const result = await restorePurchases();
+    setRestoring(false);
+    Alert.alert(result.success ? '復元しました' : '復元できませんでした', result.error);
+  };
 
   return (
     <Screen>
@@ -48,7 +77,7 @@ export default function PaywallScreen() {
         </View>
 
         <View style={styles.priceRow}>
-          <ThemedText style={styles.priceAmount}>¥300</ThemedText>
+          <ThemedText style={styles.priceAmount}>{priceString ?? FALLBACK_PRICE}</ThemedText>
           <ThemedText style={[styles.priceUnit, { color: theme.textSecondary }]}>/ 月</ThemedText>
         </View>
 
@@ -57,7 +86,26 @@ export default function PaywallScreen() {
             すでにProプランをご利用中です
           </ThemedText>
         ) : (
-          <PrimaryButton label="アップグレード" onPress={showComingSoon} />
+          <>
+            <PrimaryButton
+              label={purchasing ? '処理中…' : 'アップグレード'}
+              onPress={handlePurchase}
+              disabled={purchasing || restoring}
+            />
+            <Pressable
+              onPress={handleRestore}
+              disabled={purchasing || restoring}
+              hitSlop={Spacing.two}
+            >
+              {restoring ? (
+                <ActivityIndicator />
+              ) : (
+                <ThemedText type="footnote" themeColor="primary" style={styles.restoreLabel}>
+                  購入を復元する
+                </ThemedText>
+              )}
+            </Pressable>
+          </>
         )}
       </ScrollView>
     </Screen>
@@ -118,5 +166,8 @@ const styles = StyleSheet.create({
   priceUnit: {
     fontSize: 12,
     lineHeight: 16,
+  },
+  restoreLabel: {
+    textAlign: 'center',
   },
 });

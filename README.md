@@ -132,10 +132,20 @@ interface AIProvider {
 - [ ] Phase 4: Apple Calendar連携の実機検証（コードは実装済み、実機での権限フロー・EventKit挙動を確認）
 - [x] Phase 5: `GoogleCalendarProvider`の実装（OAuth・Calendar API呼び出し。実際に使うにはリスク2のクライアントID発行が別途必要）
 - [ ] Phase 6: 上書き判定の実機検証
-- [ ] Phase 7: シフト種別マスターの「学習」を`AnalyzeShiftImagesInput.knownShiftTypes`経由でAIプロンプトへ反映
-- [ ] Phase 8: エラー処理の拡充（現状は解析失敗のみ対応。権限エラー・通信エラーなどの文言整備）
-- [ ] Phase 9: 広告
-- [ ] Phase 10: Pro機能
+- [x] Phase 7: シフト種別マスターの「学習」を`AnalyzeShiftImagesInput.knownShiftTypes`経由でAIプロンプトへ反映
+      （`geminiProvider.ts`の`buildPrompt`で既に組み込み済み。チェック漏れだっただけ）
+- [x] Phase 8: エラー処理の拡充。カレンダー連携の権限/認証エラー（`ensureCalendarAccess.ts`）・AI解析失敗・
+      カレンダー登録失敗（`calendar-confirm.tsx`）・写真選択画面でのカメラ/フォトライブラリ権限拒否時
+      （`photo-select.tsx`）まで、いずれもAlert表示を実装済み
+- [x] Phase 9: 広告（`react-native-google-mobile-ads`導入、`AdPlaceholder`をPro時は非表示・無料時は実バナーに変更。
+      iOS App ID・広告ユニットIDはGoogle公式のテスト値のままなので、本番配信前に実際のAdMob値へ差し替えが必要）。
+      あわせてリワード広告（`rewardedAd.native.ts`）も実装: 無料プランが月4回の上限に達した際、広告視聴で
+      ボーナススキャンを1回獲得できる（月`MAX_BONUS_SCANS_PER_MONTH`=5回まで、`scanQuota.ts`）
+- [x] Phase 10: Pro機能（基盤・複数勤務先・給与計算等は実装済み。決済はRevenueCat
+      (`react-native-purchases`)を導入し、`paywall.tsx`から実際の購入・復元フローを呼べる。ただし
+      RevenueCat側のAPIキー・「pro」エンタイトルメント・App Store Connect側のサブスク商品は
+      いずれも未設定なので、現状は何も起きない。開発用の合言葉(DEVPRO/DEVFREE、設定画面)は
+      Pro表示のテスト用に引き続き有効）
 
 ## 8. 不明点・リスク
 
@@ -161,13 +171,22 @@ interface AIProvider {
    アプリを削除・再インストールすると「アプリが以前作成したイベント」の記録が失われ、
    重複登録される可能性がある。要件定義書12節の想定どおりだが、ユーザーには伝わりにくいため、
    設定画面などで一言説明を入れるかは要検討。
-4. **シフト表画像のサイズ**：スクリーンショット・高解像度写真をそのままBase64で送る前提だが、
-   Gemini側のリクエストサイズ上限・料金への影響を見て、送信前のリサイズ要否をPhase 1で判断する。
+4. ~~**シフト表画像のサイズ**：スクリーンショット・高解像度写真をそのままBase64で送る前提だが、
+   Gemini側のリクエストサイズ上限・料金への影響を見て、送信前のリサイズ要否をPhase 1で判断する。~~
+   → 解消済み。`resizeShiftImage.ts`で、長辺が2000pxを超える画像のみ`expo-image-manipulator`で
+   縮小・再エンコードしてから送信する。
 5. ~~**`shift-review`画面の入力方式**：MVPでは日付・時刻を自由入力のテキストフィールドにしている
    （ネイティブの日付・時刻ピッカーは未導入）。誤入力のリスクがあるため、Phase 3で
    `@react-native-community/datetimepicker`等の導入を検討する。~~
    → Phase 3で解消済み。追加の依存関係なしで、既存の`@expo/ui`（`@expo/ui/community/datetime-picker`、
    内部はSwiftUIの`DatePicker`）でネイティブピッカー化した。
+6. **RevenueCat側の設定が未完了**：クライアントの決済コード（`purchases.native.ts`、Phase 10）は実装済み
+   だが、RevenueCatアカウント・APIキー（`EXPO_PUBLIC_REVENUECAT_IOS_API_KEY`）・「pro」エンタイトルメント・
+   App Store Connect側のサブスク商品のいずれも未作成。App Store Connect側の設定はApple Developer
+   Program登録（ロードマップフェーズB）が前提になるため、それより前には完了できない。
+7. **AdMob側の設定が未完了**：`AdPlaceholder`（Phase 9）はGoogle公式のテスト用App ID・広告ユニットIDの
+   ままなので、このままでは収益が発生しない（開発中は正常）。本番配信前に実際のAdMobアカウントを作成し、
+   `app.json`の`iosAppId`と`ad-placeholder.native.tsx`の`TestIds`を実際の値に差し替える必要がある。
 
 ## 9. 環境変数
 

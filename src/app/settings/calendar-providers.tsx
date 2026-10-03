@@ -65,6 +65,12 @@ export default function CalendarProvidersScreen() {
           );
         })}
       </Card>
+
+      <ThemedText type="small" themeColor="textSecondary">
+        Jorte・Lifebear・Fantasticalなど、ここにないカレンダーアプリをお使いの場合も、Google
+        Calendarと連携した上で、そのアプリ側の「Googleカレンダーと同期する」設定をオンにすると、
+        登録したシフトが表示できる場合があります。
+      </ThemedText>
     </Screen>
   );
 }

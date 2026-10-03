@@ -12,7 +12,12 @@ import {
   type Workplace,
   type WorkplaceSettings,
 } from '@/models';
-import { DEFAULT_SCAN_USAGE, nextScanUsage, type ScanUsage } from '@/utils/scanQuota';
+import {
+  DEFAULT_SCAN_USAGE,
+  grantBonusScan,
+  nextScanUsage,
+  type ScanUsage,
+} from '@/utils/scanQuota';
 
 /** Seed values from requirements section 8, editable by the user afterwards. */
 const DEFAULT_SHIFT_TYPES: ShiftType[] = [
@@ -61,6 +66,7 @@ interface AppState {
   removeCalendarEvent: (id: string) => void;
   findCalendarEventForDate: (date: string) => CalendarEventRecord | undefined;
   recordScanUsage: () => void;
+  recordBonusScan: () => void;
   resetAll: () => void;
 }
 
@@ -203,6 +209,8 @@ export const useAppStore = create<AppState>()(
 
       recordScanUsage: () => set((state) => ({ scanUsage: nextScanUsage(state.scanUsage) })),
 
+      recordBonusScan: () => set((state) => ({ scanUsage: grantBonusScan(state.scanUsage) })),
+
       resetAll: () =>
         set({
           user: null,
@@ -214,7 +222,7 @@ export const useAppStore = create<AppState>()(
     {
       name: 'shift-calendar-ai-store',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 11,
+      version: 12,
       migrate: (persisted, version) => {
         // Migration spans many historical shapes (pre-workplace, pre-isPro, etc.),
         // so this intentionally works on an untyped view rather than `AppState`.
@@ -341,6 +349,12 @@ export const useAppStore = create<AppState>()(
         if (version < 11) {
           // 無料プランの画像シフト読み取り月4回制限用カウンター追加。
           state.scanUsage ??= DEFAULT_SCAN_USAGE;
+        }
+        if (version < 12) {
+          // リワード広告視聴で獲得するボーナススキャン枠を追加。
+          if (state.scanUsage) {
+            state.scanUsage.bonusScans ??= 0;
+          }
         }
         return state;
       },

@@ -1,11 +1,20 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
+
+import { initAds } from '@/utils/initAds';
+import { initPurchases } from '@/utils/purchases';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+
+  useEffect(() => {
+    initAds();
+    initPurchases();
+  }, []);
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
