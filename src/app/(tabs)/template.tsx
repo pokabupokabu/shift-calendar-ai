@@ -503,7 +503,7 @@ export default function TemplateTab() {
                         <View style={[styles.premiumDot, { backgroundColor: blueBadge.icon }]} />
                         <ThemedText
                           type="subheadline"
-                          style={styles.boldSubheadline}
+                          style={[styles.boldSubheadline, styles.premiumTimeLabel]}
                           numberOfLines={1}
                         >
                           {formatShiftTimeRange(
@@ -564,7 +564,7 @@ export default function TemplateTab() {
                         <View style={[styles.premiumDot, { backgroundColor: orangeBadge.icon }]} />
                         <ThemedText
                           type="subheadline"
-                          style={styles.boldSubheadline}
+                          style={[styles.boldSubheadline, styles.premiumTimeLabel]}
                           numberOfLines={1}
                         >
                           {formatShiftTimeRange(
@@ -1114,6 +1114,10 @@ const styles = StyleSheet.create({
   boldSubheadline: {
     fontWeight: '700',
   },
+  premiumTimeLabel: {
+    flexShrink: 1,
+    minWidth: 0,
+  },
   boldWeight: {
     fontWeight: '600',
   },
@@ -1137,11 +1141,13 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
+    flexShrink: 0,
   },
   ratePill: {
     borderRadius: Radius.small,
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.half,
+    flexShrink: 0,
   },
   shiftTypeRow: {
     flexDirection: 'row',

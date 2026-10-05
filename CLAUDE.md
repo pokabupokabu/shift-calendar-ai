@@ -31,89 +31,94 @@
 - 変更後は `npm run lint` / `npm run typecheck` / `npm run format` を通す。
 - iPhone専用。実機/シミュレータでの確認ができない場合はその旨を明記する。
 
-## 引き継ぎメモ（2026-10-02時点、次セッション向け）
+## 引き継ぎメモ（2026-10-03 13:49時点、次セッション向け）
 
 ### このプロジェクトの現状
 
-- Expo Router（SDK 57）+ TypeScript製、iPhone専用（Androidは対象外）。シフト表の写真をAIが読み取り、本人のシフトだけを抽出してApple/Googleカレンダーへ登録し、休憩自動控除・深夜/早朝割増を考慮した給与見込みも出せるアプリ。
-- ブランチは`claude/admiring-cerf-egbi9t`（`origin`の同名ブランチより3コミット先行、`main`未マージ）。
-- 最新コミットは`f4776a4`（「設定タブの未実装機能を仕上げ、カレンダー/テンプレ/スキャン画面を改善」）。**これは今回のセッション前半で実装してその場でコミット済み**。その後に実装した内容（Pro/無料状態の基盤・給与タブの日数修正・複数勤務先プロファイル機能）は**一切コミットされていない**。`git status --short`で24ファイル（変更21・新規3）が変更中のはず。
-- ローカル動作確認はExpo Web。`mcp__Claude_Browser__preview_start`に`{url: "http://localhost:8081"}`を渡す方式（`{name: "expo-web"}`は使わない）。**地雷情報は下記「ローカルサーバー・ポートの状態」を必ず読むこと。**
-- 実機/シミュレータでの確認は今回も未実施。**このMacにはXcode本体が無く（Command Line Toolsのみ）`xcrun simctl`が使えないためiOSシミュレータ自体が使用不可**（複数セッション前からの既知の制約、フルインストールにはユーザーのパスワードが必要）。
+- Expo Router（SDK 57）+ TypeScript製、iPhone専用（Androidは対象外）。シフト表の写真をAIが読み取り、本人のシフトだけを抽出してApple/Googleカレンダーへ登録し、休憩自動控除・深夜/早朝割増を考慮した給与見込み・Pro課金・広告も備えるアプリ。
+- ブランチは`claude/admiring-cerf-egbi9t`。**`origin`と完全に同期済み（`git status`クリーン、`git log origin/..HEAD`も空）、`main`は未マージ。**
+- 最新コミットは`9ae8810`（「Pro決済・広告SDK・画像リサイズ・権限エラー表示・リワード広告を実装」）。
+- サブプロジェクトとして`server/gemini-proxy/`（Cloudflare Workers、Gemini APIキーをクライアントから隠す薄いプロキシ）があり、**デプロイ済み・動作確認済み**: `https://gemini-shift-proxy.shift-calendar-ai.workers.dev`
+- ローカル動作確認はExpo Web。`mcp__Claude_Browser__preview_start`に`{url: "http://localhost:8081"}`を渡す方式（`{name: ...}`は使わない）。**地雷情報は下記「ローカルサーバー・ポートの状態」を必ず読むこと。**
+- 実機/シミュレータでの確認は今回も未実施。**このMacにはXcode本体が無く（Command Line Toolsのみ）`xcrun simctl`が使えないためiOSシミュレータ自体が使用不可**（複数セッション前からの既知の制約、フルインストールにはユーザーのパスワードが必要）。実機検証にはEAS Build必須（後述ロードマップ参照）。
 
-### ローカルサーバー・ポートの状態（毎回踏む地雷、今回も遭遇）
+### 全体ロードマップ（ユーザーと合意済み、ストア公開までの流れ）
 
-- ポート**8081**で、複数セッション前から動きっぱなしの古いExpoプロセス（PID 75565、`expo start --web --clear`）が今も生きている。**ここに実データ（田中さんの登録・9月のシフト・カレンダー登録済みイベントなど）が入っている。**
-- 今回のセッション開始時・セッション中に複数回「Port 8081 is already in use」という自動エラーメッセージが出たが、**プロセスはkillせず**`preview_start`に`{url: "http://localhost:8081"}`を渡して既存プロセスにそのままブラウザで繋ぐ、という対応で毎回解決した。次セッションでも同じ対応でよい。
-- スマホ実機での動作確認が必要な場合は、Expo Go（SDK 57からCLI側・アプリ側の両方でExpoアカウントへのログインが必須になった）で同じLAN上から`exp://<MacのIP>:<別ポート>`に接続する方式を過去に使った（詳細は本セッションの会話ログ参照、再現時は`npx expo login`はユーザー本人に実行してもらうこと）。
-- `localStorage`の`calendarEvents`等を`javascript_exec`で直接書き換えるのは要注意（過去セッションで実データ消失事故あり）。今回は`isPro`フラグのON/OFF切り替えや検証用ワークプレイスの追加/削除程度の軽微な操作のみ行い、作業後は毎回元の状態（`isPro: false`、テスト用に追加した勤務先の削除）に戻してある。
+フェーズA(技術方針確定) → フェーズC(残りMVP機能) → **UI改善 ← 今ここ** → フェーズD(ストア掲載準備・ビルド不要部分) → 初回EAS Build → フェーズB(実機検証) + フェーズDの残り(スクショ撮影) → フェーズE(ベータ→審査提出)
 
-### 今回のセッションで実装した内容
+- フェーズA: 完了（Gemini APIキーのプロキシ化、Google OAuthクライアントID確認）
+- フェーズC: ほぼ完了（Pro決済・広告SDK・画像リサイズ・権限エラー表示・リワード広告を今回のセッションで実装済み）
+- **UI改善: 着手中（今回のセッションで画面調査まで完了、実装は次回に持ち越し。詳細は下記）**
+- フェーズB・D・E: 未着手。フェーズBの前提として**Apple Developer Program登録（年間$99）がまだ未確定のまま止まっている**（ユーザー確認待ち）
 
-**① 設定タブ仕上げ＋カレンダー/テンプレ/スキャン改善（コミット`f4776a4`、セッション前半）**
+### 今すぐやること: UI改善（ユーザーが明示的に次回へ持ち越し指示）
 
-- 設定タブ: アカウント設定（表示名編集・データ初期化）、カレンダー同期の実認証接続、法的/サポート静的ページ、PROペイウォール画面を新規実装。言語項目は削除。Apple CalendarがSDK 57で非推奨APIにより動かなくなっていた不具合も修正（`expo-calendar`の新オブジェクト指向APIに移行）。
-- カレンダー: シフト種別バッジを1文字表示に、「カレンダーを見に行く」を連携済みカレンダーから選択できる形に改善。
-- テンプレ: 表記整理、深夜/早朝手当UIの見やすさ改善、基本3シフト種別（早番/遅番/夜勤）の名前ロック、シフト種別セット追加のPro化（アイコン選択付きダイアログは実装済みのまま温存）。
-- スキャン: 解析前の確認ダイアログ追加、カレンダー登録確認画面のサマリー圧縮、シフト編集画面の刷新。
-- 詳細は`git show f4776a4`で確認可能。計画ファイルは実装完了後に次の計画で上書きされたため残っていない。
+ユーザー定義: 「Stitch」というツールで5タブ構成へのUIリニューアルを行った時点（コミット`f18c3d1`/`38d40eb`）以降に追加された画面は、他画面と比べてデザインの作り込みが浅い。ブラウザで実際に全候補画面を確認した結果、以下に絞り込み済み:
 
-**② Pro/無料状態の基盤 + 給与タブ修正（セッション後半、未コミット）**
+1. **[src/app/settings/account.tsx](src/app/settings/account.tsx)（アカウント設定画面）**: 要改善。`Card`コンポーネントで囲われておらず、`IconBadge`も無し。ボタンも装飾無しの黒ベタ。他画面（給与タブ・テンプレタブ等）が使っている「Card + IconBadge + ThemedText」のデザインパターンを当てはめ直す方向で合意済み。
+2. **[src/app/settings/calendar-connect.tsx](src/app/settings/calendar-connect.tsx)（カレンダー連携画面）**: 要改善。タイトルと説明文、画面下部のボタンのみで中央に巨大な空白。アイコン等の視覚要素が無く寂しい見た目。
+3. **[src/app/(tabs)/template.tsx:500-525](<src/app/(tabs)/template.tsx>) 付近（深夜割増手当の時間表示）**: 軽微なバグ。`numberOfLines={1}`付きの時間レンジテキストが、同じ行の丸ドット・`+25%`バッジ・編集ボタンに押されて「22:00〜翌...」のように途中で切れる。`premiumRow`/`premiumRowLeft`のレイアウト（flex配分）を見直す必要あり。
 
-- `UserSettings`に`isPro: boolean`を追加。実際の課金基盤はまだ無いため、**設定→アカウント設定→プロモーションコード欄に`DEVPRO`と入力するとPro化、`DEVFREE`で解除**という開発用の合言葉方式で代用している（本物の課金導入後はこの入力欄を実際の検証ロジックに差し替える前提）。
-- 設定タブのプロフィールカードがPro時はオレンジ+Starアイコン+「PRO」バッジに、PROカード・ペイウォール画面もPro時は「ご利用中」表示に変化。
-- テンプレタブの「新しいシフト種別を追加」ボタンは、Pro時のみ実際の追加ダイアログを開き、無料時はペイウォールへ誘導する形に変更済み（これは本セッションより前からあった制限だが、`isPro`フラグと正式に連動させた）。
-- 給与タブ: 「テンプレート毎の想定給与」→「シフト種別毎の想定給与」に改称。詳細ダイアログの「回数」を正確な「日数」に修正（従来の`count`はイベント件数で、同日複数シフトがあると実際の勤務日数とズレるバグがあった）。時給と給与見込みの間に「1日あたり」の金額を追加。
+上記3点とも、**ユーザーから「直してほしいけど、それは次回にしよう」と明示的に先送り指示あり**。実装はまだ一切着手していない（コード変更ゼロ）。次セッションはこの3点の実装から始めてよい。なお`paywall.tsx`・給与タブの扶養の壁アラートカードは確認済みで問題なし（Cardデザインに既に沿っている）。テンプレタブの複数勤務先タブ切り替えUI自体は、ブラウザの一時的な自動操作不調（Metro再接続エラー）で深掘りできずじまいなので、次セッションで2社目を追加した状態の見た目も確認した方がよい。
 
-**③ PROプラン内容のリサーチ（意思決定のみ、コード未反映の項目あり注意）**
+### ローカルサーバー・ポートの状態（毎回踏む地雷）
 
-ユーザーと一緒に「Grill me」形式で検討し、サブエージェント4体で並列に深掘りリサーチ（SNS・既存シフトアプリのレビュー・日本の掲示板Q&A・海外プロダクト動向）を実施した。価格はシフカレ(¥240)・TimeTree(¥300)・Zaim(¥440〜480、AI OCR搭載)・CamScanner等と比較した結果、**¥300/月に決定**（従来表示の¥380から変更、ただし`settings.tsx`等のUI文言はまだ¥380のままなので**次セッションで反映が必要**）。
+- ポート**8081**で、複数セッション前から動きっぱなしの古いExpoプロセス（PID 75565、`expo start --web --clear`）が今も生きている。**ここに実データ（田中さんの登録・シフト・カレンダー登録済みイベントなど）が入っている。**
+- 新しいセッションでは毎回「Port 8081 is already in use」という自動エラーメッセージが出るが、**プロセスはkillせず**`preview_start`に`{url: "http://localhost:8081"}`を渡して既存プロセスにそのままブラウザで繋ぐ、という対応で毎回解決する。次セッションでも同じ対応でよい。
+- 稀に「Disconnected from Metro (1006)」という警告がコンソールに出ることがあるが、プロセス自体は生きていることが多く、ページをreloadすれば再接続できる（今回実際に発生し、reloadで解消した）。
+- `localStorage`の`calendarEvents`等を`javascript_exec`で直接書き換えるのは要注意（過去セッションで実データ消失事故あり）。`isPro`フラグのON/OFF切り替えや検証用ワークプレイスの追加/削除程度の軽微な操作に留め、作業後は毎回元の状態（`isPro: false`等）に戻すこと。
 
-決定した新PRO特典（**太字は未コード化、次セッションの実装候補**）:
+### 今回のセッションで実装した内容（すべてコミット・push済み）
 
-- シフト種別セット追加（実装済み）
-- 複数勤務先プロファイル（実装済み、下記④）
-- カレンダー色分け（実装済み、ただし全ユーザー対象でPro限定ではない）
-- 広告非表示（**UIのAdPlaceholderはあるが広告SDK自体が未導入、PRO判定による出し分けも未実装**）
-- **画像シフト読み取り枠を無料は月4回に制限（PROは無制限）→ 未実装**
-- **給与タブの閲覧期間を無料は今月のみに制限（PROは全期間）→ 未実装**
+**① Gemini APIキーのプロキシ化（コミット`8b19853`）**: README「8. 不明点・リスク」1番目を解消。`server/gemini-proxy/`にCloudflare Workersの透過プロキシを新設し、実際のGemini APIキーはWorker側のシークレットにのみ存在する形にした。クライアントは`EXPO_PUBLIC_AI_PROXY_URL`/`EXPO_PUBLIC_AI_PROXY_SECRET`のみ保持。共有シークレットヘッダー+IPベースの簡易レート制限（30回/時）で乱用を防止。デプロイ・動作確認（curlで401/401/400-from-Google応答を確認）済み。
 
-ディープリサーチで見つかった追加候補（優先度順、いずれも未着手）: 1) 扶養の壁（103万/106万/130万円）接近アラート＋複数勤務先の年収自動合算（4系統の調査全てで最有力）、2) 給与明細との自動照合・差額チェック、3) 同じシフトパターンの一括登録・コピー機能（App Storeレビューで強い不満を確認済み）、4) 掛け持ち先同士のダブルブッキング・移動時間不足の自動警告、5) 新しいスキャン結果と前回の差分検知・通知。
+**② スキャン時の勤務先確認導線（コミット`5afdc87`）**: 複数勤務先ユーザーが写真選択時に「どの勤務先として読み取るか」を確認・選択できるダイアログを追加（`useShiftSessionStore`に`scanWorkplaceId`追加）。
 
-**④ 複数勤務先プロファイル機能（セッション終盤、未コミット、`.claude/plans/ui-auqt-cosmic-panda.md`に実装計画が残っている）**
+**③ 無料プランの利用制限（コミット`dea7df5`）**: 画像シフト読み取りを無料は月4回に制限（`scanQuota.ts`）。給与タブの前月/翌月ボタンは無料プランだとペイウォールへ誘導し当月のみ閲覧可能に。
 
-- 新規`Workplace`モデル（`src/models/workplace.ts`）: 時給・シフト種別セット・休憩/手当設定・カレンダー連携先を勤務先ごとに独立して持てるようにした。`User.workplaces`配列 + `activeWorkplaceId`。
-- `CalendarEventRecord`/`Shift`に`workplaceId`を追加。`useAppStore.ts`のpersistを**v8→v9にマイグレーション**し、既存データは自動的に「勤務先1」として移行される（動作確認済み）。
-- テンプレタブ上部に会社タブの横スクロール切り替えUIを追加。**無料は1社のみ、2社目以降の追加はPro限定**（`isPro`を見てペイウォールへ誘導）。
-- 給与計算は勤務先単位で正しく区別するよう修正（同名シフト種別が複数勤務先にあっても混ざらない、`workplaceId + シフト種別名`の複合キーで集計）。
-- ブラウザで実際に2社目「コンビニA」を追加し、設定の独立性・Pro/無料ゲーティング・既存データの移行・給与集計の正しさを確認済み。
+**④ PRO価格表示修正（コミット`9ce80f9`）**: ¥380→¥300の反映漏れを修正。
+
+**⑤ 扶養の壁アラート（コミット`6394b7c`）**: 103万/106万/130万円の壁までの残り額を、全勤務先合算の暦年収見込みから算出してPRO限定で表示。無料ユーザーにはペイウォール誘導のティーザーカード。
+
+**⑥ Pro決済・広告SDK・画像リサイズ・権限エラー表示・リワード広告（コミット`9ae8810`、最大のまとまり）**:
+
+- **Pro決済**: RevenueCat（`react-native-purchases`）導入。`paywall.tsx`に実際の購入・復元フローを実装。**ただしRevenueCat側のAPIキー（`EXPO_PUBLIC_REVENUECAT_IOS_API_KEY`）・「pro」エンタイトルメント・App Store Connect側のサブスク商品はいずれも未設定のため現状は未稼働**（コードのみ存在、Webでは安全にフォールバック表示することは確認済み）。既存の開発用合言葉（`DEVPRO`/`DEVFREE`、設定→アカウント設定）は引き続き有効。
+- **広告SDK**: `react-native-google-mobile-ads`導入。`AdPlaceholder`をプラットフォーム別ファイル分割（`.tsx`=Web用プレースホルダー、`.native.tsx`=実バナー）。Pro時は非表示、無料時はGoogle公式テストIDで実バナー表示。**本番配信前に実際のAdMobアカウント・ad unit IDへの差し替えが必要**（`app.json`の`iosAppId`も含む）。
+- **リワード広告**: 無料プランが月4回の上限に達した際、`rewardedAd.native.ts`経由で広告視聴するとボーナススキャンを獲得できる（月5回まで、`MAX_BONUS_SCANS_PER_MONTH`）。`scanQuota.ts`に`bonusScans`追加、ストアをv10→v12にマイグレーション。
+- **画像リサイズ**: `resizeShiftImage.ts`で長辺2000px超の画像のみ送信前に`expo-image-manipulator`で縮小。
+- **権限エラー表示**: 写真選択画面でカメラ/ライブラリへのアクセス拒否時にAlert表示を追加。
+
+**⑦ 対応カレンダー拡充の市場調査（コード変更は案内文のみ、コミット`9ae8810`に含む）**: サブエージェント多数（TimeTree・LINE・Jorte・Lifebear・caho・Potluck等14候補）を並列投入し、ユーザー層親和性と外部書き込みAPI有無を調査。**結論: Apple/Google以外に直接連携できる候補は無かった**（Outlook/Microsoft 365のみ技術的には可能だがターゲット層が合わず対象外）。代わりに、Fantastical・Lifebear等はGoogle Calendar経由の間接反映が公式に可能と判明したため、`calendar-providers.tsx`とFAQ（`legalContent.ts`）に案内文を追加するだけで対応完了とした。
+
+**⑧ Google OAuthクライアントIDの状況確認**: README記載「未発行」は誤りで、**既にGoogle Cloud Console（プロジェクト`shift-calendar-ai`、クライアント名`shift-calendar-ai-ios`）で発行済み**と判明。ただし公開ステータスが「テスト中」のままで、登録済みテストユーザー（`pensuke1234@gmail.com`、ユーザー確認済み・本人のテスト用アカウント）以外はサインインできない。本番公開（Google審査が必要になる可能性あり）は、フェーズB（実機検証）が終わってから着手する方針で合意済み。
 
 ### 環境変数の状態
 
-`.env`は`.gitignore`済みで安全。今回のセッションでは変更していない（前回確認済みの5キー、`EXPO_PUBLIC_AI_PROVIDER`/`EXPO_PUBLIC_GEMINI_API_KEY`/`EXPO_PUBLIC_GEMINI_MODEL`/`EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`/`EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`は全て設定済みのまま）。
+`.env`は`.gitignore`済みで安全。設定済みキー: `EXPO_PUBLIC_AI_PROVIDER` / `EXPO_PUBLIC_GEMINI_API_KEY`(未使用になったが残存) / `EXPO_PUBLIC_GEMINI_MODEL` / `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` / `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`(未使用のまま) / `EXPO_PUBLIC_AI_PROXY_URL` / `EXPO_PUBLIC_AI_PROXY_SECRET`。
+
+**未設定（`.env.example`には項目だけ存在）**: `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY` — RevenueCatアカウント作成後に設定が必要。
 
 ### 次にやること（優先順）
 
-1. `git status --short`で未コミット分（24ファイル）を確認し、ユーザーと相談の上でコミットするか判断する。
-2. PRO価格のUI表示を¥380→¥300に更新する（`src/app/(tabs)/settings.tsx`・`src/app/paywall.tsx`・`src/app/settings/account.tsx`など「¥380」で検索して全箇所反映）。
-3. 上記③で「未実装」と明記した2項目（月4回スキャン制限、給与タブ閲覧期間を今月のみに制限）を実装するか、ユーザーに次の優先度を確認する。
-4. ディープリサーチで見つかった追加候補（特に優先度1位の「扶養の壁アラート」）を実装するか検討する。
-5. 広告SDK（AdMob等）の導入自体はまだ意思決定のみで未着手。実装するかどうかの最終確認が必要。
-6. 複数勤務先機能の細部（勤務先の並び替え、シフトスキャン時に「どの勤務先として読み取るか」を確認する導線があるとより親切か等）をユーザーと一緒に使ってみて磨き込む余地がある。
-7. README.md「8. 不明点・リスク」に残っている項目（Gemini APIキーの扱い方針の最終確定、Google OAuthの実機検証など）は依然未解消。
+1. **UI改善3点の実装**（上記「今すぐやること」参照）: account.tsx・calendar-connect.tsxのCard/IconBadge化、template.tsxの時間表示切れ修正。
+2. フェーズD(ビルド不要部分)に着手: Apple Developer Program登録（ユーザー確認要、年間$99）、App Store Connectでのアプリレコード作成、利用規約・プライバシーポリシー・特定商取引法に基づく表記の実文書化（`src/constants/legalContent.ts`は現状全てダミー文言。特定商取引法の表記は販売事業者名・住所等、**ユーザー本人の実在情報が必要**なので先回りして書かないこと）。
+3. 初回EAS Build実行（`eas-cli`未導入、`eas.json`未作成の状態から）。
+4. フェーズB(実機検証)本体: Apple Calendar権限フロー、Google OAuth実機サインイン、上書き判定、RevenueCat/AdMobの実アカウント接続後の動作確認。
+5. フェーズDの残り: 実機ビルドからのスクリーンショット撮影。
+6. フェーズE: TestFlightベータ→App Store審査提出。
 
 ### Gotchas（今回のセッションで時間を使って分かったこと）
 
-- **RN Web特有のバグ**: 横スクロール`ScrollView`（`horizontal`）をflex列の中に置くと、`style`に`flexShrink: 0`を明示しない限り高さがほぼ0に潰れ、中のテキストが見切れる/重なって見える（テンプレタブの会社タブで発生、修正済み）。今後similarな横スクロールUIを作るときは最初から`flexShrink: 0`を付けること。
-- **サブエージェントが「実装してください」と頼んでも、実際には何もファイルを編集せず計画だけを返して終わることがある**（今回Track Aで1回発生、`tool_uses: 0`で気づいた）。並列実装後は必ず各ファイルの`tsc`/`git status`等で実際に変更が反映されているか確認すること。
-- Pro/無料の切り替えは`DEVPRO`/`DEVFREE`という合言葉をプロモーションコード欄に入れる方式（本物の課金が無い前提の暫定実装）。ブラウザでテストする際は`localStorage`の`shift-calendar-ai-store`を直接書き換えても同じ効果がある（`state.user.settings.isPro`）。
-- AskUserQuestionでの要望収集は、選択肢を複数回に分けて絞り込んでいくより、相手が「もっと候補が欲しい」と言うタイプの場合は思い切って多め（10件超）に一度に提示した方が噛み合う場合がある（本セッションでアカウント設定の追加候補選びで何度か往復した末に判明）。
-- `.claude/plans/`配下の計画ファイルは同じファイル名を使い回すと上書きされるため、複数の計画フェーズを経た場合、古い計画の設計根拠は会話ログにしか残らない。重要な意思決定（PROプランの特典リストなど）はこの引き継ぎメモのような永続ファイルに転記しておかないと失われる。
+- **サブエージェントが「結果が揃い次第報告する」という計画の説明だけを返して、実際には何も調査せず終了することがある**（今回の「20代女性向け予定共有アプリ発掘調査」エージェントで発生）。`SendMessage`で同じエージェントに「計画ではなく実際に調査を実行して」と再指示すれば立て直せる。背景タスクの結果は鵜呑みにせず、「実際に情報源URLが列挙されているか」等で実質的な中身の有無を確認すること。
+- **自分で挙げた調査対象が実在しないことがある**（「メルカリグループのPotluck」という候補を記憶頼りで挙げたが、調査の結果、実在しない組み合わせと判明。ユーザーには正直に訂正を伝えた）。確信が持てない固有名詞は、リサーチ対象として挙げる前にその存在自体を疑うこと。
+- Google Cloud Consoleは、ブラウザの`preview_start`で開いたタブがユーザーの実アカウントにログイン済みの状態で繋がる（Cloudflareのwrangler loginとは違い、ユーザーに別途ログインしてもらう必要がなかった）。
+- RevenueCatの`Purchases.configure()`は、iOS単体アプリでは`store`パラメータを**渡さない**（`store`はAndroidの複数ストア選択用で、省略時はApp Storeが暗黙のデフォルトになる。`store: 'APP_STORE'`を渡すと型エラーになる）。
+- `react-native-google-mobile-ads`・`react-native-purchases`はいずれもWeb実装が無いため、`.tsx`（Web用no-op/フォールバック）と`.native.tsx`（実装）にファイルを分割するパターンで対応した（Metroの拡張子解決に依存、tsconfigの`moduleSuffixes`相当の設定は不要だった）。
 
-### 今回のセッションで変更したファイル（未コミット分、`f4776a4`は含まない）
+### 今回のセッションで変更したファイル（全てコミット・push済み、詳細は`git show <コミットハッシュ>`参照）
 
-**新規**: `src/constants/shiftTypeIcons.ts`, `src/models/workplace.ts`, `src/utils/resolveShiftTypeTone.ts`
+**新規**: `server/gemini-proxy/`一式, `src/utils/scanQuota.ts`, `src/components/ad-placeholder-sizes.ts`, `src/components/ad-placeholder.native.tsx`, `src/constants/purchases.ts`, `src/utils/initAds.ts`/`.native.ts`, `src/utils/purchases.ts`/`.native.ts`, `src/utils/resizeShiftImage.ts`, `src/utils/rewardedAd.ts`/`.native.ts`
 
-**変更**: `src/app/(tabs)/calendar-view.tsx`, `src/app/(tabs)/payroll.tsx`, `src/app/(tabs)/settings.tsx`, `src/app/(tabs)/template.tsx`, `src/app/analyzing.tsx`, `src/app/calendar-confirm.tsx`, `src/app/complete.tsx`, `src/app/paywall.tsx`, `src/app/settings/account.tsx`, `src/app/settings/calendar-connect.tsx`, `src/app/shift-review.tsx`, `src/app/user-match-select.tsx`, `src/components/calendar/month-grid.tsx`, `src/components/calendar/month-list.tsx`, `src/hooks/use-resolved-color-scheme.ts`, `src/models/calendarEvent.ts`, `src/models/index.ts`, `src/models/shift.ts`, `src/models/user.ts`, `src/services/calendar/appleCalendarProvider.ts`, `src/services/calendar/googleCalendarProvider.ts`, `src/store/useAppStore.ts`, `src/store/useShiftSessionStore.ts`, `src/utils/computePayroll.ts`
+**主な変更**: `src/app/photo-select.tsx`, `src/app/paywall.tsx`, `src/app/_layout.tsx`, `src/app/(tabs)/payroll.tsx`, `src/app/settings/calendar-providers.tsx`, `src/components/ad-placeholder.tsx`, `src/config/env.ts`, `src/constants/legalContent.ts`, `src/store/useAppStore.ts`, `README.md`, `app.json`, `.env.example`
 
-**参考**: 複数勤務先機能の実装計画は`.claude/plans/ui-auqt-cosmic-panda.md`に残っている。`npx tsc --noEmit` / `npm run lint` / `npm run format`は全てクリーンな状態。
+`npx tsc --noEmit` / `npm run lint` / `npm run format`は全てクリーンな状態（UI改善3点は未着手なのでこのクリーン状態を維持したまま次セッションを開始できる）。
