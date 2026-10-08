@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { CheckCircle2, Star } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -18,6 +19,38 @@ const FEATURES = [
 ];
 
 const FALLBACK_PRICE = '¥300';
+
+/**
+ * 特定商取引法12条の6（特定申込みを受ける際の表示）が「最終確認画面」に求める事項。
+ * Apple IAPでは決済シートの直前にあるこの画面が最終確認画面に当たると解されるため、
+ * 特商法表記ページへのリンクだけでは足りず、ここに実体を表示する必要がある
+ * （消費者庁「通信販売の申込み段階における表示についてのガイドライン」）。
+ * Apple App Store Review Guideline 3.1.2 の開示要件ともほぼ重なる。
+ */
+function subscriptionTerms(price: string): { label: string; value: string }[] {
+  return [
+    { label: '契約内容', value: 'シフトカレンダーAI PRO（本アプリの全機能）' },
+    {
+      label: '提供期間',
+      value: '1か月ごとの自動更新。解約を申し出るまで継続する無期限契約です',
+    },
+    { label: '料金', value: `${price} / 月（税込）` },
+    {
+      label: '支払方法',
+      value: 'Apple ID（App Store）決済。購入時および以後毎月の更新日に課金されます',
+    },
+    { label: '提供開始', value: '購入手続きの完了後、ただちにご利用いただけます' },
+    {
+      label: '解約方法',
+      value:
+        '更新日の24時間前までに、iPhoneの「設定」→ Apple ID → サブスクリプションから解約してください',
+    },
+    {
+      label: '返金',
+      value: 'デジタルコンテンツの性質上、提供開始後の中途解約による返金はいたしかねます',
+    },
+  ];
+}
 
 export default function PaywallScreen() {
   const theme = useTheme();
@@ -107,6 +140,48 @@ export default function PaywallScreen() {
             </Pressable>
           </>
         )}
+
+        <View style={[styles.disclosure, { borderTopColor: theme.border }]}>
+          <ThemedText type="caption1" themeColor="textSecondary" style={styles.disclosureHeading}>
+            お申し込み内容の確認
+          </ThemedText>
+          {subscriptionTerms(priceString ?? FALLBACK_PRICE).map((term) => (
+            <View key={term.label} style={styles.termRow}>
+              <ThemedText type="caption1" themeColor="textSecondary" style={styles.termLabel}>
+                {term.label}
+              </ThemedText>
+              <ThemedText type="caption1" themeColor="textSecondary" style={styles.termValue}>
+                {term.value}
+              </ThemedText>
+            </View>
+          ))}
+          <View style={styles.legalLinks}>
+            <Pressable onPress={() => router.push('/settings/legal/terms')} hitSlop={Spacing.two}>
+              <ThemedText type="caption1" themeColor="primary">
+                利用規約
+              </ThemedText>
+            </Pressable>
+            <ThemedText type="caption1" themeColor="textSecondary">
+              ・
+            </ThemedText>
+            <Pressable onPress={() => router.push('/settings/legal/privacy')} hitSlop={Spacing.two}>
+              <ThemedText type="caption1" themeColor="primary">
+                プライバシーポリシー
+              </ThemedText>
+            </Pressable>
+            <ThemedText type="caption1" themeColor="textSecondary">
+              ・
+            </ThemedText>
+            <Pressable
+              onPress={() => router.push('/settings/legal/tokushoho')}
+              hitSlop={Spacing.two}
+            >
+              <ThemedText type="caption1" themeColor="primary">
+                特定商取引法に基づく表記
+              </ThemedText>
+            </Pressable>
+          </View>
+        </View>
       </ScrollView>
     </Screen>
   );
@@ -169,5 +244,35 @@ const styles = StyleSheet.create({
   },
   restoreLabel: {
     textAlign: 'center',
+  },
+  disclosure: {
+    gap: Spacing.one,
+    paddingTop: Spacing.three,
+    marginTop: Spacing.two,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  disclosureHeading: {
+    fontWeight: '600',
+    paddingBottom: Spacing.half,
+  },
+  termRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  termLabel: {
+    width: 68,
+    flexShrink: 0,
+  },
+  termValue: {
+    flex: 1,
+    minWidth: 0,
+  },
+  legalLinks: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: Spacing.one,
+    paddingTop: Spacing.two,
   },
 });

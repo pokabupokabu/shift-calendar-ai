@@ -140,7 +140,11 @@ interface AIProvider {
 - [x] Phase 9: 広告（`react-native-google-mobile-ads`導入、`AdPlaceholder`をPro時は非表示・無料時は実バナーに変更。
       iOS App ID・広告ユニットIDはGoogle公式のテスト値のままなので、本番配信前に実際のAdMob値へ差し替えが必要）。
       あわせてリワード広告（`rewardedAd.native.ts`）も実装: 無料プランが月4回の上限に達した際、広告視聴で
-      ボーナススキャンを1回獲得できる（月`MAX_BONUS_SCANS_PER_MONTH`=5回まで、`scanQuota.ts`）
+      ボーナススキャンを1回獲得できる（月`MAX_BONUS_SCANS_PER_MONTH`=5回まで、`scanQuota.ts`）。
+      ATT（App Tracking Transparency）対応済み: `prepareAds.native.ts`（旧`initAds`）がATT許可を取ってから
+      SDKを初期化し、許可の有無で`requestNonPersonalizedAdsOnly`を自動で切り替える。プロンプトは
+      `use-ad-request-state.ts`のゲート（フォーカス中・アプリがactive・遷移完了後）を通して
+      「初めて広告が表示される直前」にだけ出す。実機未検証
 - [x] Phase 10: Pro機能（基盤・複数勤務先・給与計算等は実装済み。決済はRevenueCat
       (`react-native-purchases`)を導入し、`paywall.tsx`から実際の購入・復元フローを呼べる。ただし
       RevenueCat側のAPIキー・「pro」エンタイトルメント・App Store Connect側のサブスク商品は

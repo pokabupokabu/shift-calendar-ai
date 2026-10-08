@@ -44,22 +44,21 @@
 
 ### 全体ロードマップ（ユーザーと合意済み、ストア公開までの流れ）
 
-フェーズA(技術方針確定) → フェーズC(残りMVP機能) → **UI改善 ← 今ここ** → フェーズD(ストア掲載準備・ビルド不要部分) → 初回EAS Build → フェーズB(実機検証) + フェーズDの残り(スクショ撮影) → フェーズE(ベータ→審査提出)
+フェーズA(技術方針確定) → フェーズC(残りMVP機能) → UI改善 → **フェーズD(ストア掲載準備・ビルド不要部分) ← 今ここ** → 初回EAS Build → フェーズB(実機検証) + フェーズDの残り(スクショ撮影) → フェーズE(ベータ→審査提出)
 
 - フェーズA: 完了（Gemini APIキーのプロキシ化、Google OAuthクライアントID確認）
-- フェーズC: ほぼ完了（Pro決済・広告SDK・画像リサイズ・権限エラー表示・リワード広告を今回のセッションで実装済み）
-- **UI改善: 着手中（今回のセッションで画面調査まで完了、実装は次回に持ち越し。詳細は下記）**
-- フェーズB・D・E: 未着手。フェーズBの前提として**Apple Developer Program登録（年間$99）がまだ未確定のまま止まっている**（ユーザー確認待ち）
+- フェーズC: ほぼ完了（Pro決済・広告SDK・画像リサイズ・権限エラー表示・リワード広告実装済み）
+- **UI改善: 完了（本セッションでaccount.tsx・calendar-connect.tsx・template.tsxを実装、コミット`ba47cab`、push未実施）**
+- **フェーズD: 着手中。Apple Developer Program登録は本セッションでユーザーが完了させ、現在Apple側の承認待ち**（年間$99、個人/法人どちらで登録したかは未確認。承認が下り次第App Store Connectでのアプリレコード作成に進める）
+- フェーズB・E: 未着手（フェーズBの前提はApple Developer Program承認）
 
-### 今すぐやること: UI改善（ユーザーが明示的に次回へ持ち越し指示）
+### 直前に完了したUI改善3点（コミット`ba47cab`、詳細は`git show ba47cab`）
 
-ユーザー定義: 「Stitch」というツールで5タブ構成へのUIリニューアルを行った時点（コミット`f18c3d1`/`38d40eb`）以降に追加された画面は、他画面と比べてデザインの作り込みが浅い。ブラウザで実際に全候補画面を確認した結果、以下に絞り込み済み:
+1. [src/app/settings/account.tsx](src/app/settings/account.tsx): 全5セクションをCard+IconBadgeパターンに統一（表示名=青/User、プラン=オレンジ/Star、扶養の壁アラート=紫/TriangleAlert、プロモーションコード=neutral/Tag、データの初期化=赤/Trash2）。
+2. [src/app/settings/calendar-connect.tsx](src/app/settings/calendar-connect.tsx): 中央の空白にCard+大きめIconBadge(CalendarCheck)+説明文、下部に「権限は後からいつでも変更できます」の注記行を追加。Apple=neutralトーン、Google=blueトーンで視覚的に区別。
+3. [src/app/(tabs)/template.tsx](<src/app/(tabs)/template.tsx>)の`premiumRow`/`premiumTimeLabel`: 時間レンジテキストに`flexShrink:1`/`minWidth:0`、ドット・`+25%`バッジ側に`flexShrink:0`を付与し、画面が狭い時にレイアウトが崩れず正しく`...`で省略されるよう修正。375px/390px幅で確認済み。
 
-1. **[src/app/settings/account.tsx](src/app/settings/account.tsx)（アカウント設定画面）**: 要改善。`Card`コンポーネントで囲われておらず、`IconBadge`も無し。ボタンも装飾無しの黒ベタ。他画面（給与タブ・テンプレタブ等）が使っている「Card + IconBadge + ThemedText」のデザインパターンを当てはめ直す方向で合意済み。
-2. **[src/app/settings/calendar-connect.tsx](src/app/settings/calendar-connect.tsx)（カレンダー連携画面）**: 要改善。タイトルと説明文、画面下部のボタンのみで中央に巨大な空白。アイコン等の視覚要素が無く寂しい見た目。
-3. **[src/app/(tabs)/template.tsx:500-525](<src/app/(tabs)/template.tsx>) 付近（深夜割増手当の時間表示）**: 軽微なバグ。`numberOfLines={1}`付きの時間レンジテキストが、同じ行の丸ドット・`+25%`バッジ・編集ボタンに押されて「22:00〜翌...」のように途中で切れる。`premiumRow`/`premiumRowLeft`のレイアウト（flex配分）を見直す必要あり。
-
-上記3点とも、**ユーザーから「直してほしいけど、それは次回にしよう」と明示的に先送り指示あり**。実装はまだ一切着手していない（コード変更ゼロ）。次セッションはこの3点の実装から始めてよい。なお`paywall.tsx`・給与タブの扶養の壁アラートカードは確認済みで問題なし（Cardデザインに既に沿っている）。テンプレタブの複数勤務先タブ切り替えUI自体は、ブラウザの一時的な自動操作不調（Metro再接続エラー）で深掘りできずじまいなので、次セッションで2社目を追加した状態の見た目も確認した方がよい。
+lint/typecheck/format全てクリーンな状態でコミット済み。**pushはまだ行っていない**（ユーザーへの確認待ちのまま次の話題＝Apple Developer Program登録に進んだため）。
 
 ### ローカルサーバー・ポートの状態（毎回踏む地雷）
 
@@ -100,12 +99,13 @@
 
 ### 次にやること（優先順）
 
-1. **UI改善3点の実装**（上記「今すぐやること」参照）: account.tsx・calendar-connect.tsxのCard/IconBadge化、template.tsxの時間表示切れ修正。
-2. フェーズD(ビルド不要部分)に着手: Apple Developer Program登録（ユーザー確認要、年間$99）、App Store Connectでのアプリレコード作成、利用規約・プライバシーポリシー・特定商取引法に基づく表記の実文書化（`src/constants/legalContent.ts`は現状全てダミー文言。特定商取引法の表記は販売事業者名・住所等、**ユーザー本人の実在情報が必要**なので先回りして書かないこと）。
-3. 初回EAS Build実行（`eas-cli`未導入、`eas.json`未作成の状態から）。
-4. フェーズB(実機検証)本体: Apple Calendar権限フロー、Google OAuth実機サインイン、上書き判定、RevenueCat/AdMobの実アカウント接続後の動作確認。
-5. フェーズDの残り: 実機ビルドからのスクリーンショット撮影。
-6. フェーズE: TestFlightベータ→App Store審査提出。
+1. **UI改善3点のコミットをpushするか確認**: `ba47cab`はローカルコミット済み・push未実施のまま、Apple Developer Program登録の話題に移った。次セッション開始時にpush意思を確認すること。
+2. **Apple Developer Program承認待ちの状況確認**: 承認が下りたらApp Store Connectでのアプリレコード作成に進む。承認メールが来ているか、却下されていないかをユーザーに確認。
+3. 利用規約・プライバシーポリシー・特定商取引法に基づく表記の実文書化（`src/constants/legalContent.ts`は現状全てダミー文言。特定商取引法の表記は販売事業者名・住所等、**ユーザー本人の実在情報が必要**なので先回りして書かないこと。Apple Developer Program登録時に入力した氏名・住所を流用できる可能性がある）。承認待ちの間でも並行して着手できる。
+4. 初回EAS Build実行（`eas-cli`未導入、`eas.json`未作成の状態から）。
+5. フェーズB(実機検証)本体: Apple Calendar権限フロー、Google OAuth実機サインイン、上書き判定、RevenueCat/AdMobの実アカウント接続後の動作確認。
+6. フェーズDの残り: 実機ビルドからのスクリーンショット撮影。
+7. フェーズE: TestFlightベータ→App Store審査提出。
 
 ### Gotchas（今回のセッションで時間を使って分かったこと）
 
@@ -117,7 +117,7 @@
 
 ### 今回のセッションで変更したファイル（全てコミット・push済み、詳細は`git show <コミットハッシュ>`参照）
 
-**新規**: `server/gemini-proxy/`一式, `src/utils/scanQuota.ts`, `src/components/ad-placeholder-sizes.ts`, `src/components/ad-placeholder.native.tsx`, `src/constants/purchases.ts`, `src/utils/initAds.ts`/`.native.ts`, `src/utils/purchases.ts`/`.native.ts`, `src/utils/resizeShiftImage.ts`, `src/utils/rewardedAd.ts`/`.native.ts`
+**新規**: `server/gemini-proxy/`一式, `src/utils/scanQuota.ts`, `src/components/ad-placeholder-sizes.ts`, `src/components/ad-placeholder.native.tsx`, `src/constants/purchases.ts`, `src/utils/prepareAds.ts`/`.native.ts`（旧`initAds`、ATT対応時にリネーム）, `src/utils/purchases.ts`/`.native.ts`, `src/utils/resizeShiftImage.ts`, `src/utils/rewardedAd.ts`/`.native.ts`
 
 **主な変更**: `src/app/photo-select.tsx`, `src/app/paywall.tsx`, `src/app/_layout.tsx`, `src/app/(tabs)/payroll.tsx`, `src/app/settings/calendar-providers.tsx`, `src/components/ad-placeholder.tsx`, `src/config/env.ts`, `src/constants/legalContent.ts`, `src/store/useAppStore.ts`, `README.md`, `app.json`, `.env.example`
 

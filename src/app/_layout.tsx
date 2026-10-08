@@ -3,7 +3,6 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
-import { initAds } from '@/utils/initAds';
 import { initPurchases } from '@/utils/purchases';
 
 SplashScreen.preventAutoHideAsync();
@@ -11,8 +10,9 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const colorScheme = useColorScheme();
 
+  // The ad SDK is deliberately not started here: prepareAds() runs from the first ad slot that
+  // becomes visible so the ATT prompt lands in context, and PRO users never start it at all.
   useEffect(() => {
-    initAds();
     initPurchases();
   }, []);
 
