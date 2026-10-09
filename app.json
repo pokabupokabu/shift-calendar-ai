@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "shift-calendar-ai",
+    "name": "ShifToKare",
     "slug": "shift-calendar-ai",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -9,7 +9,10 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
-      "bundleIdentifier": "com.pokabu.shiftcalendarai"
+      "bundleIdentifier": "com.pokabu.shiftcalendarai",
+      "infoPlist": {
+        "CFBundleDisplayName": "シフToカレ"
+      }
     },
     "android": {
       "adaptiveIcon": {

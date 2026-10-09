@@ -31,94 +31,198 @@
 - 変更後は `npm run lint` / `npm run typecheck` / `npm run format` を通す。
 - iPhone専用。実機/シミュレータでの確認ができない場合はその旨を明記する。
 
-## 引き継ぎメモ（2026-10-03 13:49時点、次セッション向け）
+## 引き継ぎメモ（2026-10-10時点、次セッション向け）
 
 ### このプロジェクトの現状
 
-- Expo Router（SDK 57）+ TypeScript製、iPhone専用（Androidは対象外）。シフト表の写真をAIが読み取り、本人のシフトだけを抽出してApple/Googleカレンダーへ登録し、休憩自動控除・深夜/早朝割増を考慮した給与見込み・Pro課金・広告も備えるアプリ。
-- ブランチは`claude/admiring-cerf-egbi9t`。**`origin`と完全に同期済み（`git status`クリーン、`git log origin/..HEAD`も空）、`main`は未マージ。**
-- 最新コミットは`9ae8810`（「Pro決済・広告SDK・画像リサイズ・権限エラー表示・リワード広告を実装」）。
-- サブプロジェクトとして`server/gemini-proxy/`（Cloudflare Workers、Gemini APIキーをクライアントから隠す薄いプロキシ）があり、**デプロイ済み・動作確認済み**: `https://gemini-shift-proxy.shift-calendar-ai.workers.dev`
-- ローカル動作確認はExpo Web。`mcp__Claude_Browser__preview_start`に`{url: "http://localhost:8081"}`を渡す方式（`{name: ...}`は使わない）。**地雷情報は下記「ローカルサーバー・ポートの状態」を必ず読むこと。**
-- 実機/シミュレータでの確認は今回も未実施。**このMacにはXcode本体が無く（Command Line Toolsのみ）`xcrun simctl`が使えないためiOSシミュレータ自体が使用不可**（複数セッション前からの既知の制約、フルインストールにはユーザーのパスワードが必要）。実機検証にはEAS Build必須（後述ロードマップ参照）。
+Expo Router（SDK 57.0.24）+ TypeScript製、**iPhone専用**（Androidは対象外）。シフト表の写真をAIが読み取り、**本人のシフトだけ**を抽出してApple/Googleカレンダーへ**書き込む**アプリ。休憩自動控除・深夜/早朝割増の給与見込み、Pro課金（月300円）、広告も実装済み。
 
-### 全体ロードマップ（ユーザーと合意済み、ストア公開までの流れ）
+- ブランチ `claude/admiring-cerf-egbi9t`。**`git status`クリーン。ただし`origin`より2コミット先行（`ba47cab`・`ff5609a`がpush未実施）**。`main`は未マージ
+- サブプロジェクト `server/gemini-proxy/`（Cloudflare Workers、Gemini APIキーをクライアントから隠すプロキシ）は**デプロイ済み・動作確認済み**。エンドポイントURLは`.env`の`EXPO_PUBLIC_AI_PROXY_URL`、共有シークレットは`EXPO_PUBLIC_AI_PROXY_SECRET`（Worker側は`APP_SHARED_SECRET`）
+- **Apple Developer Program の承認は完了済み**（2026-10-09にユーザー確認）。App Store Connectはまだ未サインイン・アプリレコード未作成
+- ローカル確認はExpo Web。`mcp__Claude_Browser__preview_start`に`{url: "http://localhost:8081"}`を渡す（下記Gotchas参照）
+- **このMacにXcode本体が無く（Command Line Toolsのみ）iOSシミュレータが使用不可**。実機検証にはEAS Build必須
 
-フェーズA(技術方針確定) → フェーズC(残りMVP機能) → UI改善 → **フェーズD(ストア掲載準備・ビルド不要部分) ← 今ここ** → 初回EAS Build → フェーズB(実機検証) + フェーズDの残り(スクショ撮影) → フェーズE(ベータ→審査提出)
+### ✅ アプリ名は「シフToカレ」で確定済み（2026-10-10）
 
-- フェーズA: 完了（Gemini APIキーのプロキシ化、Google OAuthクライアントID確認）
-- フェーズC: ほぼ完了（Pro決済・広告SDK・画像リサイズ・権限エラー表示・リワード広告実装済み）
-- **UI改善: 完了（本セッションでaccount.tsx・calendar-connect.tsx・template.tsxを実装、コミット`ba47cab`、push未実施）**
-- **フェーズD: 着手中。Apple Developer Program登録は本セッションでユーザーが完了させ、現在Apple側の承認待ち**（年間$99、個人/法人どちらで登録したかは未確認。承認が下り次第App Store Connectでのアプリレコード作成に進める）
-- フェーズB・E: 未着手（フェーズBの前提はApple Developer Program承認）
+**「シフToカレ」で確定**。カタカナ「シフ」＋半角英字「To」＋カタカナ「カレ」の混在表記。
 
-### 直前に完了したUI改善3点（コミット`ba47cab`、詳細は`git show ba47cab`）
+**観念の整理（重要）**: 「シフToカレ」は前置詞 `to` が入るため**「シフト表をカレンダーへ移す」という変換・動作**の観念であり、「シフカレ」＝**「シフト勤務用のカレンダー」という物**の観念とは別物。IT分野の `A to B`（PDF to Word、Text to Speech 等）が定型表現として定着している点と、**アプリの中核機能が実際に変換そのもの**である点が裏付け。→ 称呼・外観・観念の**3要素すべて非類似**という整理で進める。
 
-1. [src/app/settings/account.tsx](src/app/settings/account.tsx): 全5セクションをCard+IconBadgeパターンに統一（表示名=青/User、プラン=オレンジ/Star、扶養の壁アラート=紫/TriangleAlert、プロモーションコード=neutral/Tag、データの初期化=赤/Trash2）。
-2. [src/app/settings/calendar-connect.tsx](src/app/settings/calendar-connect.tsx): 中央の空白にCard+大きめIconBadge(CalendarCheck)+説明文、下部に「権限は後からいつでも変更できます」の注記行を追加。Apple=neutralトーン、Google=blueトーンで視覚的に区別。
-3. [src/app/(tabs)/template.tsx](<src/app/(tabs)/template.tsx>)の`premiumRow`/`premiumTimeLabel`: 時間レンジテキストに`flexShrink:1`/`minWidth:0`、ドット・`+25%`バッジ側に`flexShrink:0`を付与し、画面が狭い時にレイアウトが崩れず正しく`...`で省略されるよう修正。375px/390px幅で確認済み。
+**読みは「シフトゥーカレ」寄りに寄せる**（`to` を意識させると称呼も観念も相手から離れる）。検索での取りこぼしはキーワード欄で救済する。
 
-lint/typecheck/format全てクリーンな状態でコミット済み。**pushはまだ行っていない**（ユーザーへの確認待ちのまま次の話題＝Apple Developer Program登録に進んだため）。
+**`app.json`への反映は完了済み**（下記「実装の進捗状況」）。
 
-### ローカルサーバー・ポートの状態（毎回踏む地雷）
+**候補の全棚卸し（アプリ名243案＋キャラ案）はArtifactにまとめてある**: https://claude.ai/code/artifact/512dc115-0803-4348-a78d-8bc01f81a3ff
 
-- ポート**8081**で、複数セッション前から動きっぱなしの古いExpoプロセス（PID 75565、`expo start --web --clear`）が今も生きている。**ここに実データ（田中さんの登録・シフト・カレンダー登録済みイベントなど）が入っている。**
-- 新しいセッションでは毎回「Port 8081 is already in use」という自動エラーメッセージが出るが、**プロセスはkillせず**`preview_start`に`{url: "http://localhost:8081"}`を渡して既存プロセスにそのままブラウザで繋ぐ、という対応で毎回解決する。次セッションでも同じ対応でよい。
-- 稀に「Disconnected from Metro (1006)」という警告がコンソールに出ることがあるが、プロセス自体は生きていることが多く、ページをreloadすれば再接続できる（今回実際に発生し、reloadで解消した）。
-- `localStorage`の`calendarEvents`等を`javascript_exec`で直接書き換えるのは要注意（過去セッションで実データ消失事故あり）。`isPro`フラグのON/OFF切り替えや検証用ワークプレイスの追加/削除程度の軽微な操作に留め、作業後は毎回元の状態（`isPro: false`等）に戻すこと。
+### 「シフToカレ」の調査結果（確定済み）
 
-### 今回のセッションで実装した内容（すべてコミット・push済み）
+| 項目                   | 判定              | 根拠                                                                                                                                                                         |
+| ---------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 商標の登録可能性       | 🟢 障害なし       | **J-PlatPatの称呼類似検索で「シフトカレ」「シフトゥーカレ」のどちらも登録6228395「シフカレ」をヒットさせない**（「シフカレ」入力では正しくヒットするので検索機能は正常動作） |
+| 「シフトカレ」等の登録 | 🟢 全区分ゼロ     | 「シフトカレ」「シフトカレンダ(ー)」「シフToカレ」すべて0件                                                                                                                  |
+| 識別力（3条1項3号）    | 🟢 低リスク       | 「○○カレ」型は類似群11C01で21件が登録・存続（キミカレ、ベビカレ、タソカレ等）                                                                                                |
+| App Store名前重複      | 🟢 0件            | iTunes Search APIで確認                                                                                                                                                      |
+| 混在表記の審査         | 🟢 前例多数       | `シンプルToDoリスト`(1099664597)、`MAPLUSキャラdeナビ`(981352606)、`ドラッグストアmacアプリ` 等。ガイドラインに文字種制限の条文なし                                          |
+| ホーム画面表示         | 🟢 約5.1字        | 半角英字は全角の約0.57字幅。8字制限に余裕                                                                                                                                    |
+| ドメイン・SNS          | 🟢 **全て空き**   | `shiftokare.com` / `.jp` / `.app` / `@shiftokare`                                                                                                                            |
+| **検索での挙動**       | 🟠 **ハンデあり** | 下記参照                                                                                                                                                                     |
 
-**① Gemini APIキーのプロキシ化（コミット`8b19853`）**: README「8. 不明点・リスク」1番目を解消。`server/gemini-proxy/`にCloudflare Workersの透過プロキシを新設し、実際のGemini APIキーはWorker側のシークレットにのみ存在する形にした。クライアントは`EXPO_PUBLIC_AI_PROXY_URL`/`EXPO_PUBLIC_AI_PROXY_SECRET`のみ保持。共有シークレットヘッダー+IPベースの簡易レート制限（30回/時）で乱用を防止。デプロイ・動作確認（curlで401/401/400-from-Google応答を確認）済み。
+**検索のハンデ（承知のうえで進める論点）**: 英字はカタカナに音写されず、**トークン境界として働く**。アプリ名「シフToカレ」の索引トークンは `シフ` / `To` / `カレ` になり、ユーザーが打つ「シフトカレ」は `シフト`+`カレ` に分解される。`シフト` は索引語 `シフ` の上位文字列なので**アプリ名では取りこぼす可能性が高い**。→ **キーワード欄に `シフトカレ` `シフトカレンダー` `シフToカレ` を必ず入れて救済する**（省略不可）。なお**「シフカレ」という4音の文字列はメタデータに入れないこと**（混同惹起の主張材料になる）。
 
-**② スキャン時の勤務先確認導線（コミット`5afdc87`）**: 複数勤務先ユーザーが写真選択時に「どの勤務先として読み取るか」を確認・選択できるダイアログを追加（`useShiftSessionStore`に`scanWorkplaceId`追加）。
+### ✅ 弁理士案件は「省略」で決定（2026-10-10）
 
-**③ 無料プランの利用制限（コミット`dea7df5`）**: 画像シフト読み取りを無料は月4回に制限（`scanQuota.ts`）。給与タブの前月/翌月ボタンは無料プランだとペイウォールへ誘導し当月のみ閲覧可能に。
+**INPIT 知財総合支援窓口（0570-082100）での無料相談は行わない方針で確定。** 理由は3点。
 
-**④ PRO価格表示修正（コミット`9ce80f9`）**: ¥380→¥300の反映漏れを修正。
+1. **観念も非類似と整理できた** — 当初「どちらも『シフトカレンダー』の略で観念同一」を唯一の弱点としていたが、これは誤り。上記「アプリ名」セクションの整理により3要素すべて非類似
+2. **App Store に「シフカレ」そのものを名乗るアプリが2本あり、どちらも放置されている**（下記）。権利者が権利行使していない実測データが得られた
+3. 戦略は **A（侵害確認のみ・出願しない）** で決定済み。出願前提の論点（登録可否・区分・費用）は全て不要になった
 
-**⑤ 扶養の壁アラート（コミット`6394b7c`）**: 103万/106万/130万円の壁までの残り額を、全勤務先合算の暦年収見込みから算出してPRO限定で表示。無料ユーザーにはペイウォール誘導のティーザーカード。
+**出願する場合の参考値**（将来必要になったとき用）: 第9類＋第42類の2区分。印紙代は出願 12,000円＋(8,600円×2区分)＝約29,200円、登録 32,900円×2区分＝65,800円（10年一括）。
 
-**⑥ Pro決済・広告SDK・画像リサイズ・権限エラー表示・リワード広告（コミット`9ae8810`、最大のまとまり）**:
+#### 🔴 名前について今後も絶対に守ること
 
-- **Pro決済**: RevenueCat（`react-native-purchases`）導入。`paywall.tsx`に実際の購入・復元フローを実装。**ただしRevenueCat側のAPIキー（`EXPO_PUBLIC_REVENUECAT_IOS_API_KEY`）・「pro」エンタイトルメント・App Store Connect側のサブスク商品はいずれも未設定のため現状は未稼働**（コードのみ存在、Webでは安全にフォールバック表示することは確認済み）。既存の開発用合言葉（`DEVPRO`/`DEVFREE`、設定→アカウント設定）は引き続き有効。
-- **広告SDK**: `react-native-google-mobile-ads`導入。`AdPlaceholder`をプラットフォーム別ファイル分割（`.tsx`=Web用プレースホルダー、`.native.tsx`=実バナー）。Pro時は非表示、無料時はGoogle公式テストIDで実バナー表示。**本番配信前に実際のAdMobアカウント・ad unit IDへの差し替えが必要**（`app.json`の`iosAppId`も含む）。
-- **リワード広告**: 無料プランが月4回の上限に達した際、`rewardedAd.native.ts`経由で広告視聴するとボーナススキャンを獲得できる（月5回まで、`MAX_BONUS_SCANS_PER_MONTH`）。`scanQuota.ts`に`bonusScans`追加、ストアをv10→v12にマイグレーション。
-- **画像リサイズ**: `resizeShiftImage.ts`で長辺2000px超の画像のみ送信前に`expo-image-manipulator`で縮小。
-- **権限エラー表示**: 写真選択画面でカメラ/ライブラリへのアクセス拒否時にAlert表示を追加。
+| ルール                                 | 理由                                                                       |
+| -------------------------------------- | -------------------------------------------------------------------------- |
+| **`®` を一切使わない**                 | 未登録。虚偽表示で罰則（商標法80条）                                       |
+| **「シフカレ」をメタデータに入れない** | アプリ名・サブタイトル・キーワード欄のいずれにも。混同惹起の主張材料になる |
+| **説明文でも「シフカレ」と自称しない** | App Storeの既存2本が危ういのはまさにここ。同じ轍を踏まない                 |
+| **読みは「シフトゥーカレ」寄り**       | `to` を意識させると称呼・観念の両方が相手から離れる                        |
 
-**⑦ 対応カレンダー拡充の市場調査（コード変更は案内文のみ、コミット`9ae8810`に含む）**: サブエージェント多数（TimeTree・LINE・Jorte・Lifebear・caho・Potluck等14候補）を並列投入し、ユーザー層親和性と外部書き込みAPI有無を調査。**結論: Apple/Google以外に直接連携できる候補は無かった**（Outlook/Microsoft 365のみ技術的には可能だがターゲット層が合わず対象外）。代わりに、Fantastical・Lifebear等はGoogle Calendar経由の間接反映が公式に可能と判明したため、`calendar-providers.tsx`とFAQ（`legalContent.ts`）に案内文を追加するだけで対応完了とした。
+#### App Store の実測データ（2026-10-10、iTunes Search API）
 
-**⑧ Google OAuthクライアントIDの状況確認**: README記載「未発行」は誤りで、**既にGoogle Cloud Console（プロジェクト`shift-calendar-ai`、クライアント名`shift-calendar-ai-ios`）で発行済み**と判明。ただし公開ステータスが「テスト中」のままで、登録済みテストユーザー（`pensuke1234@gmail.com`、ユーザー確認済み・本人のテスト用アカウント）以外はサインインできない。本番公開（Google審査が必要になる可能性あり）は、フェーズB（実機検証）が終わってから着手する方針で合意済み。
+**「シフカレ」を名乗るアプリが恵比寿ソフト以外から2本、稼働中:**
+
+| アプリ名                              | 開発者                      | trackId    | Bundle ID                   | リリース   | 最終更新            |
+| ------------------------------------- | --------------------------- | ---------- | --------------------------- | ---------- | ------------------- |
+| **シフカレ**                          | Junichiro Tokiyoshi（個人） | 6790414829 | `jp.alfabeat.KinmuCalendar` | 2026/07/27 | 2026/09/12 (v1.2.2) |
+| **シフカレ - シフト・給与管理アプリ** | kato mizuki（個人）         | 6762038194 | `com.kato.shifukare`        | 2026/04/14 | 2026/04/28 (v1.1.1) |
+
+どちらも説明文冒頭で「シフカレ」を商品名として正面から使用。カテゴリも恵比寿ソフトのアプリと同一（仕事効率化／ライフスタイル）。
+
+**権利者側**: 恵比寿ソフト「シフト勤務カレンダー」(trackId 381672587) は**アプリ名に「シフカレ」を使っておらず**、説明文で「シフト勤務カレンダー（シフカレ）は…」と略称として自称しているだけ。レビュー46,541件、2026/07/26更新で現役。
+
+**注意**: 放置は権利の放棄ではない。権利行使はいつ始めてもよいので「今まで何もなかった」は将来の保証にならない。また権利者が説明文で使用しているため**不使用取消審判は使えない**。
+
+### 商標の既知情報（確認済み・J-PlatPat実検索ベース）
+
+| 商標         | 登録番号 | 権利者                       | 区分      | 状態                                                                                                                                                                                                                                                                                                                                               |
+| ------------ | -------- | ---------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **シフカレ** | 6228395  | 恵比寿ソフト（株）           | 9・42     | **存続-登録-継続／標準文字**。出願 商願2019-090613 (2019/06/28)、登録 2020/02/20、**存続期間満了日 2030/02/20・最終納付年分 10年**（＝10年一括済み。分割納付による早期失効の可能性は消えた）。2020/03/03「登録証」以降イベントなし、無効審判・異議申立てなし。指定商品が本アプリと完全重複（11C01・24E02・42X11）。同社の保有商標は**この1件のみ** |
+| シフトボード | 5678759  | （株）リクルート             | 9・35・42 | 存続                                                                                                                                                                                                                                                                                                                                               |
+| ナスカレ     | 5646177  | （株）クイック               | 9・35     | 存続                                                                                                                                                                                                                                                                                                                                               |
+| シフトル     | 6194509  | （株）イズミコンサルティング | 9・42     | 存続。**「シフとる」系が全滅した原因**                                                                                                                                                                                                                                                                                                             |
+| シフトン     | —        | —                            | —         | **片仮名「シフトン」は全区分0件**。前セッションで「パルコ名義の登録6840389がある」と報告したが、**J-PlatPat実検索では見当たらず、誤りだった可能性が高い**。キャラ名として使える見込み                                                                                                                                                              |
+| SHIFTER      | —        | —                            | —         | 単独の「SHIFTER」は11C01に見当たらず（デジタルキューブ名義も未確認）                                                                                                                                                                                                                                                                               |
+
+**登録6228395の固定アドレス**: https://www.j-platpat.inpit.go.jp/c1801/TR/JP-2019-090613/40/ja
+
+**指定商品・役務のうち本アプリに直撃する部分（原文）**:
+
+- 第9類: コンピュータソフトウェア用アプリケーション（電気通信回線を通じてダウンロードにより販売されるもの）／電子計算機用プログラム／電子応用機械器具 → **App Store配信のアプリ本体**
+- 第42類: オンラインによるアプリケーションソフトウェアの提供（ＳａａＳ）／クラウドコンピューティング／電子計算機用プログラムの提供／ウェブサーバーの貸与 → **`server/gemini-proxy/` の Cloudflare Workers**
+
+→ **商品・役務の類否では争えない。争点は商標の類否のみ**（そして3要素すべて非類似と整理済み）。
+
+### 死亡した名前の系統（再提案しないこと）
+
+| 系統                               | 理由                                                                                                                    |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| **シフとる / シフトル**            | 登録商標6194509＋App Store「シフトル」現役＋shiftoru.com先行サービスの三方向衝突。「シフとる」で検索するとシフトルが1位 |
+| **X + シフカレ**（らくシフカレ等） | 登録商標6228395「シフカレ」を部分文字列として含む。App Storeで0件でも商標では死んでいる                                 |
+| シフっと                           | 称呼が「シフト」に近すぎ、指名検索が競合に流出                                                                          |
+| シフカメ                           | 「シフトカメラ」が既存                                                                                                  |
+| シフトイン                         | ShiftInboxと前方一致                                                                                                    |
+| シフトスキャン                     | ShiftScan（米国）と称呼完全一致                                                                                         |
+| シフトノート                       | 「シフトノート - シフト管理」が既存                                                                                     |
+| シフトバンク                       | ソフトバンクと酷似                                                                                                      |
+| カレンダー便 / シフト便            | 「便」が排便と読まれる（便カレンダー、PooPoo便秘カレンダー が既存）                                                     |
+| シフトボード / 簡単シフト          | 既存アプリと完全衝突                                                                                                    |
+
+### 実装の進捗状況
+
+| サブタスク                                                                                                                   | コード | ローカル検証                                      | コミット      | push |
+| ---------------------------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------- | ------------- | ---- |
+| UI改善3点（account/calendar-connect/template）                                                                               | ✅     | ✅ Expo Web                                       | ✅ `ba47cab`  | ❌   |
+| ペイウォールの特商法12条の6対応                                                                                              | ✅     | ✅ Expo Web                                       | ✅ `ff5609a`  | ❌   |
+| ATT実装（prepareAds / use-ad-request-state / ad-placeholder）                                                                | ✅     | ⚠️ **Webスタブのみ。ATT実挙動は未検証**           | ✅ `ff5609a`  | ❌   |
+| 法務文書の実文書化（利用規約・プライバシーポリシー・特商法）                                                                 | ✅     | ✅ Expo Web                                       | ✅ `ff5609a`  | ❌   |
+| `app.json`（ATTプラグイン・skAdNetwork 50件・delayAppMeasurementInit）                                                       | ✅     | —                                                 | ✅ `ff5609a`  | ❌   |
+| **アプリ名「シフToカレ」の`app.json`反映**（`expo.name: "ShifToKare"` ＋ `ios.infoPlist.CFBundleDisplayName: "シフToカレ"`） | ✅     | ✅ `npx expo config --type introspect` で検証済み | ❌ 未コミット | ❌   |
+
+**`ios.privacyManifests` は意図的に未設定**。Googleが公式のトラッキングドメイン一覧を公開しておらず、`NSPrivacyTracking: true` かつドメイン空はリジェクトの既知トリガーのため、**初回EAS Build後にSDK同梱の`PrivacyInfo.xcprivacy`を確認してから設定する**。
+
+### 🔴 製品バグ: 扶養の壁アラートが全滅している（未修正）
+
+[src/constants/dependencyWalls.ts](src/constants/dependencyWalls.ts) が **103万 / 106万 / 130万** をハードコードしているが、**コアターゲット（19〜22歳の昼間部大学生）には3つとも当てはまらない**。国税庁・日本年金機構の一次情報で確定済み。
+
+| 実装値  | 判定                             | 正しい値                                                                       |
+| ------- | -------------------------------- | ------------------------------------------------------------------------------ |
+| 103万円 | 🔴 **廃止済み**                  | 基礎控除95万＋給与所得控除65万＝**160万円**（令和7年分〜）                     |
+| 106万円 | 🔴 **昼間部の学生は対象外**      | 社会保険適用拡大の要件に「学生でないこと」。2026年10月に賃金要件自体が撤廃予定 |
+| 130万円 | 🔴 **19〜22歳は150万に引き上げ** | 日本年金機構、2025年10月1日〜                                                  |
+
+**昼間部の大学生（19〜22歳）に効く壁**:
+
+- **150万円** — 社会保険の扶養から外れる／親の特定親族特別控除63万が満額から減り始める（合計所得85万＝給与収入150万）
+- **160万円** — 本人に所得税がかかり始める
+- **188万円（令和7年分）／197万円（令和8年分以後）** — 親の控除が完全にゼロ（国税庁 No.1177の原文に両方明記）
+
+**設計上の未決事項**: 年齢（19歳以上23歳未満か）・昼間部の学生か・年分、の3つで壁が変わるため、**年齢を聞かないと正しく出せない**。現在のアプリは年齢を一切聞いていない。出し分けの設計は未着手。
+
+※ なお**「178万円」は国民民主党の提案額で成立していない**。採用しないこと。
 
 ### 環境変数の状態
 
-`.env`は`.gitignore`済みで安全。設定済みキー: `EXPO_PUBLIC_AI_PROVIDER` / `EXPO_PUBLIC_GEMINI_API_KEY`(未使用になったが残存) / `EXPO_PUBLIC_GEMINI_MODEL` / `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` / `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`(未使用のまま) / `EXPO_PUBLIC_AI_PROXY_URL` / `EXPO_PUBLIC_AI_PROXY_SECRET`。
+`.env`は`.gitignore`済み。**実際の値はこのファイルに書かない方針**。
 
-**未設定（`.env.example`には項目だけ存在）**: `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY` — RevenueCatアカウント作成後に設定が必要。
+| 変数                                     | ローカル`.env` | Cloudflare Worker           | 備考                                                                              |
+| ---------------------------------------- | -------------- | --------------------------- | --------------------------------------------------------------------------------- |
+| `EXPO_PUBLIC_AI_PROVIDER`                | ✅             | —                           |                                                                                   |
+| `EXPO_PUBLIC_GEMINI_API_KEY`             | ✅             | —                           | プロキシ化により**未使用**だが残存                                                |
+| `EXPO_PUBLIC_GEMINI_MODEL`               | ✅             | —                           |                                                                                   |
+| `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`       | ✅             | —                           | 発行済み。公開ステータスは「テスト中」のまま                                      |
+| `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`       | ✅             | —                           | 未使用                                                                            |
+| `EXPO_PUBLIC_AI_PROXY_URL`               | ✅             | —                           |                                                                                   |
+| `EXPO_PUBLIC_AI_PROXY_SECRET`            | ✅             | ✅ `APP_SHARED_SECRET`      |                                                                                   |
+| `GEMINI_API_KEY`（実キー）               | ❌             | ✅ Worker側シークレットのみ | 設計どおり                                                                        |
+| **`EXPO_PUBLIC_REVENUECAT_IOS_API_KEY`** | ❌ **未設定**  | —                           | `.env.example`に項目だけ存在。**RevenueCatアカウント未作成のためPro決済は未稼働** |
 
-### 次にやること（優先順）
+### 次のアクション（順番どおり）
 
-1. **UI改善3点のコミットをpushするか確認**: `ba47cab`はローカルコミット済み・push未実施のまま、Apple Developer Program登録の話題に移った。次セッション開始時にpush意思を確認すること。
-2. **Apple Developer Program承認待ちの状況確認**: 承認が下りたらApp Store Connectでのアプリレコード作成に進む。承認メールが来ているか、却下されていないかをユーザーに確認。
-3. 利用規約・プライバシーポリシー・特定商取引法に基づく表記の実文書化（`src/constants/legalContent.ts`は現状全てダミー文言。特定商取引法の表記は販売事業者名・住所等、**ユーザー本人の実在情報が必要**なので先回りして書かないこと。Apple Developer Program登録時に入力した氏名・住所を流用できる可能性がある）。承認待ちの間でも並行して着手できる。
-4. 初回EAS Build実行（`eas-cli`未導入、`eas.json`未作成の状態から）。
-5. フェーズB(実機検証)本体: Apple Calendar権限フロー、Google OAuth実機サインイン、上書き判定、RevenueCat/AdMobの実アカウント接続後の動作確認。
-6. フェーズDの残り: 実機ビルドからのスクリーンショット撮影。
-7. フェーズE: TestFlightベータ→App Store審査提出。
+1. **`shiftokare.com` / `shiftokare.jp` / `@shiftokare` を押さえる**（全て空き。名前が確定したので即取得して良い）
+2. **アプリ専用メールアドレスの取得** — 特商法の省略ルートは「開示請求の受付窓口」が成立条件。[src/constants/legalContent.ts](src/constants/legalContent.ts) の3箇所（23行目・29行目・106行目）が「（準備中）」のままで、**ここが空だと法務文書が完成しない**
+3. **扶養の壁の修正**（下記バグ）。年齢の出し分け設計から
+4. **iOS権限文言の日本語化（今セッションで発見・未着手）** — `NSPhotoLibraryUsageDescription` / `NSCameraUsageDescription` / `NSCalendarsUsageDescription` / `NSCalendarsFullAccessUsageDescription` がExpo自動生成の英語文（`Allow $(PRODUCT_NAME) to access your ...`）のまま。**日本語ユーザーに英語ダイアログが出る**うえ、目的の説明が無いため審査ガイドライン5.1.1のリジェクト要因。`ios.infoPlist`に日本語で上書きする。カレンダー権限は本アプリの中核なので「シフトを登録するため」と目的を明記すること
+5. **Gemini APIの有料課金を有効化**（Google Cloud Console、支払い情報入力のため代行不可）。これが済むまでプライバシーポリシーの「解析のためにのみ利用」の裏が取れていない
+6. **App Store Connect作業** — トレーダーステータス申告（EU配信を外しても申告自体は必須）、アプリレコード作成、**配信地域からEU27か国を除外**、サブスク商品作成、App Privacy申告（Device ID / Advertising Data を "Used to Track You"）、プライバシーポリシーURL登録
+7. **プライバシーポリシーをCloudflare Pagesで公開**してURLを取得（App Store Connectの必須項目）
+8. **AdMob本番アカウント作成** → `app.json`の`iosAppId`（現在Googleのテスト値`ca-app-pub-3940256099942544~1458002511`）とad unit IDを差し替え
+9. **EAS Build環境の構築**（`eas-cli`未導入、`eas.json`未作成）→ 初回ビルド
+10. **初回ビルド直後**: `Pods/Google-Mobile-Ads-SDK/PrivacyInfo.xcprivacy` の `NSPrivacyTracking` を確認 → `ios.privacyManifests` を設定
+11. **実機検証**: ATTダイアログ、Apple Calendar権限、Google OAuth、上書き判定、RevenueCat/AdMob実接続
+12. スクリーンショット撮影 → TestFlight → 審査提出
 
-### Gotchas（今回のセッションで時間を使って分かったこと）
+**未決の識別子**: `slug`（`shift-calendar-ai`）・`scheme`（`shiftcalendarai`）・`ios.bundleIdentifier`（`com.pokabu.shiftcalendarai`）は**旧名のまま意図的に残している**。`bundleIdentifier`と`scheme`は`EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`（既発行のGoogle OAuthクライアント）に紐づくため、変えると**OAuthクライアントの再発行が必要**。`slug`はEASプロジェクト未作成なので今なら無害に変更可能。ユーザー判断待ち。
 
-- **サブエージェントが「結果が揃い次第報告する」という計画の説明だけを返して、実際には何も調査せず終了することがある**（今回の「20代女性向け予定共有アプリ発掘調査」エージェントで発生）。`SendMessage`で同じエージェントに「計画ではなく実際に調査を実行して」と再指示すれば立て直せる。背景タスクの結果は鵜呑みにせず、「実際に情報源URLが列挙されているか」等で実質的な中身の有無を確認すること。
-- **自分で挙げた調査対象が実在しないことがある**（「メルカリグループのPotluck」という候補を記憶頼りで挙げたが、調査の結果、実在しない組み合わせと判明。ユーザーには正直に訂正を伝えた）。確信が持てない固有名詞は、リサーチ対象として挙げる前にその存在自体を疑うこと。
-- Google Cloud Consoleは、ブラウザの`preview_start`で開いたタブがユーザーの実アカウントにログイン済みの状態で繋がる（Cloudflareのwrangler loginとは違い、ユーザーに別途ログインしてもらう必要がなかった）。
-- RevenueCatの`Purchases.configure()`は、iOS単体アプリでは`store`パラメータを**渡さない**（`store`はAndroidの複数ストア選択用で、省略時はApp Storeが暗黙のデフォルトになる。`store: 'APP_STORE'`を渡すと型エラーになる）。
-- `react-native-google-mobile-ads`・`react-native-purchases`はいずれもWeb実装が無いため、`.tsx`（Web用no-op/フォールバック）と`.native.tsx`（実装）にファイルを分割するパターンで対応した（Metroの拡張子解決に依存、tsconfigの`moduleSuffixes`相当の設定は不要だった）。
+### Gotchas
 
-### 今回のセッションで変更したファイル（全てコミット・push済み、詳細は`git show <コミットハッシュ>`参照）
+- **ポート8081の既存Expoプロセス（PID 75565）をkillしないこと。** 新セッションで毎回「Port 8081 is already in use」が出るが、`preview_start`に`{url: "http://localhost:8081"}`を渡して既存プロセスに繋ぐのが正解。※ただし**Claudeデスクトップアプリのアップデート時にブラウザペインのlocalStorageが初期化され、検証用テストデータは消失済み**。ディスク上にも復旧可能なコピーは無い。ブラウザ検証の前にチュートリアル→名前入力→勤務先設定でテストデータを作り直す必要がある（5分程度）
+- **Expoの実装バグ（実証済み）**: `expo.name`に日本語を入れると`sanitizedName`が日本語を全削除し、Xcodeの`PRODUCT_NAME`が壊れる。`"シフToカレ"` → `PRODUCT_NAME = "To"`、`"シフトカレ"` → `"app"`。**対処**: `expo.name`はASCII（例 `"ShifToKare"`）にし、`ios.infoPlist.CFBundleDisplayName`に`"シフToカレ"`を明示する。`ios.infoPlist`に明示すると`expo.name`による上書きが効かなくなる（警告が1本出るだけ） **→ 2026-10-10に適用済み**。`npx expo config --type introspect` で `CFBundleDisplayName: 'シフToカレ'` / `CFBundleName: '$(PRODUCT_NAME)'`（PRODUCT_NAMEは`ShifToKare`）を確認。出る警告は次の1本のみで無害: `» ios: name: "ios.infoPlist.CFBundleDisplayName" is set in the config. Ignoring abstract property "name": ShifToKare`
+- **App Storeは漢字・ひらがな・カタカナを別キーワードとして扱う**（「オタクカメラ」はヒットするが「おたくカメラ」はヒットしない）。キーワード欄に表記ゆれを全部詰めること
+- **検索に効くのは160字だけ**（アプリ名30＋サブタイトル30＋キーワード欄100）。**説明文4,000字は検索に1文字も効かない**。キーワード欄はカンマ区切り・スペースなし・アプリ名/サブタイトル/カテゴリと重複禁止・複数形不要（すべてApple公式）
+- **アプリ名・サブタイトルに`Google`/`Apple`を入れるのは審査違反**（4.1 / 5.2.1）。サブタイトルでの言及もApple公式の許可文言が確認できておらず、競合22本中0本しかやっていない。**説明文の本文でのみ連携先を書くこと**（説明文は検索に効かないのでASO上の損失ゼロ）
+- **キーワード/アプリ名の変更には毎回「新ビルド＋審査」が必要**（プロモーションテキスト170字だけが審査なしで変更可）。初回設計に時間をかける価値が高い
+- **iTunes Search APIはApp Store本体の検索エンジンとは別物**。順位の絶対値は鵜呑みにしないこと。ただし「どの語でインデックスされているか」の検証には有効
+- **キーワード欄（非表示100字）は外から見えない**ので、他社アプリの検索ヒット理由を特定する際の交絡要因になる。「PayPayがペイペイでヒットする」のは音写ではなくキーワード欄の可能性が高い（この誤認で一度結論を誤った）
+- **サブエージェントの報告は鵜呑みにしない。** 今セッションで複数回、エージェント間で結論が矛盾した（「シフとるの棚は無人」vs「シフトルが現役稼働」等）。**ID・登録番号・日付まで特定された具体的証拠がある側を採る**。また「見つからなかった」は不在証明にならない
+- **J-PlatPatはJavaScript描画のSPAでWebFetchでは取れない**が、**ブラウザでレンダリングすれば検索を実行できる**（今セッションで成功）。商標の最終確認はこの方法で
+- **候補名はApp Store検索が0件でも商標では死んでいることがある**（「らくシフカレ」が実例）。**既知の登録商標を部分文字列として含まないかを必ず確認する**
 
-**新規**: `server/gemini-proxy/`一式, `src/utils/scanQuota.ts`, `src/components/ad-placeholder-sizes.ts`, `src/components/ad-placeholder.native.tsx`, `src/constants/purchases.ts`, `src/utils/prepareAds.ts`/`.native.ts`（旧`initAds`、ATT対応時にリネーム）, `src/utils/purchases.ts`/`.native.ts`, `src/utils/resizeShiftImage.ts`, `src/utils/rewardedAd.ts`/`.native.ts`
+### 今セッションで変更したファイル
 
-**主な変更**: `src/app/photo-select.tsx`, `src/app/paywall.tsx`, `src/app/_layout.tsx`, `src/app/(tabs)/payroll.tsx`, `src/app/settings/calendar-providers.tsx`, `src/components/ad-placeholder.tsx`, `src/config/env.ts`, `src/constants/legalContent.ts`, `src/store/useAppStore.ts`, `README.md`, `app.json`, `.env.example`
+**新規**: `src/utils/prepareAds.ts`, `src/utils/prepareAds.native.ts`, `src/hooks/use-ad-request-state.ts`
+**削除**: `src/utils/initAds.ts`, `src/utils/initAds.native.ts`
+**変更**: `app.json`, `package.json`, `package-lock.json`, `src/app/_layout.tsx`, `src/app/paywall.tsx`, `src/components/ad-placeholder.native.tsx`, `src/constants/legalContent.ts`, `src/utils/rewardedAd.native.ts`, `README.md`, `CLAUDE.md`
 
-`npx tsc --noEmit` / `npm run lint` / `npm run format`は全てクリーンな状態（UI改善3点は未着手なのでこのクリーン状態を維持したまま次セッションを開始できる）。
+`npm run lint` / `npx tsc --noEmit` / `npm run format` は全てクリーン。
