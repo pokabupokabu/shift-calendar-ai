@@ -10,14 +10,25 @@ import type { ShiftImage } from '@/services/ai';
  */
 interface ShiftSessionState {
   images: ShiftImage[];
+  /** Which workplace this scan run is for, chosen on 写真選択 (defaults to the active workplace there). */
+  scanWorkplaceId: string;
   analysisResult: ShiftAnalysisResult | null;
   analysisError: string | null;
   shifts: Shift[];
+  /** Soft-deleted shift ids (section: 登録内容の確認 - "消す"+"元に戻す" instead of a select-to-include list). */
+  removedShiftIds: string[];
 
   setImages: (images: ShiftImage[]) => void;
-  setAnalysisResult: (result: ShiftAnalysisResult) => void;
+  setScanWorkplaceId: (workplaceId: string) => void;
+  setAnalysisResult: (result: ShiftAnalysisResult, workplaceId: string) => void;
   setAnalysisError: (message: string) => void;
   updateShift: (id: string, patch: Partial<Shift>) => void;
+  addShift: (
+    input: Pick<Shift, 'date' | 'startTime' | 'endTime' | 'shiftType' | 'isOvernight'>,
+    workplaceId: string,
+  ) => void;
+  removeShift: (id: string) => void;
+  restoreAllShifts: () => void;
   reset: () => void;
 }
 
@@ -29,18 +40,25 @@ export function createLocalShiftId(): string {
 
 export const useShiftSessionStore = create<ShiftSessionState>((set) => ({
   images: [],
+  scanWorkplaceId: '',
   analysisResult: null,
   analysisError: null,
   shifts: [],
+  removedShiftIds: [],
 
-  setImages: (images) => set({ images, analysisResult: null, analysisError: null, shifts: [] }),
+  setImages: (images) =>
+    set({ images, analysisResult: null, analysisError: null, shifts: [], removedShiftIds: [] }),
 
-  setAnalysisResult: (result) =>
+  setScanWorkplaceId: (workplaceId) => set({ scanWorkplaceId: workplaceId }),
+
+  setAnalysisResult: (result, workplaceId) =>
     set({
       analysisResult: result,
       analysisError: null,
+      removedShiftIds: [],
       shifts: result.shifts.map((raw) => ({
         id: createLocalShiftId(),
+        workplaceId,
         date: raw.date,
         startTime: raw.startTime,
         endTime: raw.endTime,
@@ -60,5 +78,31 @@ export const useShiftSessionStore = create<ShiftSessionState>((set) => ({
       ),
     })),
 
-  reset: () => set({ images: [], analysisResult: null, analysisError: null, shifts: [] }),
+  addShift: (input, workplaceId) =>
+    set((state) => ({
+      shifts: [
+        ...state.shifts,
+        {
+          id: createLocalShiftId(),
+          workplaceId,
+          ...input,
+          confidence: 1,
+          source: 'manual' as const,
+        },
+      ],
+    })),
+
+  removeShift: (id) => set((state) => ({ removedShiftIds: [...state.removedShiftIds, id] })),
+
+  restoreAllShifts: () => set({ removedShiftIds: [] }),
+
+  reset: () =>
+    set({
+      images: [],
+      scanWorkplaceId: '',
+      analysisResult: null,
+      analysisError: null,
+      shifts: [],
+      removedShiftIds: [],
+    }),
 }));
