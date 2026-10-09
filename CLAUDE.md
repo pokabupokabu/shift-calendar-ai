@@ -37,7 +37,9 @@
 
 Expo Router（SDK 57.0.24）+ TypeScript製、**iPhone専用**（Androidは対象外）。シフト表の写真をAIが読み取り、**本人のシフトだけ**を抽出してApple/Googleカレンダーへ**書き込む**アプリ。休憩自動控除・深夜/早朝割増の給与見込み、Pro課金（月300円）、広告も実装済み。
 
-- ブランチ `claude/admiring-cerf-egbi9t`。**`git status`クリーン。ただし`origin`より2コミット先行（`ba47cab`・`ff5609a`がpush未実施）**。`main`は未マージ
+- ブランチ `claude/admiring-cerf-egbi9t`。**2026-10-10に PR #1 を `main` へマージ済み**（マージコミット `e14fb5d`）。`main` = ブランチ = `origin` で全て同期しており、**未コミット・未プッシュの作業はゼロ**。
+  - **以降は機能単位でブランチを切ること。** `main` から `fix/dependency-walls` のような内容のわかる名前で分岐し、PRを出してマージする。`claude/admiring-cerf-egbi9t` は自動生成名で意味を持たないうえ、1本に全部積むと PR #1 のようにタイトルと中身が乖離する
+  - PR #1: https://github.com/pokabupokabu/shift-calendar-ai/pull/1 （17コミット・MERGED）
 - サブプロジェクト `server/gemini-proxy/`（Cloudflare Workers、Gemini APIキーをクライアントから隠すプロキシ）は**デプロイ済み・動作確認済み**。エンドポイントURLは`.env`の`EXPO_PUBLIC_AI_PROXY_URL`、共有シークレットは`EXPO_PUBLIC_AI_PROXY_SECRET`（Worker側は`APP_SHARED_SECRET`）
 - **Apple Developer Program の承認は完了済み**（2026-10-09にユーザー確認）。App Store Connectはまだ未サインイン・アプリレコード未作成
 - ローカル確認はExpo Web。`mcp__Claude_Browser__preview_start`に`{url: "http://localhost:8081"}`を渡す（下記Gotchas参照）
@@ -141,14 +143,14 @@ Expo Router（SDK 57.0.24）+ TypeScript製、**iPhone専用**（Androidは対�
 
 ### 実装の進捗状況
 
-| サブタスク                                                                                                                   | コード | ローカル検証                                      | コミット      | push |
-| ---------------------------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------- | ------------- | ---- |
-| UI改善3点（account/calendar-connect/template）                                                                               | ✅     | ✅ Expo Web                                       | ✅ `ba47cab`  | ❌   |
-| ペイウォールの特商法12条の6対応                                                                                              | ✅     | ✅ Expo Web                                       | ✅ `ff5609a`  | ❌   |
-| ATT実装（prepareAds / use-ad-request-state / ad-placeholder）                                                                | ✅     | ⚠️ **Webスタブのみ。ATT実挙動は未検証**           | ✅ `ff5609a`  | ❌   |
-| 法務文書の実文書化（利用規約・プライバシーポリシー・特商法）                                                                 | ✅     | ✅ Expo Web                                       | ✅ `ff5609a`  | ❌   |
-| `app.json`（ATTプラグイン・skAdNetwork 50件・delayAppMeasurementInit）                                                       | ✅     | —                                                 | ✅ `ff5609a`  | ❌   |
-| **アプリ名「シフToカレ」の`app.json`反映**（`expo.name: "ShifToKare"` ＋ `ios.infoPlist.CFBundleDisplayName: "シフToカレ"`） | ✅     | ✅ `npx expo config --type introspect` で検証済み | ❌ 未コミット | ❌   |
+| サブタスク                                                                                                                   | コード | ローカル検証                                      | コミット     | push |
+| ---------------------------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------- | ------------ | ---- |
+| UI改善3点（account/calendar-connect/template）                                                                               | ✅     | ✅ Expo Web                                       | ✅ `ba47cab` | ✅   |
+| ペイウォールの特商法12条の6対応                                                                                              | ✅     | ✅ Expo Web                                       | ✅ `ff5609a` | ✅   |
+| ATT実装（prepareAds / use-ad-request-state / ad-placeholder）                                                                | ✅     | ⚠️ **Webスタブのみ。ATT実挙動は未検証**           | ✅ `ff5609a` | ✅   |
+| 法務文書の実文書化（利用規約・プライバシーポリシー・特商法）                                                                 | ✅     | ✅ Expo Web                                       | ✅ `ff5609a` | ✅   |
+| `app.json`（ATTプラグイン・skAdNetwork 50件・delayAppMeasurementInit）                                                       | ✅     | —                                                 | ✅ `ff5609a` | ✅   |
+| **アプリ名「シフToカレ」の`app.json`反映**（`expo.name: "ShifToKare"` ＋ `ios.infoPlist.CFBundleDisplayName: "シフToカレ"`） | ✅     | ✅ `npx expo config --type introspect` で検証済み | ✅ `20c1699` | ✅   |
 
 **`ios.privacyManifests` は意図的に未設定**。Googleが公式のトラッキングドメイン一覧を公開しておらず、`NSPrivacyTracking: true` かつドメイン空はリジェクトの既知トリガーのため、**初回EAS Build後にSDK同梱の`PrivacyInfo.xcprivacy`を確認してから設定する**。
 
