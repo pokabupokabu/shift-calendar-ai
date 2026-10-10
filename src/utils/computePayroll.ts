@@ -229,7 +229,7 @@ export function computeMonthlyPayroll(
 
 /**
  * Total earnings across all workplaces for every registered event in the given calendar
- * year (103万/106万/130万円 are all yearly thresholds). Only counts events already on the
+ * year (年収の壁はすべて暦年の合計で判定される)。Only counts events already on the
  * calendar, so a year that isn't fully scanned yet understates the eventual total. Events
  * whose workplaceId no longer matches any workplace are skipped, same as the monthly variant.
  */

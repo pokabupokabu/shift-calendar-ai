@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Clock,
   Lock,
+  SlidersHorizontal,
   TriangleAlert,
   Wallet,
 } from 'lucide-react-native';
@@ -26,7 +27,7 @@ import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { BottomTabInset, IconSize, Radius, Spacing } from '@/constants/theme';
-import { DEPENDENCY_WALLS } from '@/constants/dependencyWalls';
+import { resolveDependencyWalls } from '@/constants/dependencyWalls';
 import { useIconBadgeColors } from '@/hooks/use-icon-badge-colors';
 import { useMonthNavigation } from '@/hooks/use-month-navigation';
 import { useTheme } from '@/hooks/use-theme';
@@ -70,6 +71,8 @@ export default function PayrollTab() {
   const dependencyAlertEnabled = useAppStore(
     (state) => state.user?.settings.dependencyAlertEnabled ?? true,
   );
+  const dependencyBirthYear = useAppStore((state) => state.user?.settings.birthYear);
+  const dependencyIsDaytimeStudent = useAppStore((state) => state.user?.settings.isDaytimeStudent);
   const { month, goToPrevMonth, goToNextMonth, label } = useMonthNavigation();
   // 無料プランは当月のみ閲覧可能。ボタンは残しつつ、タップ時にペイウォールへ誘導する。
   const handlePrevMonth = () => (isPro ? goToPrevMonth() : router.push('/paywall'));
@@ -98,6 +101,18 @@ export default function PayrollTab() {
   const yearlyIncome = useMemo(
     () => computeYearlyIncome(calendarEvents, currentYear, workplaces),
     [calendarEvents, currentYear, workplaces],
+  );
+
+  // 年収の壁は年齢（12/31時点）と年分で変わるため、設定値から組み立てる。
+  // 生まれ年が未設定のときは一般的な目安にフォールバックし、設定を促す導線を出す。
+  const dependencyWallSet = useMemo(
+    () =>
+      resolveDependencyWalls({
+        year: currentYear,
+        birthYear: dependencyBirthYear,
+        isDaytimeStudent: dependencyIsDaytimeStudent,
+      }),
+    [currentYear, dependencyBirthYear, dependencyIsDaytimeStudent],
   );
 
   const shiftTypeOptions = useMemo(
@@ -286,23 +301,51 @@ export default function PayrollTab() {
               </ThemedText>
             </View>
 
-            {DEPENDENCY_WALLS.map((wall) => {
+            {dependencyWallSet.isGeneric ? (
+              <Pressable
+                onPress={() => router.push('/settings/account')}
+                style={[styles.wallSetupRow, { backgroundColor: theme.backgroundSelected }]}
+              >
+                <SlidersHorizontal size={IconSize.small} color={theme.orange} />
+                <ThemedText type="caption1" themeColor="textSecondary" style={styles.wallSetupText}>
+                  一般的な目安を表示しています。生まれ年を設定すると、年齢に合わせた目安に切り替わります（19〜22歳は基準が変わります）。
+                </ThemedText>
+                <ChevronRight size={IconSize.small} color={theme.textSecondary} />
+              </Pressable>
+            ) : (
+              <ThemedText type="caption2" themeColor="textSecondary">
+                {dependencyWallSet.isSpecificRelativeAge
+                  ? `${currentYear}年12月31日時点で19〜22歳の方向けの目安です。`
+                  : `${currentYear}年12月31日時点で19〜22歳以外の方向けの目安です。`}
+              </ThemedText>
+            )}
+
+            {dependencyWallSet.walls.map((wall) => {
               const ratio = Math.min(yearlyIncome / wall.threshold, 1);
               const remaining = wall.threshold - yearlyIncome;
               const isOver = remaining <= 0;
-              const isNear = !isOver && ratio >= 0.9;
-              const barColor = isOver ? theme.danger : isNear ? theme.orange : theme.primary;
+              // 所得税の壁は超えた分にだけかかり手取りは減らないため、超えた瞬間に実損が出る
+              // 社会保険の壁と同じ警告色で並べない（働き控えを誘発しないようにする）。
+              const isCliff = wall.severity === 'cliff';
+              const isNear = isCliff && !isOver && ratio >= 0.9;
+              const barColor = !isCliff
+                ? theme.textSecondary
+                : isOver
+                  ? theme.danger
+                  : isNear
+                    ? theme.orange
+                    : theme.primary;
 
               return (
-                <View key={wall.threshold} style={styles.wallRow}>
+                <View key={wall.id} style={styles.wallRow}>
                   <View style={styles.wallHeaderRow}>
                     <ThemedText type="subheadline" style={styles.wallLabel}>
                       {wall.label}
                     </ThemedText>
                     <ThemedText
                       type="footnote"
-                      themeColor={isOver ? 'danger' : 'textSecondary'}
-                      style={isNear && !isOver ? { color: theme.orange } : undefined}
+                      themeColor={isCliff && isOver ? 'danger' : 'textSecondary'}
+                      style={isNear ? { color: theme.orange } : undefined}
                     >
                       {isOver
                         ? `${formatYen(Math.abs(remaining))}超過`
@@ -331,8 +374,13 @@ export default function PayrollTab() {
               <ThemedText type="headline">{formatYen(yearlyIncome)}</ThemedText>
             </View>
             <ThemedText type="caption2" themeColor="textSecondary">
-              登録済みのシフトのみの集計です。条件は働き方や勤務先によって異なるため目安としてご覧ください。
+              登録済みのシフトのみの集計です。壁の金額は年齢・働き方・年分によって変わります。正確な判定は勤務先や親の勤務先の健康保険組合にご確認ください。
             </ThemedText>
+            {dependencyWallSet.notes.map((note) => (
+              <ThemedText key={note} type="caption2" themeColor="textSecondary">
+                {note}
+              </ThemedText>
+            ))}
           </Card>
         )}
 
@@ -356,7 +404,7 @@ export default function PayrollTab() {
               </View>
             </View>
             <ThemedText type="footnote" themeColor="textSecondary">
-              複数勤務先の年収を自動合算し、103万・106万・130万円の壁への接近をお知らせします。
+              複数勤務先の年収を自動合算し、年齢とその年の制度に合わせた「年収の壁」への接近をお知らせします。
             </ThemedText>
             <PrimaryButton label="PROにアップグレード" onPress={() => router.push('/paywall')} />
           </Card>
@@ -717,6 +765,17 @@ const styles = StyleSheet.create({
   },
   dependencyCard: {
     gap: Spacing.two,
+  },
+  wallSetupRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    borderRadius: Radius.smallLarge,
+  },
+  wallSetupText: {
+    flex: 1,
   },
   wallRow: {
     gap: Spacing.half,
