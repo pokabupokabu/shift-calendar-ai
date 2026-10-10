@@ -259,7 +259,7 @@ export default function SettingsTab() {
             <View style={[styles.proBadge, { backgroundColor: theme.orange }]}>
               <Star size={14} color="#FFFFFF" fill="#FFFFFF" />
             </View>
-            <ThemedText style={styles.proTitle}>シフトカレンダーAI PRO</ThemedText>
+            <ThemedText style={styles.proTitle}>シフToカレ PRO</ThemedText>
           </View>
           <ThemedText type="footnote" themeColor="textSecondary">
             月別集計・給与見込みに加え、広告の非表示や画像シフト読み取り枠の拡大が無制限で利用できます。
@@ -307,7 +307,7 @@ export default function SettingsTab() {
 
         <View style={styles.footer}>
           <ThemedText style={styles.footerLine1} themeColor="textSecondary">
-            Shift Calendar AI for iOS
+            シフToカレ for iOS
           </ThemedText>
           <ThemedText style={styles.footerLine2} themeColor="textSecondary">
             バージョン {APP_VERSION}

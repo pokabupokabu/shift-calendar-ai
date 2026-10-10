@@ -29,7 +29,7 @@ const FALLBACK_PRICE = '¥300';
  */
 function subscriptionTerms(price: string): { label: string; value: string }[] {
   return [
-    { label: '契約内容', value: 'シフトカレンダーAI PRO（本アプリの全機能）' },
+    { label: '契約内容', value: 'シフToカレ PRO（本アプリの全機能）' },
     {
       label: '提供期間',
       value: '1か月ごとの自動更新。解約を申し出るまで継続する無期限契約です',
@@ -93,7 +93,7 @@ export default function PaywallScreen() {
             <Star size={28} color="#FFFFFF" fill="#FFFFFF" />
           </View>
           <ThemedText type="title2" style={styles.title}>
-            シフトカレンダーAI PRO
+            シフToカレ PRO
           </ThemedText>
           <ThemedText type="subheadline" themeColor="textSecondary" style={styles.subtitle}>
             月別集計・給与見込みに加え、広告の非表示や画像シフト読み取り枠の拡大が無制限で利用できます。
