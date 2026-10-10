@@ -1,7 +1,6 @@
 import Constants from 'expo-constants';
 import { router, type Href } from 'expo-router';
 import {
-  Bell,
   ChevronRight,
   ClipboardList,
   FileText,
@@ -16,7 +15,7 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { AdPlaceholder } from '@/components/ad-placeholder';
 import { Card } from '@/components/card';
@@ -36,8 +35,8 @@ interface SettingsRow {
   label: string;
   /** カレンダー同期設定の「iOSカレンダー」のように、chevronの手前に添える小さな補足テキスト。 */
   trailingLabel?: string;
-  /** 指定されていれば遷移し、なければ`showComingSoon`にフォールバックする。 */
-  route?: Href;
+  /** タップ時の遷移先。全ての行が遷移先を持つ（未実装の行は置かない）。 */
+  route: Href;
 }
 
 const ROW_ICON_BADGE_SIZE = 28;
@@ -48,9 +47,12 @@ const ACCOUNT_ROWS: SettingsRow[] = [
 ];
 
 // 「外観」だけは実際のインライン切り替えUI (AppearanceRow) として別枠で描画するため、
-// このセクション用の配列には含めない。表示順は 通知設定 → カレンダー同期設定 → 外観。
+// このセクション用の配列には含めない。表示順は カレンダー同期設定 → 外観。
+//
+// 「通知設定」の行は削除した。アプリ独自通知は要件定義書24節のOUTに明記されており
+// （23節「アプリ独自のシフト通知はMVPでは作らない。カレンダーイベント側の通知機能を利用する」）、
+// 遷移先が無いまま置くと「準備中」のアラートが出て審査ガイドライン2.1に抵触するため。
 const GENERAL_ROWS: SettingsRow[] = [
-  { icon: Bell, tone: 'red', label: '通知設定' },
   {
     icon: RefreshCw,
     tone: 'orange',
@@ -88,19 +90,12 @@ const THEME_OPTIONS = [
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 
-function showComingSoon() {
-  Alert.alert('準備中', 'この機能は近日公開予定です。');
-}
-
 /** ボーダー区切り付きの1行分。`SettingsRowGroup`と`一般設定`セクション内の混在リストの両方から使う。 */
 function NavRow({ row }: { row: SettingsRow }) {
   const theme = useTheme();
 
   return (
-    <Pressable
-      onPress={row.route ? () => router.push(row.route!) : showComingSoon}
-      style={styles.row}
-    >
+    <Pressable onPress={() => router.push(row.route)} style={styles.row}>
       <IconBadge tone={row.tone} size={ROW_ICON_BADGE_SIZE}>
         <row.icon size={ROW_ICON_SIZE} color={theme.text} />
       </IconBadge>
@@ -264,7 +259,7 @@ export default function SettingsTab() {
             <View style={[styles.proBadge, { backgroundColor: theme.orange }]}>
               <Star size={14} color="#FFFFFF" fill="#FFFFFF" />
             </View>
-            <ThemedText style={styles.proTitle}>シフトカレンダーAI PRO</ThemedText>
+            <ThemedText style={styles.proTitle}>シフToカレ PRO</ThemedText>
           </View>
           <ThemedText type="footnote" themeColor="textSecondary">
             月別集計・給与見込みに加え、広告の非表示や画像シフト読み取り枠の拡大が無制限で利用できます。
@@ -312,7 +307,7 @@ export default function SettingsTab() {
 
         <View style={styles.footer}>
           <ThemedText style={styles.footerLine1} themeColor="textSecondary">
-            Shift Calendar AI for iOS
+            シフToカレ for iOS
           </ThemedText>
           <ThemedText style={styles.footerLine2} themeColor="textSecondary">
             バージョン {APP_VERSION}
