@@ -9,13 +9,19 @@ import { IconBadge } from '@/components/icon-badge';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useIconBadgeColors } from '@/hooks/use-icon-badge-colors';
 import { useTheme } from '@/hooks/use-theme';
 import { useAppStore } from '@/store/useAppStore';
 import { useShiftSessionStore } from '@/store/useShiftSessionStore';
 
 const SECTION_ICON_SIZE = 17;
+
+/** 昼間部かどうかだけを聞く2択。未選択（undefined）も許容し、同じ項目をもう一度押すと解除される。 */
+const STUDENT_OPTIONS = [
+  { label: '昼間部の学生', value: true },
+  { label: '学生ではない / 夜間・通信制', value: false },
+] as const;
 
 async function performReset() {
   await AsyncStorage.clear();
@@ -42,7 +48,30 @@ export default function AccountSettingsScreen() {
     (s) => s.user?.settings.dependencyAlertEnabled ?? true,
   );
   const updateSettings = useAppStore((s) => s.updateSettings);
+  const birthYear = useAppStore((s) => s.user?.settings.birthYear);
+  const isDaytimeStudent = useAppStore((s) => s.user?.settings.isDaytimeStudent);
+  const [birthYearInput, setBirthYearInput] = useState(birthYear ? String(birthYear) : '');
   const [promoCode, setPromoCode] = useState('');
+
+  const currentYear = new Date().getFullYear();
+  // 12/31時点の年齢。年収の壁の基準が19歳以上23歳未満かどうかで変わるため、入力の手応えとして見せる。
+  const ageAtYearEnd = birthYear !== undefined ? currentYear - birthYear : undefined;
+
+  // 生まれ年は入力途中の値を毎回保存すると年齢表示がちらつくため、入力確定時にだけ反映する。
+  const handleBirthYearCommit = () => {
+    const trimmed = birthYearInput.trim();
+    if (trimmed.length === 0) {
+      updateSettings({ birthYear: undefined });
+      return;
+    }
+    const parsed = Number(trimmed);
+    if (!Number.isInteger(parsed) || parsed < 1900 || parsed > currentYear) {
+      Alert.alert('生まれ年は西暦4桁で入力してください');
+      setBirthYearInput(birthYear ? String(birthYear) : '');
+      return;
+    }
+    updateSettings({ birthYear: parsed });
+  };
 
   const handleSave = () => {
     setDisplayName(name.trim());
@@ -114,7 +143,7 @@ export default function AccountSettingsScreen() {
             <View style={styles.switchLabelGroup}>
               <ThemedText type="headline">扶養の壁アラート</ThemedText>
               <ThemedText type="footnote" themeColor="textSecondary">
-                給与タブに年収と103万/106万/130万円の壁までの目安を表示します（PRO機能）
+                給与タブに今年の年収見込みと「年収の壁」までの目安を表示します（PRO機能）
               </ThemedText>
             </View>
             <Switch
@@ -122,6 +151,71 @@ export default function AccountSettingsScreen() {
               onValueChange={(value) => updateSettings({ dependencyAlertEnabled: value })}
             />
           </View>
+
+          {dependencyAlertEnabled && (
+            <View style={styles.dependencyFields}>
+              <ThemedText type="footnote" themeColor="textSecondary">
+                壁の金額は年齢と年分で変わります。未入力のままでも一般的な目安は表示されます。
+              </ThemedText>
+
+              <View style={styles.fieldGroup}>
+                <ThemedText type="subheadline">生まれ年（西暦）</ThemedText>
+                <TextInput
+                  value={birthYearInput}
+                  onChangeText={setBirthYearInput}
+                  onBlur={handleBirthYearCommit}
+                  onSubmitEditing={handleBirthYearCommit}
+                  keyboardType="number-pad"
+                  maxLength={4}
+                  placeholder="例: 2005"
+                  placeholderTextColor={theme.textSecondary}
+                  style={[styles.input, { color: theme.text, backgroundColor: theme.background }]}
+                />
+                <ThemedText type="caption2" themeColor="textSecondary">
+                  {ageAtYearEnd !== undefined
+                    ? `${currentYear}年12月31日時点で${ageAtYearEnd}歳${
+                        ageAtYearEnd >= 19 && ageAtYearEnd < 23
+                          ? '（19〜22歳向けの目安を表示）'
+                          : ''
+                      }`
+                    : '19歳以上23歳未満かどうかで、社会保険の扶養や親の控除の基準が変わります。'}
+                </ThemedText>
+              </View>
+
+              <View style={styles.fieldGroup}>
+                <ThemedText type="subheadline">学生区分</ThemedText>
+                <View style={[styles.segmentedTrack, { backgroundColor: theme.border }]}>
+                  {STUDENT_OPTIONS.map((option) => {
+                    const selected = isDaytimeStudent === option.value;
+                    return (
+                      <Pressable
+                        key={option.label}
+                        onPress={() =>
+                          updateSettings({
+                            isDaytimeStudent: selected ? undefined : option.value,
+                          })
+                        }
+                        style={[
+                          styles.segmentedItem,
+                          selected && { backgroundColor: theme.backgroundElement },
+                        ]}
+                      >
+                        <ThemedText
+                          type="caption1"
+                          themeColor={selected ? 'text' : 'textSecondary'}
+                        >
+                          {option.label}
+                        </ThemedText>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <ThemedText type="caption2" themeColor="textSecondary">
+                  勤務時間による社会保険の加入（週20時間以上）の注意書きの出し分けに使います。壁の金額自体は変わりません。もう一度押すと未選択に戻せます。
+                </ThemedText>
+              </View>
+            </View>
+          )}
         </Card>
 
         <Card style={styles.section}>
@@ -197,6 +291,27 @@ const styles = StyleSheet.create({
   switchLabelGroup: {
     flex: 1,
     gap: 2,
+  },
+  dependencyFields: {
+    gap: Spacing.three,
+    paddingTop: Spacing.two,
+  },
+  fieldGroup: {
+    gap: Spacing.two,
+  },
+  segmentedTrack: {
+    flexDirection: 'row',
+    borderRadius: Radius.smallLarge,
+    padding: 2,
+    gap: 2,
+  },
+  segmentedItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.two,
+    borderRadius: Radius.small,
   },
   input: {
     borderRadius: Spacing.three,

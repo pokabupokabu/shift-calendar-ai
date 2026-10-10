@@ -222,7 +222,7 @@ export const useAppStore = create<AppState>()(
     {
       name: 'shift-calendar-ai-store',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 12,
+      version: 13,
       migrate: (persisted, version) => {
         // Migration spans many historical shapes (pre-workplace, pre-isPro, etc.),
         // so this intentionally works on an untyped view rather than `AppState`.
@@ -355,6 +355,11 @@ export const useAppStore = create<AppState>()(
           if (state.scanUsage) {
             state.scanUsage.bonusScans ??= 0;
           }
+        }
+        if (version < 13) {
+          // 年収の壁の出し分け用に settings.birthYear / settings.isDaytimeStudent を追加。
+          // どちらも任意項目で「未設定 = 年齢による出し分けをしない」が正しい初期状態のため、
+          // backfill はしない（既存ユーザーには設定を促す導線が給与タブに出る）。
         }
         return state;
       },
