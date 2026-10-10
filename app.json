@@ -11,7 +11,11 @@
       "icon": "./assets/expo.icon",
       "bundleIdentifier": "com.pokabu.shiftcalendarai",
       "infoPlist": {
-        "CFBundleDisplayName": "シフToカレ"
+        "CFBundleDisplayName": "シフToカレ",
+        "NSCameraUsageDescription": "シフト表をその場で撮影して読み取るためにカメラを使用します。撮影した写真はシフトの解析にのみ利用します。",
+        "NSPhotoLibraryUsageDescription": "保存済みのシフト表の写真を選んで読み取るために写真へのアクセスを使用します。選んだ写真はシフトの解析にのみ利用します。",
+        "NSCalendarsUsageDescription": "読み取ったあなたのシフトをカレンダーの予定として登録するために使用します。同じ時間帯に既存の予定がないかを確認するため、予定の読み取りも行います。",
+        "NSCalendarsFullAccessUsageDescription": "読み取ったあなたのシフトをカレンダーの予定として登録するために使用します。同じ時間帯に既存の予定がないかを確認するため、予定の読み取りも行います。"
       }
     },
     "android": {
@@ -100,6 +104,18 @@
         "expo-tracking-transparency",
         {
           "userTrackingPermission": "あなたの興味に合った広告を表示するために使用します。許可しない場合も広告は表示されますが、内容が最適化されません。"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-calendar",
+        {
+          "remindersPermission": false
         }
       ]
     ],
