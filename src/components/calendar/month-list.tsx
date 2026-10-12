@@ -67,6 +67,7 @@ export function MonthList({ month, eventsByDate, selectedDate, onSelectDate }: M
                   first.startTime,
                   first.endTime,
                   first.endTime <= first.startTime,
+                  first.isAllDay,
                 )}
                 {rest.length > 0 ? `　他${rest.length}件` : ''}
               </ThemedText>
