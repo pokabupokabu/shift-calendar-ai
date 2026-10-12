@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# 同じブランチへ連続でpushしたときは古い実行を打ち切る
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    name: アプリ本体（lint / typecheck / format）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+
+      - name: 依存関係をインストール
+        run: npm ci
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: 型チェック
+        run: npm run typecheck
+
+      - name: フォーマット確認
+        run: npm run format:check
+
+  worker:
+    name: Geminiプロキシ（typecheck）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+          cache-dependency-path: server/gemini-proxy/package-lock.json
+
+      - name: 依存関係をインストール
+        run: npm ci
+        working-directory: server/gemini-proxy
+
+      - name: 型チェック
+        run: npm run typecheck
+        working-directory: server/gemini-proxy
