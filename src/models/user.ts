@@ -24,6 +24,15 @@ export interface User {
   shiftName: string;
   /** Optional display name for in-app UI, defaults to shiftName. */
   displayName?: string;
+  /**
+   * True when the user's shift table lists no names at all — a personal or
+   * single-person table (printed per-person sheets, a month calendar, etc.).
+   * There is then no row to match against `shiftName`, and every shift in the
+   * image is the user's own. Without this, the AI correctly reports
+   * `not_found` for such tables and the user lands on a dead-end screen asking
+   * them to type a name that the table does not contain.
+   */
+  shiftTableHasNoNames?: boolean;
   settings: UserSettings;
   /** Job profiles (掛け持ち). Everyone has at least one; additional ones are PRO-gated. */
   workplaces: Workplace[];

@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, TextInput } from 'react-native';
+import { StyleSheet, Switch, TextInput, View } from 'react-native';
 
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
@@ -13,11 +13,18 @@ import { useAppStore } from '@/store/useAppStore';
 export default function NameInputScreen() {
   const theme = useTheme();
   const savedShiftName = useAppStore((state) => state.user?.shiftName);
+  const savedHasNoNames = useAppStore((state) => state.user?.shiftTableHasNoNames ?? false);
   const setShiftName = useAppStore((state) => state.setShiftName);
+  const setShiftTableHasNoNames = useAppStore((state) => state.setShiftTableHasNoNames);
   const [name, setName] = useState(savedShiftName ?? '');
+  const [hasNoNames, setHasNoNames] = useState(savedHasNoNames);
+
+  // 名前が載っていない表を選んだ人は名前を入力しようがないので、そこで先へ進めなくしない。
+  const canProceed = hasNoNames || name.trim().length > 0;
 
   const handleNext = () => {
-    setShiftName(name.trim());
+    setShiftTableHasNoNames(hasNoNames);
+    setShiftName(hasNoNames ? '' : name.trim());
     router.push('/photo-select');
   };
 
@@ -32,10 +39,28 @@ export default function NameInputScreen() {
         onChangeText={setName}
         placeholder="例：永尾"
         placeholderTextColor={theme.textSecondary}
-        style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
-        autoFocus
+        editable={!hasNoNames}
+        style={[
+          styles.input,
+          {
+            color: hasNoNames ? theme.textSecondary : theme.text,
+            backgroundColor: theme.backgroundElement,
+          },
+        ]}
+        autoFocus={!hasNoNames}
       />
-      <PrimaryButton label="次へ" onPress={handleNext} disabled={name.trim().length === 0} />
+
+      <View style={styles.toggleRow}>
+        <View style={styles.toggleLabel}>
+          <ThemedText type="body">シフト表に名前が載っていない</ThemedText>
+          <ThemedText type="footnote" themeColor="textSecondary">
+            自分専用の勤務表やカレンダー形式など、人の名前が書かれていないシフト表はこちら。表に載っている勤務をすべてあなたのものとして読み取ります。
+          </ThemedText>
+        </View>
+        <Switch value={hasNoNames} onValueChange={setHasNoNames} />
+      </View>
+
+      <PrimaryButton label="次へ" onPress={handleNext} disabled={!canProceed} />
     </Screen>
   );
 }
@@ -46,5 +71,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,
     fontSize: 16,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  toggleLabel: {
+    flex: 1,
+    gap: Spacing.one,
   },
 });

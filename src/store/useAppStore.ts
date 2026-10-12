@@ -51,6 +51,7 @@ interface AppState {
   scanUsage: ScanUsage;
 
   setShiftName: (shiftName: string) => void;
+  setShiftTableHasNoNames: (value: boolean) => void;
   setDisplayName: (displayName: string) => void;
   setHasSeenTutorial: () => void;
   updateSettings: (settings: Partial<UserSettings>) => void;
@@ -87,6 +88,23 @@ export const useAppStore = create<AppState>()(
           return {
             user: {
               shiftName,
+              settings: { ...DEFAULT_USER_SETTINGS },
+              workplaces: [defaultWorkplace],
+              activeWorkplaceId: defaultWorkplace.id,
+            },
+          };
+        }),
+
+      setShiftTableHasNoNames: (value) =>
+        set((state) => {
+          if (state.user) return { user: { ...state.user, shiftTableHasNoNames: value } };
+          // Onboarding can toggle this before any name is typed, so the user
+          // record may not exist yet — create it the same way setShiftName does.
+          const defaultWorkplace = createWorkplace('default', '勤務先1');
+          return {
+            user: {
+              shiftName: '',
+              shiftTableHasNoNames: value,
               settings: { ...DEFAULT_USER_SETTINGS },
               workplaces: [defaultWorkplace],
               activeWorkplaceId: defaultWorkplace.id,
@@ -222,7 +240,7 @@ export const useAppStore = create<AppState>()(
     {
       name: 'shift-calendar-ai-store',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 13,
+      version: 14,
       migrate: (persisted, version) => {
         // Migration spans many historical shapes (pre-workplace, pre-isPro, etc.),
         // so this intentionally works on an untyped view rather than `AppState`.

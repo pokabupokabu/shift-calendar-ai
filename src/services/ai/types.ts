@@ -10,6 +10,12 @@ export interface AnalyzeShiftImagesInput {
   images: ShiftImage[];
   /** The name the user registered as their own, to search for in the table (section 7). */
   shiftName: string;
+  /**
+   * True when the user has declared that their shift table contains no names.
+   * The provider must then skip row matching entirely and treat every shift in
+   * the image as the user's own.
+   */
+  shiftTableHasNoNames?: boolean;
   /** Learned shiftType -> time mappings, passed in as hints so a repeat "早番" needs no re-guessing (section 8). */
   knownShiftTypes: ShiftType[];
   /**

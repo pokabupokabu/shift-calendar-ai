@@ -67,12 +67,20 @@ function buildMatchingTask(input: AnalyzeShiftImagesInput): string {
 4. その行に対応するシフトのみを shifts に抽出する。`;
   }
 
+  if (input.shiftTableHasNoNames) {
+    return `1. ユーザーは設定で「自分のシフト表には人の名前が記載されていない」と明示している。本人専用のシフト表として扱う。
+2. 誰の行が誰のものかを特定しようとしない。candidates は空配列にする。
+3. userMatch.status は必ず "matched" にする。
+4. 表に記載されている勤務をすべて本人のシフトとして shifts に抽出する。`;
+  }
+
   return `1. 画像内のシフト表の構造（誰の行が誰のシフトか）を理解する。
-2. ユーザー本人の名前「${input.shiftName}」に該当する行を表内から探す。完全一致だけでなく、表記ゆれ・姓のみ・名前の一部のみの記載も候補として考慮する。
-3. 該当行が1つに絞り込める場合のみ userMatch.status を "matched" とし、その行のシフトだけを shifts に抽出する。
-4. 複数の行が候補になり得て確信を持って1つに絞れない場合は userMatch.status を "ambiguous" にし、shifts は空配列のままにして candidates に候補を列挙する。
-5. 該当しそうな行が見つからない場合は userMatch.status を "not_found" にし、shifts は空配列にする。
-6. 本人の行が曖昧なときに、絶対に自分で1つを勝手に決めつけない。`;
+2. まず、表に人の名前や個人を区別する列・行が存在するかを判断する。本人専用の勤務表や月間カレンダー形式のシフト表のように人名が一切記載されていない場合、その表は丸ごと本人のものである。このときは userMatch.status を "matched"、candidates を空配列にし、記載されている勤務をすべて shifts に抽出する。人名が無いことを理由に "not_found" にしてはならない。
+3. 人名の記載がある場合のみ、ユーザー本人の名前「${input.shiftName}」に該当する行を表内から探す。完全一致だけでなく、表記ゆれ・姓のみ・名前の一部のみの記載も候補として考慮する。
+4. 該当行が1つに絞り込める場合のみ userMatch.status を "matched" とし、その行のシフトだけを shifts に抽出する。
+5. 複数の行が候補になり得て確信を持って1つに絞れない場合は userMatch.status を "ambiguous" にし、shifts は空配列のままにして candidates に候補を列挙する。
+6. 人名の記載があるにもかかわらず該当する行が見つからない場合にのみ userMatch.status を "not_found" にし、shifts は空配列にする。
+7. 本人の行が曖昧なときに、絶対に自分で1つを勝手に決めつけない。`;
 }
 
 function buildPrompt(input: AnalyzeShiftImagesInput): string {
@@ -95,6 +103,7 @@ ${knownShiftTypesText}
 # 各シフトの抽出ルール
 - date は "YYYY-MM-DD" 形式（西暦4桁）。年が画像から読み取れない場合は、直近の妥当な年を推定する。
 - startTime / endTime は "HH:mm" 形式（24時間表記）。
+- 「休み」「公休」「有給」「－」「—」「/」「×」など、その日に勤務がないことを示す記載の日は shifts に含めない。勤務時間が読み取れる日だけを抽出する。
 - 夜勤など日付をまたぐシフトは isOvernight を true にし、endTime には翌日側の時刻をそのまま入れる（例: 22:00〜翌07:00 なら startTime="22:00", endTime="07:00", isOvernight=true）。
 - confidence は 0〜1 の数値で、その1件の読み取りにどれだけ自信があるかを表す内部値（UIには数値のまま出さない）。文字が不鮮明・時刻やシフト種別の記載が曖昧な場合は低い値にする。
 - warnings には、画像が暗い/ぼやけている/一部が欠けている等、解析全体に影響した問題があれば code（英数字の短い識別子）と message（日本語の説明）を入れる。問題がなければ空配列にする。
