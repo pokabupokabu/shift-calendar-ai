@@ -18,7 +18,7 @@ const FEATURES = [
   '画像シフト読み取り枠が無制限',
 ];
 
-const FALLBACK_PRICE = '¥300';
+const FALLBACK_PRICE = '¥330';
 
 /**
  * 特定商取引法12条の6（特定申込みを受ける際の表示）が「最終確認画面」に求める事項。
