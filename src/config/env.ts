@@ -11,10 +11,12 @@ export const env = {
     // real Gemini API key lives only in that Worker's secrets, never here.
     proxyUrl: process.env.EXPO_PUBLIC_AI_PROXY_URL ?? '',
     proxySecret: process.env.EXPO_PUBLIC_AI_PROXY_SECRET ?? '',
-    // 無料とPROでモデルを出し分ける。実シフト表6枚での実測にもとづく既定値で、
-    // 無料は速度とコスト、PROは難解な表での正直さ（読めない時に警告を返すか）を優先している。
+    // 無料とPROでモデルを出し分ける。実シフト表での実測にもとづく既定値。
+    // 無料の 3.1-flash-lite は、同じLite系でも世代が新しい 3.5-flash-lite とは結果が正反対で、
+    // 実サンプルでは5回とも完答した（3.5 は的中9〜11/18・誤検出6〜8で、働いていない日まで拾う）。
     // Gemini のモデル名は頻繁に変わるため、コード変更なしで差し替えられるようにしておく。
-    geminiModelFree: process.env.EXPO_PUBLIC_GEMINI_MODEL_FREE ?? 'gemini-3.5-flash-lite',
+    // ここを変えるときは server/gemini-proxy の ALLOWED_MODELS も必ず一緒に直す（片方だけだと404）。
+    geminiModelFree: process.env.EXPO_PUBLIC_GEMINI_MODEL_FREE ?? 'gemini-3.1-flash-lite',
     geminiModelPro: process.env.EXPO_PUBLIC_GEMINI_MODEL_PRO ?? 'gemini-3.8-flash',
   },
   google: {
