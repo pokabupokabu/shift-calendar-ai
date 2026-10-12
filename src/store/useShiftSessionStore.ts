@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import type { Shift, ShiftAnalysisResult } from '@/models';
 
 import type { ShiftImage } from '@/services/ai';
+import { deleteShiftImageFiles } from '@/utils/deleteShiftImageFiles';
 
 /**
  * Transient, in-memory state for one "撮る → 解析 → 確認 → 登録" run (section 3).
@@ -38,7 +39,7 @@ export function createLocalShiftId(): string {
   return `local-${Date.now()}-${nextLocalId}`;
 }
 
-export const useShiftSessionStore = create<ShiftSessionState>((set) => ({
+export const useShiftSessionStore = create<ShiftSessionState>((set, get) => ({
   images: [],
   scanWorkplaceId: '',
   analysisResult: null,
@@ -46,8 +47,12 @@ export const useShiftSessionStore = create<ShiftSessionState>((set) => ({
   shifts: [],
   removedShiftIds: [],
 
-  setImages: (images) =>
-    set({ images, analysisResult: null, analysisError: null, shifts: [], removedShiftIds: [] }),
+  setImages: (images) => {
+    // The previous run's photos stop being referenced here, so drop their cache files
+    // before they are replaced (see deleteShiftImageFiles for why this matters).
+    deleteShiftImageFiles(get().images);
+    set({ images, analysisResult: null, analysisError: null, shifts: [], removedShiftIds: [] });
+  },
 
   setScanWorkplaceId: (workplaceId) => set({ scanWorkplaceId: workplaceId }),
 
@@ -96,7 +101,8 @@ export const useShiftSessionStore = create<ShiftSessionState>((set) => ({
 
   restoreAllShifts: () => set({ removedShiftIds: [] }),
 
-  reset: () =>
+  reset: () => {
+    deleteShiftImageFiles(get().images);
     set({
       images: [],
       scanWorkplaceId: '',
@@ -104,5 +110,6 @@ export const useShiftSessionStore = create<ShiftSessionState>((set) => ({
       analysisError: null,
       shifts: [],
       removedShiftIds: [],
-    }),
+    });
+  },
 }));

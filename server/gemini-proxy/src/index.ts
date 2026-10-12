@@ -14,12 +14,36 @@
 export interface Env {
   GEMINI_API_KEY: string;
   APP_SHARED_SECRET: string;
+  /**
+   * Salt used only for hashing the rate-limit key.
+   *
+   * APP_SHARED_SECRET cannot be reused here: it ships inside the app's JS bundle as
+   * EXPO_PUBLIC_AI_PROXY_SECRET, so anyone who extracts it could brute-force the whole
+   * IPv4 space (~4.3 billion) against the stored hashes and recover the original IPs.
+   * Set this with `wrangler secret put RATE_LIMIT_SALT` before deploying.
+   */
+  RATE_LIMIT_SALT: string;
   RATE_LIMIT_KV: KVNamespace;
 }
 
 const GEMINI_ORIGIN = 'https://generativelanguage.googleapis.com';
 const GENERATE_CONTENT_PATH = /^\/v1beta\/models\/[\w.-]+:generateContent$/;
 const RATE_LIMIT_PER_HOUR = 30;
+
+/**
+ * Turns a client IP into a key that cannot be traced back to the IP.
+ *
+ * Using the raw IP as the KV key meant a personally identifiable value sat in storage for
+ * the key's full hour. A salted SHA-256 keeps rate limiting exactly as accurate — the same
+ * IP always maps to the same value — while leaving nothing identifying behind.
+ */
+async function clientFingerprint(ip: string, salt: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${salt}:${ip}`));
+  return [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('')
+    .slice(0, 32);
+}
 
 async function isWithinRateLimit(kv: KVNamespace, clientId: string): Promise<boolean> {
   const hourBucket = new Date().toISOString().slice(0, 13); // "YYYY-MM-DDTHH"
@@ -48,7 +72,14 @@ export default {
       return new Response('Not Found', { status: 404 });
     }
 
-    const clientId = request.headers.get('cf-connecting-ip') ?? 'unknown';
+    // Fail closed rather than silently falling back to a guessable salt: without it the
+    // stored hashes would be reversible, which is the whole point of hashing here.
+    if (!env.RATE_LIMIT_SALT) {
+      return new Response('Service Unavailable', { status: 503 });
+    }
+
+    const clientIp = request.headers.get('cf-connecting-ip') ?? 'unknown';
+    const clientId = await clientFingerprint(clientIp, env.RATE_LIMIT_SALT);
     if (!(await isWithinRateLimit(env.RATE_LIMIT_KV, clientId))) {
       return new Response('Too Many Requests', { status: 429 });
     }
