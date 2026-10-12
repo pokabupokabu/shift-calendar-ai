@@ -54,9 +54,23 @@ const MOCK_COLORS = {
   cornerMark: '#D1D5DB',
 };
 
+/**
+ * 1回の解析で送れる画像の枚数。AIへのリクエストが際限なく大きくならないようにするための
+ * 上限で、プロキシ側（server/gemini-proxy）でも同じ枚数で弾いている。値を変えるときは両方直すこと。
+ */
+const MAX_IMAGES = 4;
+
 async function toShiftImages(result: ImagePicker.ImagePickerResult): Promise<ShiftImage[]> {
   if (result.canceled) return [];
-  return Promise.all(result.assets.map(resizeShiftImage));
+  // selectionLimit はiOS 14+/Androidのみ効くため、ここでも必ず切り詰める。
+  const assets = result.assets.slice(0, MAX_IMAGES);
+  if (result.assets.length > MAX_IMAGES) {
+    Alert.alert(
+      `一度に読み取れるのは${MAX_IMAGES}枚までです`,
+      `選んだ${result.assets.length}枚のうち、最初の${MAX_IMAGES}枚だけを使います。`,
+    );
+  }
+  return Promise.all(assets.map(resizeShiftImage));
 }
 
 const PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
@@ -211,6 +225,7 @@ export default function PhotoSelectScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       ...PICKER_OPTIONS,
       allowsMultipleSelection: true,
+      selectionLimit: MAX_IMAGES,
     });
     setImages(await toShiftImages(result));
   };

@@ -27,8 +27,33 @@ export interface Env {
 }
 
 const GEMINI_ORIGIN = 'https://generativelanguage.googleapis.com';
-const GENERATE_CONTENT_PATH = /^\/v1beta\/models\/[\w.-]+:generateContent$/;
+const GENERATE_CONTENT_PATH = /^\/v1beta\/models\/([\w.-]+):generateContent$/;
 const RATE_LIMIT_PER_HOUR = 30;
+/**
+ * 短時間の連打を粗く弾くための上限。1時間の上限だけだと、30回を一瞬で使い切る
+ * 使われ方を止められない。KVは結果整合なので正確な計数にはならないが、
+ * ここで求めているのは正確さではなく「桁を抑える」ことなので十分。
+ */
+const RATE_LIMIT_PER_MINUTE = 5;
+
+/**
+ * このWorkerが中継してよいモデル。
+ *
+ * モデル名はクライアントが送ってくるため、ここで固定しないと、合言葉を抜いた相手が
+ * 任意の（高価な）モデルを指定できてしまう。無料ユーザーがPRO用モデルを指定する
+ * 経路も同時に塞がる。モデルを切り替えるときはアプリ側の既定値（src/config/env.ts）と
+ * ここの両方を更新してデプロイすること。
+ */
+const ALLOWED_MODELS = new Set(['gemini-3.5-flash-lite', 'gemini-3.8-flash']);
+
+/** 1リクエストに詰め込める画像の枚数。アプリ側（photo-select）でも同じ値で制限している。 */
+const MAX_IMAGES_PER_REQUEST = 4;
+
+/**
+ * リクエスト全体の上限。画像は長辺2000pxへ縮小後のJPEGをbase64で送るため、
+ * 4枚でも実測で数MBに収まる。桁違いの本文を弾いて、課金とメモリの両方を守る。
+ */
+const MAX_REQUEST_BYTES = 12 * 1024 * 1024;
 
 /**
  * Turns a client IP into a key that cannot be traced back to the IP.
@@ -45,13 +70,49 @@ async function clientFingerprint(ip: string, salt: string): Promise<string> {
     .slice(0, 32);
 }
 
-async function isWithinRateLimit(kv: KVNamespace, clientId: string): Promise<boolean> {
-  const hourBucket = new Date().toISOString().slice(0, 13); // "YYYY-MM-DDTHH"
-  const key = `rl:${clientId}:${hourBucket}`;
+async function consumeQuota(
+  kv: KVNamespace,
+  key: string,
+  limit: number,
+  ttlSeconds: number,
+): Promise<boolean> {
   const current = Number((await kv.get(key)) ?? '0');
-  if (current >= RATE_LIMIT_PER_HOUR) return false;
-  await kv.put(key, String(current + 1), { expirationTtl: 3600 });
+  if (current >= limit) return false;
+  await kv.put(key, String(current + 1), { expirationTtl: ttlSeconds });
   return true;
+}
+
+async function isWithinRateLimit(kv: KVNamespace, clientId: string): Promise<boolean> {
+  const now = new Date().toISOString();
+  const hourBucket = now.slice(0, 13); // "YYYY-MM-DDTHH"
+  const minuteBucket = now.slice(0, 16); // "YYYY-MM-DDTHH:mm"
+
+  // 分の上限を先に見る。連打されたときに時間枠を使い切らせないため。
+  if (!(await consumeQuota(kv, `rlm:${clientId}:${minuteBucket}`, RATE_LIMIT_PER_MINUTE, 120))) {
+    return false;
+  }
+
+  return consumeQuota(kv, `rl:${clientId}:${hourBucket}`, RATE_LIMIT_PER_HOUR, 3600);
+}
+
+/**
+ * 本文に含まれる画像（inlineData）の枚数を数える。
+ * 形が想定と違う場合は -1 を返し、呼び出し側で400にする。
+ */
+function countInlineImages(body: unknown): number {
+  if (typeof body !== 'object' || body === null) return -1;
+  const contents = (body as { contents?: unknown }).contents;
+  if (!Array.isArray(contents)) return -1;
+
+  let count = 0;
+  for (const content of contents) {
+    const parts = (content as { parts?: unknown })?.parts;
+    if (!Array.isArray(parts)) continue;
+    for (const part of parts) {
+      if (part && typeof part === 'object' && 'inlineData' in part) count += 1;
+    }
+  }
+  return count;
 }
 
 export default {
@@ -68,8 +129,15 @@ export default {
     const url = new URL(request.url);
     // Only relay Gemini's own generateContent path shape — this must never
     // become an open relay to arbitrary Google APIs.
-    if (!GENERATE_CONTENT_PATH.test(url.pathname)) {
+    const pathMatch = GENERATE_CONTENT_PATH.exec(url.pathname);
+    if (!pathMatch || !ALLOWED_MODELS.has(pathMatch[1])) {
       return new Response('Not Found', { status: 404 });
+    }
+
+    // 本文を読む前に、宣言されたサイズで明らかに大きすぎるものを落とす。
+    const declaredLength = Number(request.headers.get('content-length') ?? '0');
+    if (declaredLength > MAX_REQUEST_BYTES) {
+      return new Response('Payload Too Large', { status: 413 });
     }
 
     // Fail closed rather than silently falling back to a guessable salt: without it the
@@ -84,13 +152,34 @@ export default {
       return new Response('Too Many Requests', { status: 429 });
     }
 
+    // Content-Length は詐称できるため、実際に読んだ長さでも確認する。
+    const rawBody = await request.text();
+    if (new TextEncoder().encode(rawBody).length > MAX_REQUEST_BYTES) {
+      return new Response('Payload Too Large', { status: 413 });
+    }
+
+    let parsedBody: unknown;
+    try {
+      parsedBody = JSON.parse(rawBody);
+    } catch {
+      return new Response('Bad Request', { status: 400 });
+    }
+
+    const imageCount = countInlineImages(parsedBody);
+    if (imageCount < 0) {
+      return new Response('Bad Request', { status: 400 });
+    }
+    if (imageCount > MAX_IMAGES_PER_REQUEST) {
+      return new Response('Payload Too Large', { status: 413 });
+    }
+
     const upstream = await fetch(`${GEMINI_ORIGIN}${url.pathname}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-goog-api-key': env.GEMINI_API_KEY,
       },
-      body: request.body,
+      body: rawBody,
     });
 
     return new Response(upstream.body, {
