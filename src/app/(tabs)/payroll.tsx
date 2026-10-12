@@ -506,13 +506,13 @@ export default function PayrollTab() {
                     <ThemedText type="headline" style={styles.listRowDate}>
                       {formatShiftDate(entry.date)}
                     </ThemedText>
-                    {entry.shiftType && (
+                    {entry.shiftType ? (
                       <View style={[styles.shiftBadge, { backgroundColor: badgeBlue.background }]}>
                         <ThemedText type="caption2" themeColor="primary">
                           {entry.shiftType}
                         </ThemedText>
                       </View>
-                    )}
+                    ) : null}
                   </View>
                   <ThemedText type="footnote" themeColor="textSecondary">
                     {formatShiftTimeRange(
@@ -638,11 +638,11 @@ export default function PayrollTab() {
         {selectedEntry && (
           <>
             <ThemedText type="headline">{formatShiftDate(selectedEntry.date)}</ThemedText>
-            {selectedEntry.shiftType && (
+            {selectedEntry.shiftType ? (
               <ThemedText type="subheadline" themeColor="textSecondary">
                 {selectedEntry.shiftType}
               </ThemedText>
-            )}
+            ) : null}
             <View style={styles.detailRow}>
               <ThemedText type="subheadline" themeColor="textSecondary">
                 勤務時間
