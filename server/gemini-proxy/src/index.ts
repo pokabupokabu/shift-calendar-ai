@@ -44,7 +44,7 @@ const RATE_LIMIT_PER_MINUTE = 5;
  * 経路も同時に塞がる。モデルを切り替えるときはアプリ側の既定値（src/config/env.ts）と
  * ここの両方を更新してデプロイすること。
  */
-const ALLOWED_MODELS = new Set(['gemini-3.5-flash-lite', 'gemini-3.8-flash']);
+const ALLOWED_MODELS = new Set(['gemini-3.1-flash-lite', 'gemini-3.8-flash']);
 
 /** 1リクエストに詰め込める画像の枚数。アプリ側（photo-select）でも同じ値で制限している。 */
 const MAX_IMAGES_PER_REQUEST = 4;
