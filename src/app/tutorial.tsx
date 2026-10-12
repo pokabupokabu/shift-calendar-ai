@@ -44,11 +44,15 @@ export default function TutorialScreen() {
   const { width } = useWindowDimensions();
   const [page, setPage] = useState(0);
   const shiftName = useAppStore((state) => state.user?.shiftName);
+  const shiftTableHasNoNames = useAppStore((state) => state.user?.shiftTableHasNoNames);
   const setHasSeenTutorial = useAppStore((state) => state.setHasSeenTutorial);
 
   const handleDone = () => {
     setHasSeenTutorial();
-    router.replace(shiftName ? '/(tabs)/calendar-view' : '/name-input');
+    // 名前の設定を終えたかどうかの判定。「名前が載っていない」を選んだ人は
+    // shiftName が空のままなので、そちらも設定済みとして扱う。
+    const nameStepDone = Boolean(shiftName) || Boolean(shiftTableHasNoNames);
+    router.replace(nameStepDone ? '/(tabs)/calendar-view' : '/name-input');
   };
 
   const handleScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {

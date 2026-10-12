@@ -113,6 +113,8 @@ export default function TemplateTab() {
   };
   const user = useAppStore((state) => state.user);
   const setShiftName = useAppStore((state) => state.setShiftName);
+  const setShiftTableHasNoNames = useAppStore((state) => state.setShiftTableHasNoNames);
+  const shiftTableHasNoNames = user?.shiftTableHasNoNames ?? false;
   const addWorkplace = useAppStore((state) => state.addWorkplace);
   const removeWorkplace = useAppStore((state) => state.removeWorkplace);
   const renameWorkplace = useAppStore((state) => state.renameWorkplace);
@@ -730,12 +732,24 @@ export default function TemplateTab() {
           value={user?.shiftName ?? ''}
           onChangeText={setShiftName}
           placeholder="シフト表に書かれている自分の名前"
+          editable={!shiftTableHasNoNames}
           style={inputStyle}
-          autoFocus
+          autoFocus={!shiftTableHasNoNames}
         />
-        <ThemedText type="footnote" themeColor="textSecondary">
-          このキーワードをもとに、AIがシフト表からあなたの行を抽出します。
-        </ThemedText>
+        <View style={styles.noNameRow}>
+          <View style={styles.noNameLabel}>
+            <ThemedText type="body">シフト表に名前が載っていない</ThemedText>
+            <ThemedText type="footnote" themeColor="textSecondary">
+              自分専用の勤務表やカレンダー形式など、人の名前が書かれていない表はこちら。表に載っている勤務をすべてあなたのものとして読み取ります。
+            </ThemedText>
+          </View>
+          <Switch value={shiftTableHasNoNames} onValueChange={setShiftTableHasNoNames} />
+        </View>
+        {!shiftTableHasNoNames && (
+          <ThemedText type="footnote" themeColor="textSecondary">
+            このキーワードをもとに、AIがシフト表からあなたの行を抽出します。
+          </ThemedText>
+        )}
         <PrimaryButton label="閉じる" onPress={() => setNameDialogOpen(false)} />
       </Dialog>
 
@@ -1277,5 +1291,14 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'transparent',
     padding: Spacing.half,
+  },
+  noNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  noNameLabel: {
+    flex: 1,
+    gap: Spacing.one,
   },
 });

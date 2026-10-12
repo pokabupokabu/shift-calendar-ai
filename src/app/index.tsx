@@ -17,6 +17,9 @@ export default function IndexGate() {
   );
   const hasSeenTutorial = useAppStore((state) => state.hasSeenTutorial);
   const shiftName = useAppStore((state) => state.user?.shiftName);
+  // 「シフト表に名前が載っていない」を選んだ人は shiftName が空のままなので、
+  // 名前の有無だけで判定すると名前入力画面から出られなくなる。
+  const shiftTableHasNoNames = useAppStore((state) => state.user?.shiftTableHasNoNames);
 
   useEffect(() => {
     if (hydrated) void SplashScreen.hideAsync();
@@ -24,6 +27,6 @@ export default function IndexGate() {
 
   if (!hydrated) return null;
   if (!hasSeenTutorial) return <Redirect href="/tutorial" />;
-  if (!shiftName) return <Redirect href="/name-input" />;
+  if (!shiftName && !shiftTableHasNoNames) return <Redirect href="/name-input" />;
   return <Redirect href="/(tabs)/calendar-view" />;
 }

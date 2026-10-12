@@ -134,6 +134,7 @@ export default function AnalyzingScreen() {
   const setAnalysisError = useShiftSessionStore((state) => state.setAnalysisError);
   const analysisError = useShiftSessionStore((state) => state.analysisError);
   const shiftName = useAppStore((state) => state.user?.shiftName ?? '');
+  const shiftTableHasNoNames = useAppStore((state) => state.user?.shiftTableHasNoNames ?? false);
   const user = useAppStore((state) => state.user);
   const recordScanUsage = useAppStore((state) => state.recordScanUsage);
   // 写真選択画面で選んだ勤務先（未指定なら従来通りactiveWorkplaceにフォールバック）。
@@ -166,6 +167,7 @@ export default function AnalyzingScreen() {
         const result = await getAiProvider().analyzeShiftImages({
           images,
           shiftName,
+          shiftTableHasNoNames,
           knownShiftTypes,
         });
         if (cancelled) return;
