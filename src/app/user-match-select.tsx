@@ -65,7 +65,7 @@ export default function UserMatchSelectScreen() {
     setResolving(true);
     setError(null);
     try {
-      const result = await getAiProvider().analyzeShiftImages({
+      const result = await getAiProvider({ isPro: !!user?.settings.isPro }).analyzeShiftImages({
         images,
         shiftName,
         knownShiftTypes,

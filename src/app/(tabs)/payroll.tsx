@@ -35,6 +35,7 @@ import type { ShiftType, Workplace } from '@/models';
 import {
   computeDailyEarnings,
   computeMonthlyPayroll,
+  countAllDayEventsInYear,
   computeShiftBreakdown,
   computeYearlyIncome,
   shiftTypeKey,
@@ -101,6 +102,13 @@ export default function PayrollTab() {
   const yearlyIncome = useMemo(
     () => computeYearlyIncome(calendarEvents, currentYear, workplaces),
     [calendarEvents, currentYear, workplaces],
+  );
+
+  // 時刻が不明な終日シフトは金額を計算できないため集計から外している。0円として計上すると
+  // 年収見込みが実際より低く出て壁の判定を誤らせるので、除外した件数を明示する。
+  const yearlyAllDayExcludedCount = useMemo(
+    () => countAllDayEventsInYear(calendarEvents, currentYear),
+    [calendarEvents, currentYear],
   );
 
   // 年収の壁は年齢（12/31時点）と年分で変わるため、設定値から組み立てる。
@@ -255,6 +263,13 @@ export default function PayrollTab() {
             </ThemedText>
           </View>
 
+          {payroll.allDayExcludedCount > 0 && (
+            <ThemedText type="caption2" themeColor="textSecondary">
+              終日シフト{payroll.allDayExcludedCount}
+              件は時刻が不明なため、この金額に含めていません。
+            </ThemedText>
+          )}
+
           <View style={[styles.statsFooter, { borderTopColor: theme.border }]}>
             <View style={styles.statsLeft}>
               <View style={styles.statItem}>
@@ -373,6 +388,12 @@ export default function PayrollTab() {
               </ThemedText>
               <ThemedText type="headline">{formatYen(yearlyIncome)}</ThemedText>
             </View>
+            {yearlyAllDayExcludedCount > 0 && (
+              <ThemedText type="caption2" themeColor="textSecondary">
+                終日シフト{yearlyAllDayExcludedCount}
+                件は時刻が不明なため、この年収見込みに含めていません。実際の年収はこの金額より多くなります。
+              </ThemedText>
+            )}
             <ThemedText type="caption2" themeColor="textSecondary">
               登録済みのシフトのみの集計です。壁の金額は年齢・働き方・年分によって変わります。正確な判定は勤務先や親の勤務先の健康保険組合にご確認ください。
             </ThemedText>

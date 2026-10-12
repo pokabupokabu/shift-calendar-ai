@@ -11,9 +11,13 @@ export interface CalendarEventRecord {
   /** Which workplace (掛け持ち job) this shift belongs to; resolves wage settings and shift-type colors. */
   workplaceId: string;
   date: string; // "YYYY-MM-DD"
-  startTime: string; // "HH:mm"
-  endTime: string; // "HH:mm"
+  /** "HH:mm"。isAllDay が true のときは空文字。 */
+  startTime: string;
+  /** "HH:mm"。isAllDay が true のときは空文字。 */
+  endTime: string;
   title: string;
+  /** 終日イベントとして登録したシフト。時刻が不明なため給与計算の対象外（Shift.isAllDay 由来）。 */
+  isAllDay?: boolean;
   /** Shift type name (e.g. "早番") at creation time, used to look up a wage rate for payroll. */
   shiftType?: string;
   calendarProvider: CalendarProviderId;

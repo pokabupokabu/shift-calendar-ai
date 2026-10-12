@@ -144,6 +144,22 @@ export interface PayrollShiftTypeBreakdown {
 export interface MonthlyPayroll {
   byShiftType: PayrollShiftTypeBreakdown[];
   total: number;
+  /**
+   * 終日イベントとして登録したために給与計算から除外した件数。
+   * 0円として計上すると年収見込みが実際より低く出て扶養の壁の判定を誤らせるため、
+   * 計上せずに「含めていない」ことを画面で明示するための件数（要件: 給与計算の扱い）。
+   */
+  allDayExcludedCount: number;
+}
+
+/** 時刻が不明な終日イベントは給与を計算できないため、給与系の集計からは常に外す。 */
+function isPayrollTarget(event: CalendarEventRecord): boolean {
+  return !event.isAllDay;
+}
+
+/** 指定した暦年のうち、終日イベントとして登録されていて給与計算に含められない件数。 */
+export function countAllDayEventsInYear(events: CalendarEventRecord[], year: number): number {
+  return events.filter((event) => getYear(parseISO(event.date)) === year && event.isAllDay).length;
 }
 
 /** @deprecated computeMonthlyPayroll/computeDailyEarnings now take `workplaces: Workplace[]` instead. */
@@ -172,7 +188,9 @@ export function computeMonthlyPayroll(
   month: Date,
   workplaces: Workplace[],
 ): MonthlyPayroll {
-  const monthEvents = events.filter((event) => isSameMonth(parseISO(event.date), month));
+  const eventsInMonth = events.filter((event) => isSameMonth(parseISO(event.date), month));
+  const monthEvents = eventsInMonth.filter(isPayrollTarget);
+  const allDayExcludedCount = eventsInMonth.length - monthEvents.length;
 
   const breakdownByKey = new Map<string, PayrollShiftTypeBreakdown>();
   const datesByKey = new Map<string, Set<string>>();
@@ -224,7 +242,7 @@ export function computeMonthlyPayroll(
   }));
   const total = byShiftType.reduce((sum, entry) => sum + entry.subtotal, 0);
 
-  return { byShiftType, total };
+  return { byShiftType, total, allDayExcludedCount };
 }
 
 /**
@@ -238,7 +256,9 @@ export function computeYearlyIncome(
   year: number,
   workplaces: Workplace[],
 ): number {
-  const yearEvents = events.filter((event) => getYear(parseISO(event.date)) === year);
+  const yearEvents = events.filter(
+    (event) => getYear(parseISO(event.date)) === year && isPayrollTarget(event),
+  );
 
   return yearEvents.reduce((sum, event) => {
     const workplace = workplaces.find((w) => w.id === event.workplaceId);
@@ -281,7 +301,9 @@ export function computeDailyEarnings(
   month: Date,
   workplaces: Workplace[],
 ): DailyEarning[] {
-  const monthEvents = events.filter((event) => isSameMonth(parseISO(event.date), month));
+  const monthEvents = events.filter(
+    (event) => isSameMonth(parseISO(event.date), month) && isPayrollTarget(event),
+  );
 
   return monthEvents
     .flatMap((event) => {

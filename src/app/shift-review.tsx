@@ -13,11 +13,15 @@ import { useIconBadgeColors } from '@/hooks/use-icon-badge-colors';
 import { useTheme } from '@/hooks/use-theme';
 import { useAppStore } from '@/store/useAppStore';
 import { useShiftSessionStore } from '@/store/useShiftSessionStore';
+import { hasUsableTimeRange } from '@/utils/shiftTime';
 
 /**
  * シフトの編集画面: 時刻は自由入力（"HH:mm"）、日をまたぐかどうかは
  * 開始・終了時刻の大小関係から自動判定する (requirements section 10)。
  * 日付は読み取り専用、シフト種別は登録済みテンプレートからの選択のみに対応する。
+ *
+ * 時刻が読み取れなかったシフト（終日）もこの画面で扱う。両方の時刻を入れて保存すると
+ * 通常のシフトに変わり、給与計算の対象になる。逆に時刻を消せば終日に戻る。
  */
 export default function ShiftReviewScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -47,14 +51,30 @@ export default function ShiftReviewScreen() {
 
   const matchedShiftType = shiftTypes.find((template) => template.name === shiftType);
 
+  // 片方しか入っていない・時刻として読めない場合は時刻を確定できないため終日のままにする。
+  const willBeAllDay = !hasUsableTimeRange(startTime, endTime);
+
   const handleSave = () => {
-    updateShift(shift.id, {
-      date: shift.date,
-      startTime,
-      endTime,
-      shiftType,
-      isOvernight: endTime <= startTime,
-    });
+    updateShift(
+      shift.id,
+      willBeAllDay
+        ? {
+            date: shift.date,
+            startTime: '',
+            endTime: '',
+            shiftType,
+            isOvernight: false,
+            isAllDay: true,
+          }
+        : {
+            date: shift.date,
+            startTime,
+            endTime,
+            shiftType,
+            isOvernight: endTime <= startTime,
+            isAllDay: false,
+          },
+    );
     router.back();
   };
 
@@ -147,6 +167,11 @@ export default function ShiftReviewScreen() {
             </View>
           </View>
         </View>
+        {willBeAllDay && (
+          <ThemedText type="footnote" themeColor="textSecondary">
+            時間が入っていないため「終日」で登録されます。給与の見込み額には含まれません。両方の時間を入れると通常のシフトとして計算に入ります。
+          </ThemedText>
+        )}
       </View>
 
       <View style={styles.actions}>

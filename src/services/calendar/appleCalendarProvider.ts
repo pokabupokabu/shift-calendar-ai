@@ -17,6 +17,25 @@ function toDate(date: string, time: string, rollToNextDay: boolean): Date {
 }
 
 /**
+ * 終日シフトは時刻を持たない（startTime/endTime が空文字）ため、時刻から日付を組み立てられない。
+ * その日の 0:00〜翌0:00 を範囲にし、allDay フラグと整合させる。
+ */
+function resolveEventRange(input: CreateCalendarEventInput): { startDate: Date; endDate: Date } {
+  if (input.isAllDay) {
+    return {
+      startDate: toDate(input.date, '00:00', false),
+      endDate: toDate(input.date, '00:00', true),
+    };
+  }
+
+  const isOvernight = input.endTime <= input.startTime;
+  return {
+    startDate: toDate(input.date, input.startTime, false),
+    endDate: toDate(input.date, input.endTime, isOvernight),
+  };
+}
+
+/**
  * EventKit-backed implementation. No sign-in is needed (requirements section 19) -
  * only calendar permission, which requestCalendarPermission asks for explicitly
  * rather than reading the whole calendar, to keep the privacy footprint minimal
@@ -41,11 +60,11 @@ export class AppleCalendarProvider implements CalendarProvider {
 
   async createEvent(input: CreateCalendarEventInput): Promise<CalendarEventRecord> {
     const calendar = Calendar.getDefaultCalendarSync();
-    const isOvernight = input.endTime <= input.startTime;
+    const { startDate, endDate } = resolveEventRange(input);
     const event = await calendar.createEvent({
       title: input.title,
-      startDate: toDate(input.date, input.startTime, false),
-      endDate: toDate(input.date, input.endTime, isOvernight),
+      startDate,
+      endDate,
       allDay: input.isAllDay ?? false,
     });
 
@@ -58,18 +77,19 @@ export class AppleCalendarProvider implements CalendarProvider {
       startTime: input.startTime,
       endTime: input.endTime,
       title: input.title,
+      isAllDay: input.isAllDay ?? false,
       calendarProvider: this.id,
       externalEventId: event.id,
     };
   }
 
   async updateEvent(externalEventId: string, input: CreateCalendarEventInput): Promise<void> {
-    const isOvernight = input.endTime <= input.startTime;
+    const { startDate, endDate } = resolveEventRange(input);
     const event = await Calendar.ExpoCalendarEvent.get(externalEventId);
     await event.update({
       title: input.title,
-      startDate: toDate(input.date, input.startTime, false),
-      endDate: toDate(input.date, input.endTime, isOvernight),
+      startDate,
+      endDate,
       allDay: input.isAllDay ?? false,
     });
   }

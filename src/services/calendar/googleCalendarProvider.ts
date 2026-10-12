@@ -32,6 +32,14 @@ interface StoredGoogleToken {
   expiresAt: number;
 }
 
+/** "2026-10-12" -> "2026-10-13"。Google の終日イベントは end.date が排他的なため必要。 */
+function nextDay(date: string): string {
+  const [year, month, day] = date.split('-').map(Number);
+  const result = new Date(year, month - 1, day + 1);
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${result.getFullYear()}-${pad(result.getMonth() + 1)}-${pad(result.getDate())}`;
+}
+
 /** Combines "YYYY-MM-DD" + "HH:mm" into a floating (timezone-less) local datetime string for the Calendar API. */
 function toGoogleDateTime(date: string, time: string, rollToNextDay: boolean): string {
   const [year, month, day] = date.split('-').map(Number);
@@ -187,10 +195,12 @@ export class GoogleCalendarProvider implements CalendarProvider {
 
   private buildEventBody(input: CreateCalendarEventInput) {
     if (input.isAllDay) {
+      // 終日イベントの end.date は排他的（その日を含まない）ため、翌日を渡さないと
+      // 長さ0の不正なイベントになる。
       return {
         summary: input.title,
         start: { date: input.date },
-        end: { date: input.date },
+        end: { date: nextDay(input.date) },
       };
     }
 
@@ -218,6 +228,7 @@ export class GoogleCalendarProvider implements CalendarProvider {
       startTime: input.startTime,
       endTime: input.endTime,
       title: input.title,
+      isAllDay: input.isAllDay ?? false,
       calendarProvider: this.id,
       externalEventId: event.id,
     };

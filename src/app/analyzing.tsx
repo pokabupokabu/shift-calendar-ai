@@ -164,7 +164,7 @@ export default function AnalyzingScreen() {
       }).start();
       try {
         recordScanUsage();
-        const result = await getAiProvider().analyzeShiftImages({
+        const result = await getAiProvider({ isPro: !!user?.settings.isPro }).analyzeShiftImages({
           images,
           shiftName,
           shiftTableHasNoNames,
