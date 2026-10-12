@@ -9,10 +9,18 @@ export interface Shift {
   /** Which workplace (掛け持ち job) this shift was scanned/created under. */
   workplaceId: string;
   date: string; // "YYYY-MM-DD"
-  startTime: string; // "HH:mm"
-  endTime: string; // "HH:mm"
+  /** "HH:mm"。isAllDay が true のときは空文字（時刻が読み取れなかった日）。 */
+  startTime: string;
+  /** "HH:mm"。isAllDay が true のときは空文字。 */
+  endTime: string;
   shiftType: string;
   isOvernight: boolean;
+  /**
+   * 時刻が1つも読み取れなかったシフト（名前だけのカレンダー形式など）。
+   * カレンダーには終日イベントとして登録し、時刻が不明なので給与計算からは除外する。
+   * あとから時刻を手入力すると false に戻り、通常のシフトとして扱われる。
+   */
+  isAllDay?: boolean;
   confidence: number; // 0..1, internal only
   source: ShiftSource;
 }

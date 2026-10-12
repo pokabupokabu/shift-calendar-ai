@@ -11,8 +11,11 @@ export const env = {
     // real Gemini API key lives only in that Worker's secrets, never here.
     proxyUrl: process.env.EXPO_PUBLIC_AI_PROXY_URL ?? '',
     proxySecret: process.env.EXPO_PUBLIC_AI_PROXY_SECRET ?? '',
-    // Gemini model names change frequently; keep it swappable without a code change.
-    geminiModel: process.env.EXPO_PUBLIC_GEMINI_MODEL ?? 'gemini-3-flash-preview',
+    // 無料とPROでモデルを出し分ける。実シフト表6枚での実測にもとづく既定値で、
+    // 無料は速度とコスト、PROは難解な表での正直さ（読めない時に警告を返すか）を優先している。
+    // Gemini のモデル名は頻繁に変わるため、コード変更なしで差し替えられるようにしておく。
+    geminiModelFree: process.env.EXPO_PUBLIC_GEMINI_MODEL_FREE ?? 'gemini-3.5-flash-lite',
+    geminiModelPro: process.env.EXPO_PUBLIC_GEMINI_MODEL_PRO ?? 'gemini-3.8-flash',
   },
   google: {
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? '',

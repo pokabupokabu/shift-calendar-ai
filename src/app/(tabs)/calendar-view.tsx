@@ -31,6 +31,7 @@ import { getCalendarProvider } from '@/services/calendar';
 import { getConnectedProviders } from '@/services/calendar/getConnectedProviders';
 import { useAppStore } from '@/store/useAppStore';
 import { computeShiftBreakdown } from '@/utils/computePayroll';
+import { hasUsableTimeRange } from '@/utils/shiftTime';
 import { formatShiftDate, formatShiftTimeRange } from '@/utils/formatShift';
 import type { CalendarEventRecord, CalendarProviderId } from '@/models';
 
@@ -138,10 +139,13 @@ export default function CalendarViewTab() {
   };
 
   const handleSaveEdit = (eventId: string) => {
+    // 終日シフトにあとから時刻を入れたら通常のシフトに戻す（逆に消せば終日に戻る）。
+    const isAllDay = !hasUsableTimeRange(editDraft.startTime, editDraft.endTime);
     updateCalendarEvent(eventId, {
       date: editDraft.date,
-      startTime: editDraft.startTime,
-      endTime: editDraft.endTime,
+      startTime: isAllDay ? '' : editDraft.startTime,
+      endTime: isAllDay ? '' : editDraft.endTime,
+      isAllDay,
     });
     setEditingEventId(undefined);
   };
@@ -277,17 +281,21 @@ export default function CalendarViewTab() {
                 const workplaceSettings =
                   workplaces?.find((w) => w.id === event.workplaceId)?.settings ??
                   DEFAULT_WORKPLACE_SETTINGS;
-                const breakdown = computeShiftBreakdown(
-                  event.startTime,
-                  event.endTime,
-                  workplaceSettings.wageType,
-                  workplaceSettings.hourlyWage,
-                  workplaceSettings.dailyWage,
-                  workplaceSettings.breakDeductionEnabled,
-                  workplaceSettings.breakRules,
-                  workplaceSettings.lateNightPremium,
-                  workplaceSettings.earlyMorningPremium,
-                );
+                // 終日シフトは時刻を持たないため、実働時間・給与は計算できない（計算すると NaN になる）。
+                const isAllDay = !!event.isAllDay;
+                const breakdown = isAllDay
+                  ? null
+                  : computeShiftBreakdown(
+                      event.startTime,
+                      event.endTime,
+                      workplaceSettings.wageType,
+                      workplaceSettings.hourlyWage,
+                      workplaceSettings.dailyWage,
+                      workplaceSettings.breakDeductionEnabled,
+                      workplaceSettings.breakRules,
+                      workplaceSettings.lateNightPremium,
+                      workplaceSettings.earlyMorningPremium,
+                    );
                 const isEditing = editingEventId === event.id;
                 const isConfirmingDelete = confirmDeleteId === event.id;
 
@@ -374,74 +382,94 @@ export default function CalendarViewTab() {
                             </ThemedText>
                           </View>
                           <ThemedText style={styles.detailValueBold}>
-                            {formatShiftTimeRange(event.startTime, event.endTime, isOvernight)}
+                            {formatShiftTimeRange(
+                              event.startTime,
+                              event.endTime,
+                              isOvernight,
+                              isAllDay,
+                            )}
                           </ThemedText>
                         </View>
-                        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+                        {isAllDay && (
+                          <>
+                            <View style={[styles.divider, { backgroundColor: theme.border }]} />
+                            <ThemedText type="caption2" themeColor="textSecondary">
+                              時刻が読み取れなかったシフトです。実働時間と給与見込みは計算できないため、月間・年間の集計にも含めていません。
+                            </ThemedText>
+                          </>
+                        )}
+                        {!isAllDay && breakdown && (
+                          <>
+                            <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
-                        <View style={styles.detailRow}>
-                          <View style={styles.detailLabelGroup}>
-                            <Timer size={IconSize.small} color={theme.textSecondary} />
-                            <ThemedText type="footnote" themeColor="textSecondary">
-                              実働時間
-                            </ThemedText>
-                          </View>
-                          <ThemedText style={styles.detailValueBold}>
-                            {formatHours(breakdown.workedHours)}時間
-                          </ThemedText>
-                        </View>
-                        <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
-                        <View style={styles.detailRow}>
-                          <View style={styles.detailLabelGroup}>
-                            <Coffee size={IconSize.small} color={theme.textSecondary} />
-                            <ThemedText type="footnote" themeColor="textSecondary">
-                              休憩時間
-                            </ThemedText>
-                          </View>
-                          <View style={styles.detailValueGroup}>
-                            <ThemedText style={styles.detailValueMedium}>
-                              {breakdown.breakMinutes}分
-                            </ThemedText>
-                            {workplaceSettings.breakDeductionEnabled && (
-                              <View style={[styles.tagPill, { backgroundColor: theme.border }]}>
-                                <ThemedText
-                                  style={[styles.tagPillLabel, { color: theme.textSecondary }]}
-                                >
-                                  自動控除
+                            <View style={styles.detailRow}>
+                              <View style={styles.detailLabelGroup}>
+                                <Timer size={IconSize.small} color={theme.textSecondary} />
+                                <ThemedText type="footnote" themeColor="textSecondary">
+                                  実働時間
                                 </ThemedText>
                               </View>
-                            )}
-                          </View>
-                        </View>
-                        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+                              <ThemedText style={styles.detailValueBold}>
+                                {formatHours(breakdown.workedHours)}時間
+                              </ThemedText>
+                            </View>
+                            <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
-                        <View style={styles.detailRow}>
-                          <View style={styles.detailLabelGroup}>
-                            <CircleDollarSign size={IconSize.small} color={theme.textSecondary} />
-                            <ThemedText type="footnote" themeColor="textSecondary">
-                              {workplaceSettings.wageType === 'daily' ? '基本日給' : '基本時給'}
-                            </ThemedText>
-                          </View>
-                          <ThemedText style={styles.detailValueMedium}>
-                            {formatYen(
-                              workplaceSettings.wageType === 'daily'
-                                ? workplaceSettings.dailyWage
-                                : workplaceSettings.hourlyWage,
-                            )}
-                          </ThemedText>
-                        </View>
-                        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+                            <View style={styles.detailRow}>
+                              <View style={styles.detailLabelGroup}>
+                                <Coffee size={IconSize.small} color={theme.textSecondary} />
+                                <ThemedText type="footnote" themeColor="textSecondary">
+                                  休憩時間
+                                </ThemedText>
+                              </View>
+                              <View style={styles.detailValueGroup}>
+                                <ThemedText style={styles.detailValueMedium}>
+                                  {breakdown.breakMinutes}分
+                                </ThemedText>
+                                {workplaceSettings.breakDeductionEnabled && (
+                                  <View style={[styles.tagPill, { backgroundColor: theme.border }]}>
+                                    <ThemedText
+                                      style={[styles.tagPillLabel, { color: theme.textSecondary }]}
+                                    >
+                                      自動控除
+                                    </ThemedText>
+                                  </View>
+                                )}
+                              </View>
+                            </View>
+                            <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
-                        <View style={styles.earningsRow}>
-                          <View style={styles.detailLabelGroup}>
-                            <Wallet size={IconSize.small} color={theme.primary} />
-                            <ThemedText style={styles.earningsLabel}>給与見込み</ThemedText>
-                          </View>
-                          <ThemedText style={[styles.earningsValue, { color: theme.primary }]}>
-                            {formatYen(breakdown.earnings)}
-                          </ThemedText>
-                        </View>
+                            <View style={styles.detailRow}>
+                              <View style={styles.detailLabelGroup}>
+                                <CircleDollarSign
+                                  size={IconSize.small}
+                                  color={theme.textSecondary}
+                                />
+                                <ThemedText type="footnote" themeColor="textSecondary">
+                                  {workplaceSettings.wageType === 'daily' ? '基本日給' : '基本時給'}
+                                </ThemedText>
+                              </View>
+                              <ThemedText style={styles.detailValueMedium}>
+                                {formatYen(
+                                  workplaceSettings.wageType === 'daily'
+                                    ? workplaceSettings.dailyWage
+                                    : workplaceSettings.hourlyWage,
+                                )}
+                              </ThemedText>
+                            </View>
+                            <View style={[styles.divider, { backgroundColor: theme.border }]} />
+
+                            <View style={styles.earningsRow}>
+                              <View style={styles.detailLabelGroup}>
+                                <Wallet size={IconSize.small} color={theme.primary} />
+                                <ThemedText style={styles.earningsLabel}>給与見込み</ThemedText>
+                              </View>
+                              <ThemedText style={[styles.earningsValue, { color: theme.primary }]}>
+                                {formatYen(breakdown.earnings)}
+                              </ThemedText>
+                            </View>
+                          </>
+                        )}
                         <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
                         <View style={styles.providerRow}>

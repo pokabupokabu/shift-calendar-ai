@@ -1,10 +1,14 @@
 /** A single shift as returned directly by the AI, before it's assigned a local id (section 6). */
 export interface RawAiShift {
   date: string; // "YYYY-MM-DD"
-  startTime: string; // "HH:mm"
-  endTime: string; // "HH:mm"
+  /** "HH:mm"。isAllDay が true のときは空文字。 */
+  startTime: string;
+  /** "HH:mm"。isAllDay が true のときは空文字。 */
+  endTime: string;
   shiftType: string;
   isOvernight: boolean;
+  /** 時刻が読み取れず終日として扱うシフト（Shift.isAllDay と同義）。 */
+  isAllDay?: boolean;
   confidence: number; // 0..1
 }
 

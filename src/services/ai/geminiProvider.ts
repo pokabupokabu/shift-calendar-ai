@@ -1,5 +1,6 @@
 import { env } from '@/config/env';
 import type { ShiftAnalysisResult } from '@/models';
+import { hasUsableTimeRange } from '@/utils/shiftTime';
 
 import type { AIProvider, AnalyzeShiftImagesInput } from './types';
 
@@ -17,13 +18,25 @@ const RESPONSE_SCHEMA = {
         type: 'object',
         properties: {
           date: { type: 'string', description: 'YYYY-MM-DD' },
-          startTime: { type: 'string', description: 'HH:mm' },
-          endTime: { type: 'string', description: 'HH:mm' },
+          startTime: { type: 'string', description: 'HH:mm（isAllDay が true のときは空文字）' },
+          endTime: { type: 'string', description: 'HH:mm（isAllDay が true のときは空文字）' },
           shiftType: { type: 'string' },
           isOvernight: { type: 'boolean' },
+          isAllDay: {
+            type: 'boolean',
+            description: '時刻を特定できず終日として扱う場合のみ true',
+          },
           confidence: { type: 'number' },
         },
-        required: ['date', 'startTime', 'endTime', 'shiftType', 'isOvernight', 'confidence'],
+        required: [
+          'date',
+          'startTime',
+          'endTime',
+          'shiftType',
+          'isOvernight',
+          'isAllDay',
+          'confidence',
+        ],
       },
     },
     userMatch: {
@@ -97,12 +110,20 @@ function buildPrompt(input: AnalyzeShiftImagesInput): string {
 ${buildMatchingTask(input)}
 
 # シフト種別の扱い
-以下は過去にユーザーが登録・修正した「シフト種別 → 時間」の対応表です。表内の記載（例:「早番」）がこの対応表のいずれかと一致する場合、その時間を優先的な手がかりとして使ってよい。ただし画像内に明記された時間があればそちらを優先する。
+以下は過去にユーザーが登録・修正した「シフト種別 → 時間」の対応表です。
 ${knownShiftTypesText}
+
+対応表の時間を使えるのは、**その日のセルに対応表の名前そのものが記載されている場合だけ**である。記載が無い日や、対応表のどの名前とも一致しない記載の日に、対応表の時間を当てはめてはならない（他の日の時間を流用することも禁止）。画像内に明記された時間があれば、常に対応表より優先する。
+
+時刻の決め方は次の優先順位に厳密に従う。
+1. その日のセル（または凡例）に時刻が明記されている → その時刻を使う
+2. 時刻の記載は無いが、対応表の名前と一致する記載がある → 対応表の時間を使う
+3. どちらにも当てはまらない → **時刻を推測せず** isAllDay を true にする（下記の抽出ルール参照）
 
 # 各シフトの抽出ルール
 - date は "YYYY-MM-DD" 形式（西暦4桁）。年が画像から読み取れない場合は、直近の妥当な年を推定する。
-- startTime / endTime は "HH:mm" 形式（24時間表記）。
+- startTime / endTime は "HH:mm" 形式（24時間表記）。上記の優先順位1か2で時刻を決められた場合のみ埋め、isAllDay は false にする。
+- 上記の優先順位3に当たる日（勤務があることは分かるが、時刻を決める根拠が画像内にも対応表にも無い日）は、isAllDay を true、startTime と endTime を空文字 ""、isOvernight を false にする。**存在しない時刻を書いてはならない。** 名前だけが書かれた月間カレンダー形式のシフト表などがこれに当たる。
 - 「休み」「公休」「有給」「－」「—」「/」「×」など、その日に勤務がないことを示す記載の日は shifts に含めない。勤務時間が読み取れる日だけを抽出する。
 - 夜勤など日付をまたぐシフトは isOvernight を true にし、endTime には翌日側の時刻をそのまま入れる（例: 22:00〜翌07:00 なら startTime="22:00", endTime="07:00", isOvernight=true）。
 - confidence は 0〜1 の数値で、その1件の読み取りにどれだけ自信があるかを表す内部値（UIには数値のまま出さない）。文字が不鮮明・時刻やシフト種別の記載が曖昧な場合は低い値にする。
@@ -139,6 +160,25 @@ function assertShiftAnalysisResult(value: unknown): asserts value is ShiftAnalys
 }
 
 /**
+ * 終日シフトの表記をアプリ側の約束どおりに揃える。
+ * モデルが isAllDay を立てたのに時刻を埋めてきた場合や、逆に時刻として読めない値を
+ * 返してきた場合に、画面と給与計算が「時刻のあるシフト」と誤認しないようにする。
+ * （存在しない時刻を自信満々に返すモデルが実在するため、ここで食い止める）
+ */
+function normalizeAllDayShifts(result: ShiftAnalysisResult): void {
+  for (const shift of result.shifts) {
+    if (shift.isAllDay || !hasUsableTimeRange(shift.startTime, shift.endTime)) {
+      shift.isAllDay = true;
+      shift.startTime = '';
+      shift.endTime = '';
+      shift.isOvernight = false;
+    } else {
+      shift.isAllDay = false;
+    }
+  }
+}
+
+/**
  * Sends the shift table image(s) to Gemini via the gemini-shift-proxy Cloudflare
  * Worker (server/gemini-proxy) — the real Gemini API key lives only in that
  * Worker's secrets, never in this client bundle (see README "8. 不明点・リスク" 1).
@@ -148,9 +188,9 @@ export class GeminiProvider implements AIProvider {
   readonly id = 'gemini';
 
   constructor(
+    private readonly model: string,
     private readonly proxyUrl: string = env.ai.proxyUrl,
     private readonly proxySecret: string = env.ai.proxySecret,
-    private readonly model: string = env.ai.geminiModel,
   ) {}
 
   async analyzeShiftImages(input: AnalyzeShiftImagesInput): Promise<ShiftAnalysisResult> {
@@ -228,6 +268,7 @@ export class GeminiProvider implements AIProvider {
     }
 
     assertShiftAnalysisResult(parsed);
+    normalizeAllDayShifts(parsed);
 
     if (input.images.length === 1) {
       parsed.sourceImage = input.images[0].uri;

@@ -114,6 +114,10 @@ export default function CalendarConfirmScreen() {
 
   const monthLabel = format(visible[0] ? parseISO(visible[0].shift.date) : new Date(), 'yyyy年M月');
 
+  // 時刻が読み取れなかったシフトは終日として登録される。給与は計算できないため、
+  // 0円として計上せずに「含めない」ことをこの画面で先に伝える（年収見込みを誤らせないため）。
+  const allDayCount = visible.filter((item) => item.shift.isAllDay).length;
+
   const handleRegister = async () => {
     if (!settings || !activeWorkplace) return;
     const provider = getCalendarProvider(settings.defaultCalendarProvider);
@@ -129,6 +133,8 @@ export default function CalendarConfirmScreen() {
           startTime: shift.startTime,
           endTime: shift.endTime,
           title,
+          // 時刻が読み取れなかったシフトは終日イベントとして登録する（時刻を推測しない）。
+          isAllDay: shift.isAllDay ?? false,
         };
         const existing =
           status === 'overwrite' ? calendarEvents.find((e) => e.date === shift.date) : undefined;
@@ -187,6 +193,15 @@ export default function CalendarConfirmScreen() {
         </View>
       </View>
 
+      {allDayCount > 0 && (
+        <View style={[styles.noticeCard, { backgroundColor: theme.backgroundElement }]}>
+          <ThemedText type="footnote" themeColor="textSecondary">
+            {allDayCount}
+            件は時刻が読み取れなかったため「終日」で登録します。給与の見込み額には含まれません。タップして時間を入れると、通常のシフトとして計算に入ります。
+          </ThemedText>
+        </View>
+      )}
+
       {photoUri && <Image source={{ uri: photoUri }} style={styles.photo} resizeMode="contain" />}
 
       {removedShiftIds.length > 0 && (
@@ -240,10 +255,18 @@ export default function CalendarConfirmScreen() {
                       item.shift.startTime,
                       item.shift.endTime,
                       item.shift.isOvernight,
+                      item.shift.isAllDay,
                     )}
                   </ThemedText>
                 </View>
                 <View style={styles.tagRow}>
+                  {item.shift.isAllDay && (
+                    <View style={[styles.tag, { backgroundColor: theme.backgroundElement }]}>
+                      <ThemedText type="caption2" themeColor="textSecondary">
+                        時刻なし
+                      </ThemedText>
+                    </View>
+                  )}
                   {item.status === 'overwrite' && (
                     <View style={[styles.tag, { backgroundColor: badgeColors.background }]}>
                       <ThemedText type="caption2" themeColor="primary">
@@ -377,6 +400,10 @@ export default function CalendarConfirmScreen() {
 }
 
 const styles = StyleSheet.create({
+  noticeCard: {
+    borderRadius: Radius.smallLarge,
+    padding: Spacing.three,
+  },
   photo: {
     width: '100%',
     height: PHOTO_HEIGHT,

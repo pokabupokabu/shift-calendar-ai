@@ -21,6 +21,7 @@ import { useIconBadgeColors } from '@/hooks/use-icon-badge-colors';
 import { useResolvedColorScheme } from '@/hooks/use-resolved-color-scheme';
 import type { CalendarEventRecord, Workplace } from '@/models';
 import { useAppStore } from '@/store/useAppStore';
+import { ALL_DAY_LABEL } from '@/utils/formatShift';
 import { resolveShiftTypeTone } from '@/utils/resolveShiftTypeTone';
 
 const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
@@ -37,6 +38,8 @@ interface DayLabel {
   startTime: string;
   endTime: string;
   suffix: string;
+  /** 終日シフトは時刻を持たないため、時刻の代わりに「終日」と出す。 */
+  isAllDay: boolean;
 }
 
 function toDayLabel(events: CalendarEventRecord[]): DayLabel | undefined {
@@ -50,6 +53,7 @@ function toDayLabel(events: CalendarEventRecord[]): DayLabel | undefined {
     startTime: first.startTime,
     endTime: first.endTime,
     suffix: first.shiftType ? '' : suffix,
+    isAllDay: !!first.isAllDay,
   };
 }
 
@@ -202,13 +206,25 @@ export function MonthGrid({ month, eventsByDate, selectedDate, onSelectDate }: M
                 </View>
                 {dayLabel && (
                   <View style={[styles.timeBlock, { backgroundColor: dayBadge.background }]}>
-                    <ThemedText style={[styles.timeLabel, { color: dayBadge.icon }]}>
-                      {dayLabel.startTime}
-                    </ThemedText>
-                    <ThemedText style={[styles.timeLabel, { color: dayBadge.icon }]}>
-                      {dayLabel.endTime}
-                      {dayLabel.suffix}
-                    </ThemedText>
+                    {dayLabel.isAllDay ? (
+                      <ThemedText
+                        style={[styles.timeLabel, { color: dayBadge.icon }]}
+                        numberOfLines={1}
+                      >
+                        {ALL_DAY_LABEL}
+                        {dayLabel.suffix}
+                      </ThemedText>
+                    ) : (
+                      <>
+                        <ThemedText style={[styles.timeLabel, { color: dayBadge.icon }]}>
+                          {dayLabel.startTime}
+                        </ThemedText>
+                        <ThemedText style={[styles.timeLabel, { color: dayBadge.icon }]}>
+                          {dayLabel.endTime}
+                          {dayLabel.suffix}
+                        </ThemedText>
+                      </>
+                    )}
                   </View>
                 )}
               </Pressable>

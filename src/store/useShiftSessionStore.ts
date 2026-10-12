@@ -25,7 +25,7 @@ interface ShiftSessionState {
   setAnalysisError: (message: string) => void;
   updateShift: (id: string, patch: Partial<Shift>) => void;
   addShift: (
-    input: Pick<Shift, 'date' | 'startTime' | 'endTime' | 'shiftType' | 'isOvernight'>,
+    input: Pick<Shift, 'date' | 'startTime' | 'endTime' | 'shiftType' | 'isOvernight' | 'isAllDay'>,
     workplaceId: string,
   ) => void;
   removeShift: (id: string) => void;
@@ -69,6 +69,7 @@ export const useShiftSessionStore = create<ShiftSessionState>((set, get) => ({
         endTime: raw.endTime,
         shiftType: raw.shiftType,
         isOvernight: raw.isOvernight,
+        isAllDay: raw.isAllDay ?? false,
         confidence: raw.confidence,
         source: 'ai_extracted' as const,
       })),
