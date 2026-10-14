@@ -11,7 +11,7 @@ import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { BottomTabInset, IconSize, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { getAiProvider } from '@/services/ai';
+import { AnalysisNotPerformedError, getAiProvider } from '@/services/ai';
 import { useAppStore } from '@/store/useAppStore';
 import { useShiftSessionStore } from '@/store/useShiftSessionStore';
 import { deferNavigation } from '@/utils/deferNavigation';
@@ -163,13 +163,14 @@ export default function AnalyzingScreen() {
         useNativeDriver: false,
       }).start();
       try {
-        recordScanUsage();
         const result = await getAiProvider({ isPro: !!user?.settings.isPro }).analyzeShiftImages({
           images,
           shiftName,
           shiftTableHasNoNames,
           knownShiftTypes,
         });
+        // 解析回数はAIが実際に解析したときだけ数える（通信エラー等では消費しない）
+        recordScanUsage();
         if (cancelled) return;
         Animated.timing(progressAnim, {
           toValue: 100,
@@ -184,6 +185,8 @@ export default function AnalyzingScreen() {
           );
         });
       } catch (error) {
+        // AIが応答したうえで読み取れなかった場合は、解析は行われたので回数に数える
+        if (!(error instanceof AnalysisNotPerformedError)) recordScanUsage();
         if (cancelled) return;
         setAnalysisError(
           error instanceof Error ? error.message : 'シフト表をうまく読み取れませんでした',
