@@ -12,10 +12,12 @@ import { useAppStore } from '@/store/useAppStore';
 import { getProPriceString, purchasePro, restorePurchases } from '@/utils/purchases';
 
 const FEATURES = [
-  '月別の勤務時間・給与を自動集計',
-  '給与見込みをテンプレートごとに確認',
+  '読み取り回数が4回 → 15回に（15日ごとに戻ります）',
+  '扶養の壁アラートで年収の壁を自動チェック',
+  '過去の月の給与もさかのぼって確認',
+  'バイト先を3つまで登録（掛け持ち対応）',
+  'シフト種別を8つまで自由に追加',
   '広告を非表示',
-  '画像シフト読み取り枠が無制限',
 ];
 
 const FALLBACK_PRICE = '¥330';
@@ -96,7 +98,7 @@ export default function PaywallScreen() {
             シフToカレ PRO
           </ThemedText>
           <ThemedText type="subheadline" themeColor="textSecondary" style={styles.subtitle}>
-            月別集計・給与見込みに加え、広告の非表示や画像シフト読み取り枠の拡大が無制限で利用できます。
+            読み取り回数が15回に増え、扶養の壁アラート・過去月の給与・掛け持ち・広告非表示が使えます。
           </ThemedText>
         </View>
 

@@ -57,8 +57,13 @@ export default function CalendarConfirmScreen() {
   const removeShift = useShiftSessionStore((state) => state.removeShift);
   const restoreAllShifts = useShiftSessionStore((state) => state.restoreAllShifts);
   const user = useAppStore((state) => state.user);
+  // 写真選択画面で選んだ勤務先を最優先で使う。ここを activeWorkplaceId にすると、
+  // 掛け持ちユーザーが別の勤務先を選んでスキャンしても、時給もカレンダーも別の勤務先のものになる。
+  const scanWorkplaceId = useShiftSessionStore((state) => state.scanWorkplaceId);
   const activeWorkplace =
-    user?.workplaces.find((w) => w.id === user.activeWorkplaceId) ?? user?.workplaces[0];
+    user?.workplaces.find((w) => w.id === scanWorkplaceId) ??
+    user?.workplaces.find((w) => w.id === user.activeWorkplaceId) ??
+    user?.workplaces[0];
   const shiftTypes = activeWorkplace?.shiftTypes ?? [];
   const calendarEvents = useAppStore((state) => state.calendarEvents);
   const settings = activeWorkplace?.settings;
@@ -140,9 +145,14 @@ export default function CalendarConfirmScreen() {
           status === 'overwrite' ? calendarEvents.find((e) => e.date === shift.date) : undefined;
 
         if (existing) {
-          await provider.updateEvent(existing.externalEventId, input);
+          // 上書きは「書き換え」ではなく「消して作り直す」。終日⇔時刻ありの行き来のように
+          // イベントの種類そのものが変わる場合、書き換えでは正しく反映されないことがあるため。
+          await provider.deleteEvent(existing.externalEventId);
+          const record = await provider.createEvent(input);
           updateCalendarEvent(existing.id, {
             ...input,
+            externalEventId: record.externalEventId,
+            calendarProvider: record.calendarProvider,
             shiftId: shift.id,
             workplaceId: activeWorkplace.id,
             shiftType: shift.shiftType,

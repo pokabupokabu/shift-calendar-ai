@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 
 import { Card } from '@/components/card';
+import { env } from '@/config/env';
 import { IconBadge } from '@/components/icon-badge';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
@@ -218,30 +219,32 @@ export default function AccountSettingsScreen() {
           )}
         </Card>
 
-        <Card style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <IconBadge tone="neutral">
-              <Tag size={SECTION_ICON_SIZE} color={neutralBadge.icon} />
-            </IconBadge>
-            <ThemedText type="headline">プロモーションコード</ThemedText>
-          </View>
-          <ThemedText type="footnote" themeColor="textSecondary">
-            本物の課金機能が実装されるまでの開発用プレースホルダーです。
-          </ThemedText>
-          <TextInput
-            value={promoCode}
-            onChangeText={setPromoCode}
-            placeholder="コードを入力"
-            autoCapitalize="characters"
-            placeholderTextColor={theme.textSecondary}
-            style={[styles.input, { color: theme.text, backgroundColor: theme.background }]}
-          />
-          <PrimaryButton
-            label="適用する"
-            onPress={handleApplyPromoCode}
-            disabled={promoCode.trim().length === 0}
-          />
-        </Card>
+        {env.enableDevPromoCode && (
+          <Card style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <IconBadge tone="neutral">
+                <Tag size={SECTION_ICON_SIZE} color={neutralBadge.icon} />
+              </IconBadge>
+              <ThemedText type="headline">プロモーションコード</ThemedText>
+            </View>
+            <ThemedText type="footnote" themeColor="textSecondary">
+              開発・検証用です。提出用ビルドでは表示されません。
+            </ThemedText>
+            <TextInput
+              value={promoCode}
+              onChangeText={setPromoCode}
+              placeholder="コードを入力"
+              autoCapitalize="characters"
+              placeholderTextColor={theme.textSecondary}
+              style={[styles.input, { color: theme.text, backgroundColor: theme.background }]}
+            />
+            <PrimaryButton
+              label="適用する"
+              onPress={handleApplyPromoCode}
+              disabled={promoCode.trim().length === 0}
+            />
+          </Card>
+        )}
 
         <Card style={styles.section}>
           <View style={styles.sectionHeader}>

@@ -262,7 +262,7 @@ export default function SettingsTab() {
             <ThemedText style={styles.proTitle}>シフToカレ PRO</ThemedText>
           </View>
           <ThemedText type="footnote" themeColor="textSecondary">
-            月別集計・給与見込みに加え、広告の非表示や画像シフト読み取り枠の拡大が無制限で利用できます。
+            読み取り回数が15回に増え、扶養の壁アラート・過去月の給与・掛け持ち・広告非表示が使えます。
           </ThemedText>
           <View style={styles.proPriceRow}>
             <View style={styles.proPrice}>
