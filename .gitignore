@@ -48,3 +48,6 @@ example
 
 # Claude Code local-only settings
 .claude/settings.local.json
+
+# 法務ページの生成物（npm run build:site で再生成する）
+web/
