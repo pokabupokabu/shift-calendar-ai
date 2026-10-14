@@ -56,6 +56,13 @@ interface ShiftTypeFields {
 /** 名前変更・削除ができない基本3種別(早番/遅番/夜勤、時間だけ編集可)。 */
 const BASE_SHIFT_TYPE_IDS = new Set(['early', 'late', 'night']);
 
+/** PROで追加できるシフト種別の数。基本3種と合わせて合計8つまで。 */
+const MAX_ADDED_SHIFT_TYPES = 5;
+const MAX_SHIFT_TYPES = BASE_SHIFT_TYPE_IDS.size + MAX_ADDED_SHIFT_TYPES;
+
+/** PROで登録できる勤務先（掛け持ち）の数。 */
+const MAX_WORKPLACES = 3;
+
 const ROW_ICON_SIZE = 20;
 
 const formatYen = (amount: number) => `${Math.round(amount).toLocaleString('ja-JP')}円`;
@@ -182,12 +189,19 @@ export default function TemplateTab() {
   };
 
   const handlePressAddWorkplace = () => {
-    if (user?.settings.isPro) {
-      setNewWorkplaceName('');
-      setAddWorkplaceDialogOpen(true);
-    } else {
+    if (!user?.settings.isPro) {
       router.push('/paywall');
+      return;
     }
+    if ((user?.workplaces.length ?? 0) >= MAX_WORKPLACES) {
+      Alert.alert(
+        '登録できる勤務先は3つまでです',
+        '不要な勤務先を削除すると、新しく追加できます。',
+      );
+      return;
+    }
+    setNewWorkplaceName('');
+    setAddWorkplaceDialogOpen(true);
   };
 
   const handleConfirmAddWorkplace = () => {
@@ -711,11 +725,18 @@ export default function TemplateTab() {
 
         <Pressable
           onPress={() => {
-            if (user?.settings.isPro) {
-              handleStartAdd();
-            } else {
+            if (!user?.settings.isPro) {
               router.push('/paywall');
+              return;
             }
+            if (shiftTypes.length >= MAX_SHIFT_TYPES) {
+              Alert.alert(
+                'シフト種別は8つまでです',
+                '使っていない種別を削除すると、新しく追加できます。',
+              );
+              return;
+            }
+            handleStartAdd();
           }}
           style={[styles.addBigButton, { backgroundColor: blueBadge.background }]}
         >

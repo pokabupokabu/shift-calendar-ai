@@ -36,8 +36,12 @@ export default function UserMatchSelectScreen() {
   const setAnalysisResult = useShiftSessionStore((state) => state.setAnalysisResult);
   const shiftName = useAppStore((state) => state.user?.shiftName ?? '');
   const user = useAppStore((state) => state.user);
+  // 解析と同じ勤務先のシフト種別をヒントとして渡す（photo-select で選んだ勤務先）。
+  const scanWorkplaceId = useShiftSessionStore((state) => state.scanWorkplaceId);
   const activeWorkplace =
-    user?.workplaces.find((w) => w.id === user.activeWorkplaceId) ?? user?.workplaces[0];
+    user?.workplaces.find((w) => w.id === scanWorkplaceId) ??
+    user?.workplaces.find((w) => w.id === user.activeWorkplaceId) ??
+    user?.workplaces[0];
   const knownShiftTypes = activeWorkplace?.shiftTypes ?? [];
 
   const status = analysisResult?.userMatch.status;

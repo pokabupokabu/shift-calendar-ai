@@ -29,8 +29,12 @@ export default function ShiftReviewScreen() {
   const updateShift = useShiftSessionStore((state) => state.updateShift);
   const removeShift = useShiftSessionStore((state) => state.removeShift);
   const user = useAppStore((state) => state.user);
+  // 確認画面と同じ勤務先のシフト種別を出す（photo-select で選んだ勤務先）。
+  const scanWorkplaceId = useShiftSessionStore((state) => state.scanWorkplaceId);
   const activeWorkplace =
-    user?.workplaces.find((w) => w.id === user.activeWorkplaceId) ?? user?.workplaces[0];
+    user?.workplaces.find((w) => w.id === scanWorkplaceId) ??
+    user?.workplaces.find((w) => w.id === user.activeWorkplaceId) ??
+    user?.workplaces[0];
   const shiftTypes = activeWorkplace?.shiftTypes ?? [];
   const theme = useTheme();
   const badgeColors = useIconBadgeColors('blue');

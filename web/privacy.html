@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>プライバシーポリシー | シフToカレ</title>
+    <meta
+      name="description"
+      content="iPhone向けアプリ「シフToカレ」のプライバシーポリシーです。取得する情報、利用目的、外部送信先について記載しています。"
+    />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #ffffff;
+        --fg: #1a1a1a;
+        --muted: #5c5c5c;
+        --rule: #e2e2e2;
+        --link: #0b5bcb;
+        --card: #f7f7f8;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #16181c;
+          --fg: #e8e8ea;
+          --muted: #a2a4ab;
+          --rule: #32353c;
+          --link: #86b4ff;
+          --card: #1e2127;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font-family:
+          system-ui,
+          -apple-system,
+          'Hiragino Kaku Gothic ProN',
+          'Noto Sans JP',
+          'Yu Gothic',
+          sans-serif;
+        font-size: 16px;
+        line-height: 1.85;
+        overflow-wrap: break-word;
+        word-break: normal;
+        line-break: strict;
+      }
+      main {
+        max-width: 42em;
+        margin: 0 auto;
+        padding: 24px 20px 56px;
+      }
+      .home {
+        margin: 0 0 20px;
+        font-size: 0.875rem;
+        color: var(--muted);
+      }
+      h1 {
+        margin: 0 0 4px;
+        font-size: 1.5rem;
+        line-height: 1.5;
+      }
+      .lead {
+        margin: 0 0 28px;
+        color: var(--muted);
+        font-size: 0.9375rem;
+      }
+      h2 {
+        margin: 0;
+        font-size: 1.0625rem;
+        line-height: 1.6;
+      }
+      h3 {
+        margin: 0;
+        font-size: 1rem;
+        line-height: 1.6;
+      }
+      article .blk + .blk {
+        margin-top: 1.5em;
+      }
+      article p {
+        margin: 0;
+      }
+      article * + p,
+      article * + ul,
+      article * + h2,
+      article * + h3 {
+        margin-top: 0.5em;
+      }
+      article ul {
+        margin: 0;
+        padding-left: 1.3em;
+      }
+      article li {
+        margin: 0.2em 0;
+      }
+      a {
+        color: var(--link);
+      }
+      .toc {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .toc li + li {
+        margin-top: 10px;
+      }
+      .toc a {
+        display: block;
+        padding: 14px 16px;
+        border: 1px solid var(--rule);
+        border-radius: 10px;
+        background: var(--card);
+        text-decoration: none;
+        font-weight: 600;
+      }
+      nav.footer {
+        margin-top: 48px;
+        padding-top: 20px;
+        border-top: 1px solid var(--rule);
+        font-size: 0.875rem;
+      }
+      nav.footer ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      nav.footer li {
+        margin: 6px 0;
+      }
+      footer.meta {
+        margin-top: 28px;
+        color: var(--muted);
+        font-size: 0.8125rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="home"><a href="./">シフToカレ</a></p>
+      <h1>プライバシーポリシー</h1>
+      <article>
+        <div class="blk">
+          <p>
+            運営者（以下「運営者」）は、iPhone向けアプリケーション「シフToカレ」（以下「本アプリ」）におけるユーザーの個人情報を、以下の方針に基づき取り扱います。
+          </p>
+        </div>
+        <div class="blk">
+          <h2>1. 取得する情報</h2>
+          <ul>
+            <li>
+              シフト表の画像:
+              シフトの内容を解析するため、ユーザーが選択した画像を外部AIサービス（Google Gemini
+              API）へ送信します。送信にあたっては、運営者が管理する中継サーバー（Cloudflare
+              Workers）を経由しますが、当該サーバーは画像を保存せず、そのまま解析サービスへ受け渡すのみです。解析の完了後、運営者が画像を保持することはありません。
+            </li>
+            <li>
+              カレンダーへのアクセス権限: Apple CalendarまたはGoogle
+              Calendarにシフトを登録するため、ユーザーの許可に基づきカレンダーの読み書き権限を取得します。Googleカレンダー連携の場合、取得する権限はカレンダーの予定作成・編集に限定されており、Googleアカウントのそれ以外の情報を取得することはありません。
+            </li>
+            <li>
+              アプリ内で登録する情報:
+              表示名、勤務先名、時給、シフト種別などの設定情報は、ユーザーの端末内にのみ保存され、運営者のサーバーに送信・保存されることはありません。
+            </li>
+            <li>
+              通信に関する情報:
+              AI解析機能の不正利用防止のため、リクエスト元のIPアドレスを一時的に利用したアクセス制限（レート制限）を行っています。これらの情報は長期間保存されません。
+            </li>
+            <li>
+              広告配信に関する情報:
+              無料プランのユーザーに対し、Google社の提供する広告配信サービス（Google
+              AdMob）を利用して広告を表示します。広告配信にあたり、Google社が定めるプライバシーポリシーに基づき、広告識別子等の情報が取得される場合があります。
+            </li>
+            <li>
+              決済に関する情報:
+              PROプランの購入処理には、RevenueCat社の提供するサービスを利用しています。決済自体はApple
+              ID（App
+              Store）を通じて行われ、運営者がクレジットカード情報等を直接取得することはありません。
+            </li>
+          </ul>
+        </div>
+        <div class="blk">
+          <h2>2. 利用目的</h2>
+          <p>取得した情報は、以下の目的にのみ利用します。</p>
+          <ul>
+            <li>シフト表画像の解析およびカレンダーへの登録機能の提供</li>
+            <li>不正利用の防止</li>
+            <li>広告の配信（無料プランのユーザーに対してのみ）</li>
+            <li>PROプランの購入・復元処理</li>
+          </ul>
+        </div>
+        <div class="blk">
+          <h2>3. 第三者提供・委託先</h2>
+          <p>
+            運営者は、法令に基づく場合を除き、ユーザーの同意なく個人情報を第三者に提供しません。ただし、本アプリの機能提供のため、以下の外部サービスを利用しています。
+          </p>
+          <ul>
+            <li>Google Gemini API（シフト表画像の解析）</li>
+            <li>Apple Calendar / Google Calendar（カレンダーへの登録）</li>
+            <li>Google AdMob（広告配信）</li>
+            <li>RevenueCat（購入処理の仲介）</li>
+          </ul>
+          <p>これらのサービスには、各社が定めるプライバシーポリシーが適用されます。</p>
+        </div>
+        <div class="blk">
+          <h2>4. 利用者情報の外部送信について</h2>
+          <p>
+            本アプリは、以下のとおり、お客様の端末から外部へ情報を送信します（電気通信事業法に基づく公表）。
+          </p>
+        </div>
+        <div class="blk">
+          <h3>(1) Google AdMob</h3>
+          <ul>
+            <li>送信先: Google LLC</li>
+            <li>
+              送信される情報:
+              広告識別子（IDFA）、IPアドレス、広告の表示・操作履歴、端末および利用環境に関する情報
+            </li>
+            <li>利用目的: 広告の配信および広告効果の測定</li>
+          </ul>
+          <p>
+            ※
+            広告識別子は、お客様が後述のトラッキング許可に同意された場合にのみ、広告のパーソナライズに利用されます。
+          </p>
+        </div>
+        <div class="blk">
+          <h3>(2) RevenueCat</h3>
+          <ul>
+            <li>送信先: RevenueCat, Inc.</li>
+            <li>
+              送信される情報:
+              アプリ内で自動生成される匿名の利用者ID、購入・解約の履歴、端末および利用環境に関する情報
+            </li>
+            <li>利用目的: PROプランの購入状態の管理および購入の復元</li>
+          </ul>
+        </div>
+        <div class="blk">
+          <h3>(3) Google Gemini API（運営者が管理する中継サーバーを経由）</h3>
+          <ul>
+            <li>送信先: Google LLC（中継: Cloudflare, Inc. 上で運営者が運用するサーバー）</li>
+            <li>送信される情報: お客様が選択したシフト表の画像、および送信元のIPアドレス</li>
+            <li>利用目的: シフト表の内容の解析、および不正利用防止のためのアクセス制限</li>
+          </ul>
+        </div>
+        <div class="blk">
+          <h2>5. 広告のトラッキング許可について</h2>
+          <p>
+            本アプリは、初めて広告を表示する際に、iOSの「トラッキングの許可を求める」ダイアログを表示します。許可された場合は広告識別子を用いてお客様の興味に合った広告を表示します。許可されない場合も広告は表示されますが、内容は最適化されません。この設定は、iPhoneの「設定」→「プライバシーとセキュリティ」→「トラッキング」からいつでも変更できます。
+          </p>
+        </div>
+        <div class="blk">
+          <h2>6. 情報の保存期間・削除</h2>
+          <p>
+            ユーザーが端末内で「データの初期化」操作を行った場合、本アプリが端末内に保存している情報はすべて削除されます。運営者側のサーバーには、ユーザーの個人情報を継続的に保存する仕組みはありません。
+          </p>
+        </div>
+        <div class="blk">
+          <h2>7. お問い合わせ</h2>
+          <p>
+            本ポリシーに関するお問い合わせは、「お問い合わせ」ページに記載の窓口までご連絡ください。
+          </p>
+        </div>
+        <div class="blk">
+          <h2>8. 本ポリシーの変更</h2>
+          <p>
+            本ポリシーの内容は、必要に応じて変更されることがあります。変更後の内容は、本アプリ内に表示した時点から効力を生じるものとします。
+          </p>
+        </div>
+      </article>
+      <nav class="footer">
+        <p>シフToカレの他のページ</p>
+        <ul>
+          <li><a href="./terms.html">利用規約</a></li>
+          <li><a href="./tokushoho.html">特定商取引法に基づく表記</a></li>
+          <li><a href="./contact.html">お問い合わせ</a></li>
+          <li><a href="./faq.html">ヘルプ・よくある質問</a></li>
+          <li><a href="./">トップ</a></li>
+        </ul>
+      </nav>
+    </main>
+  </body>
+</html>

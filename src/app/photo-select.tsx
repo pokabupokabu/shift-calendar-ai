@@ -26,7 +26,12 @@ import { useAppStore } from '@/store/useAppStore';
 import { useShiftSessionStore } from '@/store/useShiftSessionStore';
 import { resizeShiftImage } from '@/utils/resizeShiftImage';
 import { showRewardedAd } from '@/utils/rewardedAd';
-import { canEarnBonusScan, FREE_SCAN_MONTHLY_LIMIT, remainingFreeScans } from '@/utils/scanQuota';
+import {
+  canEarnBonusScan,
+  nextRecoveryAt,
+  remainingScans as computeRemainingScans,
+  scanLimitFor,
+} from '@/utils/scanQuota';
 
 const TIPS = [
   '真上から影が入らないように明るい場所で撮影してください。',
@@ -205,9 +210,15 @@ export default function PhotoSelectScreen() {
   const isPro = useAppStore((state) => state.user?.settings.isPro ?? false);
   const scanUsage = useAppStore((state) => state.scanUsage);
   const recordBonusScan = useAppStore((state) => state.recordBonusScan);
-  const remainingScans = remainingFreeScans(scanUsage);
-  const quotaExceeded = !isPro && remainingScans <= 0;
-  const canWatchAdForBonus = quotaExceeded && canEarnBonusScan(scanUsage);
+  const remainingScans = computeRemainingScans(scanUsage, isPro);
+  const scanLimit = scanLimitFor(isPro);
+  const quotaExceeded = remainingScans <= 0;
+  const canWatchAdForBonus = quotaExceeded && canEarnBonusScan(scanUsage, isPro);
+  // 「いつ戻るか」が分からないと、使い切ったユーザーが待てばいいのか課金すべきか判断できない。
+  const recoveryAt = nextRecoveryAt(scanUsage);
+  const recoveryLabel = recoveryAt
+    ? `${recoveryAt.getMonth() + 1}月${recoveryAt.getDate()}日`
+    : null;
   const workplaces = useAppStore((state) => state.user?.workplaces) ?? [];
   const activeWorkplaceId = useAppStore((state) => state.user?.activeWorkplaceId ?? '');
   const [selectedWorkplaceId, setSelectedWorkplaceId] = useState('');
@@ -263,11 +274,17 @@ export default function PhotoSelectScreen() {
   const handlePressAnalyze = () => {
     if (quotaExceeded) {
       if (canWatchAdForBonus) {
-        Alert.alert('今月の無料解析回数を使い切りました', '広告を見るとあと1回スキャンできます。', [
-          { text: 'キャンセル', style: 'cancel' },
-          { text: 'PROを見る', onPress: () => router.push('/paywall') },
-          { text: '広告を見る', onPress: handleWatchAdForBonusScan },
-        ]);
+        Alert.alert(
+          '解析できる回数を使い切りました',
+          recoveryLabel
+            ? `広告を見るとあと1回解析できます。${recoveryLabel}には回数が戻ります。`
+            : '広告を見るとあと1回解析できます。',
+          [
+            { text: 'キャンセル', style: 'cancel' },
+            { text: 'PROを見る', onPress: () => router.push('/paywall') },
+            { text: '広告を見る', onPress: handleWatchAdForBonusScan },
+          ],
+        );
         return;
       }
       router.push('/paywall');
@@ -309,20 +326,28 @@ export default function PhotoSelectScreen() {
           />
         </View>
 
-        {!isPro && (
-          <ThemedText
-            style={[
-              styles.quotaNote,
-              { color: quotaExceeded ? MOCK_COLORS.tipsBadgeIcon : MOCK_COLORS.muted },
-            ]}
-          >
-            {quotaExceeded
-              ? canWatchAdForBonus
-                ? `今月の無料解析回数（${FREE_SCAN_MONTHLY_LIMIT}回）を使い切りました。広告を見るか、PROで無制限に利用できます。`
-                : `今月の無料解析回数（${FREE_SCAN_MONTHLY_LIMIT}回）を使い切りました。PROで無制限に利用できます。`
-              : `今月の無料解析: 残り${remainingScans}/${FREE_SCAN_MONTHLY_LIMIT}回`}
-          </ThemedText>
-        )}
+        <ThemedText
+          style={[
+            styles.quotaNote,
+            { color: quotaExceeded ? MOCK_COLORS.tipsBadgeIcon : MOCK_COLORS.muted },
+          ]}
+        >
+          {quotaExceeded
+            ? [
+                '解析できる回数を使い切りました。',
+                recoveryLabel ? `${recoveryLabel}に戻ります。` : '',
+                canWatchAdForBonus ? '広告を見ると今すぐ1回追加できます。' : '',
+                isPro ? '' : 'PROなら15回まで使えます。',
+              ]
+                .filter(Boolean)
+                .join('')
+            : [
+                `解析: 残り${remainingScans}/${scanLimit}回`,
+                recoveryLabel ? `（${recoveryLabel}に満タンへ戻ります）` : '',
+              ]
+                .filter(Boolean)
+                .join('')}
+        </ThemedText>
 
         <TipsSection />
 
@@ -344,7 +369,7 @@ export default function PhotoSelectScreen() {
             : 'ご自身のシフト表として読み取ります。'}
         </ThemedText>
 
-        {workplaces.length > 1 && (
+        {isPro && workplaces.length > 1 && (
           <View style={styles.workplacePicker}>
             <ThemedText style={styles.workplacePickerLabel}>読み取る勤務先</ThemedText>
             {workplaces.map((workplace) => (

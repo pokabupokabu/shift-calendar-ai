@@ -23,6 +23,12 @@ export const env = {
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? '',
     webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '',
   },
+  /**
+   * 開発用のプロモーションコード（DEVPRO / DEVFREE）を出すかどうか。
+   * これが有効だと誰でも無料でPROになれるため、**App Store提出用のビルドでは必ず未設定にする**。
+   * 変数が無ければ自動的に無効になるので、消し忘れても出荷物には入らない。
+   */
+  enableDevPromoCode: process.env.EXPO_PUBLIC_ENABLE_DEV_PROMO === 'true',
   revenueCat: {
     // Public API key (not a secret — safe to embed, same as any App Store client key).
     iosApiKey: process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY ?? '',
