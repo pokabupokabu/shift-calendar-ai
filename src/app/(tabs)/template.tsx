@@ -1,4 +1,5 @@
 import {
+  CalendarDays,
   CheckCircle2,
   ChevronRight,
   Coffee,
@@ -12,8 +13,8 @@ import {
   User,
   Wallet,
 } from 'lucide-react-native';
-import { router } from 'expo-router';
-import { useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 
 import { AdPlaceholder } from '@/components/ad-placeholder';
@@ -30,9 +31,11 @@ import { useTheme } from '@/hooks/use-theme';
 import {
   DEFAULT_WORKPLACE_SETTINGS,
   type BreakRule,
+  type CalendarProviderId,
   type PremiumRule,
   type Workplace,
 } from '@/models';
+import { getConnectedProviders } from '@/services/calendar/getConnectedProviders';
 import { useAppStore } from '@/store/useAppStore';
 import { computeShiftBreakdown, hoursBetween } from '@/utils/computePayroll';
 import { formatShiftTimeRange } from '@/utils/formatShift';
@@ -101,6 +104,12 @@ function overlapsBand(
   });
 }
 
+/** 必須基本情報に最初から並べるカレンダー（対応しているのはこの2つだけ）。 */
+const CALENDAR_PROVIDER_ROWS: { id: CalendarProviderId; tone: IconBadgeTone }[] = [
+  { id: 'apple', tone: 'neutral' },
+  { id: 'google', tone: 'blue' },
+];
+
 /** マイカスタムタブ（ルート名は template）: シフト登録の挙動そのものを決める設定 (requirements section 4, 13). */
 export default function TemplateTab() {
   const theme = useTheme();
@@ -134,6 +143,19 @@ export default function TemplateTab() {
     user?.workplaces.find((workplace) => workplace.id === user.activeWorkplaceId) ??
     user?.workplaces[0];
   const settings = activeWorkplace?.settings ?? DEFAULT_WORKPLACE_SETTINGS;
+  // 連携の画面から戻ってきたときに状態を取り直すため、タブが表示されるたびに確認する
+  const [connectedProviderIds, setConnectedProviderIds] = useState<CalendarProviderId[]>(['apple']);
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      void getConnectedProviders().then((ids) => {
+        if (active) setConnectedProviderIds(ids);
+      });
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
   const shiftTypes = activeWorkplace?.shiftTypes ?? [];
 
   const [isNameDialogOpen, setNameDialogOpen] = useState(false);
@@ -344,28 +366,69 @@ export default function TemplateTab() {
               </View>
             </Pressable>
 
-            <View style={[styles.infoRow, styles.blockBorder, { borderTopColor: theme.border }]}>
-              <IconBadge tone="green">
-                <CheckCircle2 size={ROW_ICON_SIZE} color={greenBadge.icon} />
-              </IconBadge>
-              <View style={styles.infoRowLabel}>
-                <ThemedText type="footnote" themeColor="textSecondary">
-                  連携カレンダー
-                </ThemedText>
-                <ThemedText type="headline" style={styles.regularWeight}>
-                  {CALENDAR_PROVIDER_LABEL[settings.defaultCalendarProvider]}
-                </ThemedText>
-              </View>
-              <View style={[styles.connectedTag, { backgroundColor: greenBadge.background }]}>
-                <CheckCircle2 size={IconSize.small} color={theme.success} />
-                <ThemedText type="caption2" themeColor="success">
-                  連携済み
-                </ThemedText>
-              </View>
+            <View
+              style={[
+                styles.calendarSubHeader,
+                styles.blockBorder,
+                { borderTopColor: theme.border },
+              ]}
+            >
+              <ThemedText type="footnote" themeColor="textSecondary">
+                連携カレンダー
+              </ThemedText>
             </View>
+            {CALENDAR_PROVIDER_ROWS.map(({ id, tone }) => {
+              const isConnected = connectedProviderIds.includes(id);
+              const isDefault = settings.defaultCalendarProvider === id;
+              const badge = tone === 'blue' ? blueBadge : neutralBadge;
+              return (
+                <Pressable
+                  key={id}
+                  disabled={isDefault}
+                  onPress={() => {
+                    if (!isConnected) {
+                      router.push({
+                        pathname: '/settings/calendar-connect',
+                        params: { provider: id },
+                      });
+                      return;
+                    }
+                    if (activeWorkplace) {
+                      updateWorkplaceSettings(activeWorkplace.id, { defaultCalendarProvider: id });
+                    }
+                  }}
+                  style={[styles.infoRow, styles.blockBorder, { borderTopColor: theme.border }]}
+                >
+                  <IconBadge tone={tone}>
+                    <CalendarDays size={ROW_ICON_SIZE} color={badge.icon} />
+                  </IconBadge>
+                  <View style={styles.infoRowLabel}>
+                    <ThemedText type="body">{CALENDAR_PROVIDER_LABEL[id]}</ThemedText>
+                    <ThemedText type="caption1" themeColor="textSecondary">
+                      {isConnected ? '連携済み' : '未連携'}
+                    </ThemedText>
+                  </View>
+                  {isDefault ? (
+                    <View style={[styles.connectedTag, { backgroundColor: greenBadge.background }]}>
+                      <CheckCircle2 size={IconSize.small} color={theme.success} />
+                      <ThemedText type="caption2" themeColor="success">
+                        登録先
+                      </ThemedText>
+                    </View>
+                  ) : (
+                    <View style={styles.changeAffordance}>
+                      <ThemedText type="subheadline" themeColor="primary">
+                        {isConnected ? '登録先にする' : '連携する'}
+                      </ThemedText>
+                      {!isConnected && <ChevronRight size={IconSize.small} color={theme.primary} />}
+                    </View>
+                  )}
+                </Pressable>
+              );
+            })}
 
             <Pressable
-              onPress={() => router.push('/settings/calendar-providers')}
+              onPress={() => router.push('/settings/other-calendars')}
               style={[styles.otherRow, styles.blockBorder, { borderTopColor: theme.border }]}
             >
               <ThemedText type="body">その他カレンダーとの連携</ThemedText>
@@ -1079,6 +1142,10 @@ const styles = StyleSheet.create({
   },
   blockBorder: {
     borderTopWidth: 1,
+  },
+  calendarSubHeader: {
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.two,
   },
   infoRow: {
     flexDirection: 'row',
