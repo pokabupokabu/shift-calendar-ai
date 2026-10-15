@@ -41,12 +41,22 @@ function nextWorkplaceId(): string {
   return `workplace-${Date.now()}-${nextWorkplaceSuffix}`;
 }
 
+export type TutorialFreeScanState = 'unoffered' | 'available' | 'used' | 'forfeited';
+
 interface AppState {
   user: User | null;
   /** Events the app itself created, used for overwrite detection (section 12, 14). */
   calendarEvents: CalendarEventRecord[];
   /** Gates the first-launch tutorial; backfilled to true for pre-existing users, see migrate below. */
   hasSeenTutorial: boolean;
+  /**
+   * チュートリアルの「回数を使わずに1回試せる」枠の状態。
+   * - unoffered: まだ分岐画面に来ていない
+   * - available: 「やってみる」を選び、まだ解析に成功していない（失敗しても残る）
+   * - used: お試しで解析に成功した
+   * - forfeited: 「やらない」を選んだ（「今だけ」なので二度と出さない）
+   */
+  tutorialFreeScan: TutorialFreeScanState;
   /** Free-plan monthly AI scan count (section: 画像シフト読み取り枠 PRO limit), unused for PRO users. */
   scanUsage: ScanUsage;
 
@@ -54,6 +64,9 @@ interface AppState {
   setShiftTableHasNoNames: (value: boolean) => void;
   setDisplayName: (displayName: string) => void;
   setHasSeenTutorial: () => void;
+  /** 分岐画面での選択を記録する。一度決まったら（used/forfeited）上書きしない。 */
+  chooseTutorialFreeScan: (accept: boolean) => void;
+  markTutorialFreeScanUsed: () => void;
   updateSettings: (settings: Partial<UserSettings>) => void;
   addWorkplace: (name: string) => void;
   removeWorkplace: (id: string) => void;
@@ -77,9 +90,22 @@ export const useAppStore = create<AppState>()(
       user: null,
       calendarEvents: [],
       hasSeenTutorial: false,
+      tutorialFreeScan: 'unoffered',
       scanUsage: DEFAULT_SCAN_USAGE,
 
       setHasSeenTutorial: () => set({ hasSeenTutorial: true }),
+
+      chooseTutorialFreeScan: (accept) =>
+        set((state) =>
+          state.tutorialFreeScan === 'unoffered'
+            ? { tutorialFreeScan: accept ? 'available' : 'forfeited' }
+            : {},
+        ),
+
+      markTutorialFreeScanUsed: () =>
+        set((state) =>
+          state.tutorialFreeScan === 'available' ? { tutorialFreeScan: 'used' } : {},
+        ),
 
       setShiftName: (shiftName) =>
         set((state) => {
@@ -234,13 +260,14 @@ export const useAppStore = create<AppState>()(
           user: null,
           calendarEvents: [],
           hasSeenTutorial: false,
+          tutorialFreeScan: 'unoffered',
           scanUsage: DEFAULT_SCAN_USAGE,
         }),
     }),
     {
       name: 'shift-calendar-ai-store',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 15,
+      version: 16,
       migrate: (persisted, version) => {
         // Migration spans many historical shapes (pre-workplace, pre-isPro, etc.),
         // so this intentionally works on an untyped view rather than `AppState`.
@@ -384,6 +411,10 @@ export const useAppStore = create<AppState>()(
           // 旧形式（yearMonth / count / bonusScans）とは数え方そのものが違うため移し替えられない。
           // 既存ユーザーが損をしないよう、満タンの状態から始める。
           state.scanUsage = { ...DEFAULT_SCAN_USAGE };
+        }
+        if (version < 16) {
+          // チュートリアルのお試し枠を追加。すでにチュートリアルを終えた人には出さない。
+          state.tutorialFreeScan = state.hasSeenTutorial ? 'forfeited' : 'unoffered';
         }
         return state;
       },
