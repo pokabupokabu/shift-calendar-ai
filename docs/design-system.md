@@ -3,7 +3,7 @@
 UI全体の見直しで、すべての画面が守る共通ルール。Google Stitchに画面の改善を頼むときも、このファイルの「Stitchへ毎回添える指示」を必ず付ける。
 
 - 作成: 2026-10-15
-- 状態: **ドラフト**。「🟠 要決定」の項目はユーザー確認待ち
+- 状態: 主要な決定は済み（2026-10-15）。グループごとの見直しで随時更新する
 
 ## 0. このルールの出どころ
 
@@ -62,7 +62,7 @@ iPhone標準の段階だけを使う（`ThemedText` の `type`）。
 | `caption1`    | 12 / 16     | 500  | セクションの見出しラベル・バッジ   |
 | `caption2`    | 11 / 13     | 600  | とても小さなバッジ                 |
 
-🟠 **要決定**: 昔の段階（`title` 48 / `subtitle` 32 / `default` / `small` / `smallBold` / `link`）がまだ約35か所で使われている。見直しの中で上の段階へ置き換え、最後に削除する案。
+✅ **決定（2026-10-15）**: 昔の段階（`title` 48 / `subtitle` 32 / `default` / `small` / `smallBold` / `link`）は**廃止**する。まだ約35か所で使われているので、見直しの中で上の段階へ置き換え、使われなくなったら `theme.ts` から削除する。
 
 ## 4. 余白
 
@@ -75,14 +75,16 @@ iPhone標準の段階だけを使う（`ThemedText` の `type`）。
 
 ## 5. 角の丸み
 
-| 部品                               | 丸み   | トークン                               |
-| ---------------------------------- | ------ | -------------------------------------- |
-| 小さなバッジ・タグ                 | 8      | `Radius.small`                         |
-| ボタン・カードの中の部品           | 12     | `Radius.smallLarge`                    |
-| カード                             | 16     | `Radius.medium`                        |
-| 下から出るシートの上の角           | 20     | 🟠 トークン無し（追加案）              |
-| ダイアログ・完了画面の大きなカード | 24〜32 | `Radius.large`（24）。32はトークン無し |
-| 丸（アイコンの背景・ピル型ボタン） | 999    | `Radius.pill`                          |
+✅ **決定（2026-10-15）**: Stitch案にあった20・32は足さず、今ある値で代用する（値の種類を増やさないため）。
+
+| 部品                               | 丸み | トークン            |
+| ---------------------------------- | ---- | ------------------- |
+| 小さなバッジ・タグ                 | 8    | `Radius.small`      |
+| ボタン・カードの中の部品           | 12   | `Radius.smallLarge` |
+| カード                             | 16   | `Radius.medium`     |
+| 下から出るシートの上の角           | 16   | `Radius.medium`     |
+| ダイアログ・完了画面の大きなカード | 24   | `Radius.large`      |
+| 丸（アイコンの背景・ピル型ボタン） | 999  | `Radius.pill`       |
 
 ## 6. 部品と使い方
 
@@ -104,12 +106,11 @@ iPhone標準の段階だけを使う（`ThemedText` の `type`）。
 - 押せる部品は、見た目で押せると分かるようにする（青い文字・「›」・ボタンの形）
 - 押せない状態は `disabled` 色にし、**理由を近くに書く**（例: 「写真を選ぶと押せます」）
 
-🟠 **要決定: 主ボタンの見た目**。Stitchへの最初のプロンプトでは「青・ピル型・横いっぱい」と頼んでいたが、今の `PrimaryButton` は**黒・角丸16**。一方、写真選択画面の「解析する」は**青**で、画面によって主ボタンの色が違う。
+✅ **決定（2026-10-15）: 主ボタンは「青（`primary` = `#007AFF`）・ピル型（`Radius.pill`）・横いっぱい」**。副ボタンも同じピル型で、白地＋`border` の枠＋`primary` の文字。
 
-| 案            | 見た目             | 長所 / 短所                                                         |
-| ------------- | ------------------ | ------------------------------------------------------------------- |
-| A. 青・ピル型 | `primary`・丸み999 | アプリの主色と一致し、押せると分かりやすい / 今の黒から大きく変わる |
-| B. 黒・角丸16 | 今のまま           | 落ち着いて見える / 青い「押せる文字」と色の意味がずれる             |
+- 10色を比べた結果、押せる文字・タブ・選択中の印と同じ青に揃えることにした（「青いもの＝押せる」が全体で揃う）
+- ただし**画面によっては青でないほうが良い場所もある**ので、グループごとの見直しで都度判断する（例外にしたら、ここに理由とともに書き足す）
+- 外した色: はこブーピンク・オレンジ（白文字が読みにくい）、インディゴ・ティール（PROの紫・成功の緑と意味が混ざる）
 
 ## 7. Stitchへ毎回添える指示
 
@@ -125,9 +126,9 @@ Design system (must follow):
 - Colors: Apple iOS system colors only. Page background #F2F2F7, cards #FFFFFF, primary #007AFF, success #34C759, danger #FF3B30, orange #FF9500, purple #5E35B1, secondary text #8E8E93, separators #E5E5EA. Must also work in dark mode.
 - Typography: iOS text styles only (Title1 28/34 bold, Title2 22/28 bold, Title3 20/25, Headline 17/22 semibold, Body 17/22, Subheadline 15/20, Footnote 13/18, Caption1 12/16, Caption2 11/13).
 - Spacing: 4 / 8 / 16 / 24 / 32. Screen side padding 24. Minimum tap target 44pt.
-- Corner radius: badges 8, buttons and inset elements 12, cards 16, bottom sheets 20.
+- Corner radius: badges 8, inset elements 12, cards and bottom sheets 16, dialogs 24, buttons fully rounded (pill).
 - Row icons sit inside soft tinted circles (e.g. blue background #E8F2FF with #007AFF icon).
-- One primary button per screen.
+- One primary button per screen: full-width pill (fully rounded), filled #007AFF with white text. Secondary button: same pill shape, white with a #E5E5EA border and #007AFF text.
 
 Hard rules:
 - Never show AI confidence as a number or percentage. Use a text badge such as "要確認" only.
@@ -145,8 +146,17 @@ Hard rules:
 | `src/app/paywall.tsx` ほか             | 星アイコンの白など                                                                                                         |
 | 文字                                   | 昔の段階が約35か所。`fontSize` の直書きが約50か所（16・12・13など）                                                        |
 | 角の丸み                               | 直書きが約20か所（4・6・10・14など、表に無い値）                                                                           |
-| 主ボタン                               | 黒（`PrimaryButton`）と青（写真選択の「解析する」）が混在                                                                  |
+| 主ボタン                               | 黒・角丸16（`PrimaryButton`）と青（写真選択の「解析する」）が混在。**青・ピル型に揃える**                                  |
 | 副ボタン                               | チュートリアル・案内の出口などで同じ見た目を手書きで重複                                                                   |
 | `src/components/circular-progress.tsx` | PR #17 以降どこからも使われていない                                                                                        |
 
 > 引き継ぎメモにある「基調色 `#0066FF`」は、写真選択画面の `MOCK_COLORS.blue` から来た値と思われる。アプリ全体の主色は `#007AFF`（`theme.ts`）なので、こちらに揃える。
+
+## 9. 見直しの進め方（2026-10-15 ユーザー決定）
+
+グループ（A. 毎日使うタブ / B. スキャンの流れ / C. 初回体験 / D. 設定の下の画面 / E. 課金）ごとに、次を繰り返す。
+
+1. 私がグループの画面を（状態ごとに）確認し、**「どこを・なぜ・どう直すか」の方針をユーザーに共有**する
+2. ユーザーとディスカッションを重ね、**問題ないと判断してもらってから**、Stitch用のプロンプトを作る（「7. Stitchへ毎回添える指示」＋グループ固有の指示）
+3. 架空のデータで撮ったスクショとプロンプトをStitchに渡す（ログインはユーザー）
+4. 出てきた案を一緒に見て選び、コードに反映する
