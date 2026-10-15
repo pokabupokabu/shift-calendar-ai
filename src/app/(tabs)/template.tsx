@@ -322,7 +322,7 @@ export default function TemplateTab() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.block}>
           <ThemedText type="caption1" themeColor="textSecondary" style={styles.sectionHeaderLabel}>
-            基本情報 & 連携
+            必須基本情報
           </ThemedText>
 
           <Card style={styles.group}>
@@ -371,8 +371,151 @@ export default function TemplateTab() {
               <ThemedText type="body">その他カレンダーとの連携</ThemedText>
               <ChevronRight size={IconSize.medium} color={theme.textSecondary} />
             </Pressable>
+          </Card>
+        </View>
 
-            <View style={[styles.infoRow, styles.blockBorder, { borderTopColor: theme.border }]}>
+        <View style={styles.block}>
+          <View style={styles.sectionHeaderRow}>
+            <View style={styles.shiftTypeHeaderLeft}>
+              <ThemedText
+                type="caption1"
+                themeColor="textSecondary"
+                style={styles.sectionHeaderLabel}
+              >
+                シフト種別セット
+              </ThemedText>
+              <ThemedText type="caption1" themeColor="primary" style={styles.boldWeight}>
+                （{shiftTypes.length}件登録）
+              </ThemedText>
+            </View>
+          </View>
+          <Card style={styles.group}>
+            {shiftTypes.length === 0 ? (
+              <View style={styles.infoRow}>
+                <ThemedText type="small" themeColor="textSecondary">
+                  まだシフト種別がありません
+                </ThemedText>
+              </View>
+            ) : (
+              shiftTypes.map((shiftType, index) => {
+                const fallbackPreset =
+                  SHIFT_TYPE_ICON_PRESETS[index % SHIFT_TYPE_ICON_PRESETS.length];
+                const { Icon: PresetIcon, tone: presetTone } = shiftType.icon
+                  ? (SHIFT_TYPE_ICON_PRESETS.find((preset) => preset.key === shiftType.icon) ??
+                    fallbackPreset)
+                  : fallbackPreset;
+                const presetColors = badgeColorsByTone[presetTone];
+                const isOvernight = shiftType.endTime <= shiftType.startTime;
+                const workedHours = hoursBetween(shiftType.startTime, shiftType.endTime);
+                const hasLateNightPremium =
+                  settings.wageType === 'hourly' &&
+                  settings.lateNightPremium.enabled &&
+                  overlapsBand(shiftType.startTime, shiftType.endTime, settings.lateNightPremium);
+                const breakdown = computeShiftBreakdown(
+                  shiftType.startTime,
+                  shiftType.endTime,
+                  settings.wageType,
+                  settings.hourlyWage,
+                  settings.dailyWage,
+                  settings.breakDeductionEnabled,
+                  settings.breakRules,
+                  settings.lateNightPremium,
+                  settings.earlyMorningPremium,
+                );
+
+                return (
+                  <Pressable
+                    key={shiftType.id}
+                    onPress={() => setEditingShiftTypeId(shiftType.id)}
+                    style={[
+                      styles.shiftTypeRow,
+                      index > 0 && styles.blockBorder,
+                      { borderTopColor: theme.border },
+                    ]}
+                  >
+                    <IconBadge tone={presetTone} size={44}>
+                      <PresetIcon size={IconSize.medium} color={presetColors.icon} />
+                    </IconBadge>
+                    <View style={styles.rowLabel}>
+                      <View style={styles.shiftTypeMetaRow}>
+                        <ThemedText type="headline">{shiftType.name}</ThemedText>
+                        <View style={[styles.metaPill, { backgroundColor: blueBadge.background }]}>
+                          <ThemedText type="caption2" style={{ color: blueBadge.icon }}>
+                            実働{formatWorkedHours(workedHours)}h
+                          </ThemedText>
+                        </View>
+                        {hasLateNightPremium && (
+                          <View
+                            style={[styles.metaPill, { backgroundColor: purpleBadge.background }]}
+                          >
+                            <ThemedText type="caption2" style={{ color: purpleBadge.icon }}>
+                              深夜割増
+                            </ThemedText>
+                          </View>
+                        )}
+                      </View>
+                      <ThemedText type="footnote" themeColor="textSecondary">
+                        {formatShiftTimeRange(shiftType.startTime, shiftType.endTime, isOvernight)}
+                      </ThemedText>
+                    </View>
+                    <View style={styles.shiftTypeAmountColumn}>
+                      <ThemedText type="headline">{formatYen(breakdown.earnings)}</ThemedText>
+                      <View style={styles.editAffordance}>
+                        <ThemedText type="caption1" themeColor="primary">
+                          編集
+                        </ThemedText>
+                        <ChevronRight size={IconSize.small} color={theme.primary} />
+                      </View>
+                    </View>
+                  </Pressable>
+                );
+              })
+            )}
+          </Card>
+
+          <View style={styles.shiftTypeHint}>
+            <Info size={IconSize.small} color={theme.textSecondary} style={styles.hintIcon} />
+            <ThemedText type="caption2" themeColor="textSecondary" style={styles.hintText}>
+              カメラでシフト表を撮影すると、ここに登録した名前と時間帯がAIによる読み取りの手がかりとして使われます。
+            </ThemedText>
+          </View>
+        </View>
+
+        <Pressable
+          onPress={() => {
+            if (!user?.settings.isPro) {
+              router.push('/paywall');
+              return;
+            }
+            if (shiftTypes.length >= MAX_SHIFT_TYPES) {
+              Alert.alert(
+                'シフト種別は8つまでです',
+                '使っていない種別を削除すると、新しく追加できます。',
+              );
+              return;
+            }
+            handleStartAdd();
+          }}
+          style={[styles.addBigButton, { backgroundColor: blueBadge.background }]}
+        >
+          <Plus size={IconSize.medium} color={blueBadge.icon} />
+          <ThemedText type="headline" style={{ color: blueBadge.icon }}>
+            新しいシフト種別を追加
+          </ThemedText>
+        </Pressable>
+
+        <View style={styles.block}>
+          <View style={styles.sectionHeaderRow}>
+            <ThemedText
+              type="caption1"
+              themeColor="textSecondary"
+              style={styles.sectionHeaderLabel}
+            >
+              給与関連情報
+            </ThemedText>
+          </View>
+          <Card style={styles.group}>
+            <View style={styles.infoRow}>
               <IconBadge tone="orange">
                 <Wallet size={ROW_ICON_SIZE} color={orangeBadge.icon} />
               </IconBadge>
@@ -425,21 +568,9 @@ export default function TemplateTab() {
                 <Pencil size={IconSize.small} color={theme.textSecondary} />
               </View>
             </Pressable>
-          </Card>
-        </View>
-
-        <View style={styles.block}>
-          <View style={styles.sectionHeaderRow}>
-            <ThemedText
-              type="caption1"
-              themeColor="textSecondary"
-              style={styles.sectionHeaderLabel}
+            <View
+              style={[styles.premiumBlock, styles.blockBorder, { borderTopColor: theme.border }]}
             >
-              手当 & 休憩自動控除
-            </ThemedText>
-          </View>
-          <Card style={styles.group}>
-            <View style={styles.premiumBlock}>
               <View style={styles.infoRow}>
                 <IconBadge tone="green">
                   <Coffee size={ROW_ICON_SIZE} color={greenBadge.icon} />
@@ -615,136 +746,6 @@ export default function TemplateTab() {
             )}
           </Card>
         </View>
-
-        <View style={styles.block}>
-          <View style={styles.sectionHeaderRow}>
-            <View style={styles.shiftTypeHeaderLeft}>
-              <ThemedText
-                type="caption1"
-                themeColor="textSecondary"
-                style={styles.sectionHeaderLabel}
-              >
-                シフト種別セット
-              </ThemedText>
-              <ThemedText type="caption1" themeColor="primary" style={styles.boldWeight}>
-                （{shiftTypes.length}件登録）
-              </ThemedText>
-            </View>
-          </View>
-          <Card style={styles.group}>
-            {shiftTypes.length === 0 ? (
-              <View style={styles.infoRow}>
-                <ThemedText type="small" themeColor="textSecondary">
-                  まだシフト種別がありません
-                </ThemedText>
-              </View>
-            ) : (
-              shiftTypes.map((shiftType, index) => {
-                const fallbackPreset =
-                  SHIFT_TYPE_ICON_PRESETS[index % SHIFT_TYPE_ICON_PRESETS.length];
-                const { Icon: PresetIcon, tone: presetTone } = shiftType.icon
-                  ? (SHIFT_TYPE_ICON_PRESETS.find((preset) => preset.key === shiftType.icon) ??
-                    fallbackPreset)
-                  : fallbackPreset;
-                const presetColors = badgeColorsByTone[presetTone];
-                const isOvernight = shiftType.endTime <= shiftType.startTime;
-                const workedHours = hoursBetween(shiftType.startTime, shiftType.endTime);
-                const hasLateNightPremium =
-                  settings.wageType === 'hourly' &&
-                  settings.lateNightPremium.enabled &&
-                  overlapsBand(shiftType.startTime, shiftType.endTime, settings.lateNightPremium);
-                const breakdown = computeShiftBreakdown(
-                  shiftType.startTime,
-                  shiftType.endTime,
-                  settings.wageType,
-                  settings.hourlyWage,
-                  settings.dailyWage,
-                  settings.breakDeductionEnabled,
-                  settings.breakRules,
-                  settings.lateNightPremium,
-                  settings.earlyMorningPremium,
-                );
-
-                return (
-                  <Pressable
-                    key={shiftType.id}
-                    onPress={() => setEditingShiftTypeId(shiftType.id)}
-                    style={[
-                      styles.shiftTypeRow,
-                      index > 0 && styles.blockBorder,
-                      { borderTopColor: theme.border },
-                    ]}
-                  >
-                    <IconBadge tone={presetTone} size={44}>
-                      <PresetIcon size={IconSize.medium} color={presetColors.icon} />
-                    </IconBadge>
-                    <View style={styles.rowLabel}>
-                      <View style={styles.shiftTypeMetaRow}>
-                        <ThemedText type="headline">{shiftType.name}</ThemedText>
-                        <View style={[styles.metaPill, { backgroundColor: blueBadge.background }]}>
-                          <ThemedText type="caption2" style={{ color: blueBadge.icon }}>
-                            実働{formatWorkedHours(workedHours)}h
-                          </ThemedText>
-                        </View>
-                        {hasLateNightPremium && (
-                          <View
-                            style={[styles.metaPill, { backgroundColor: purpleBadge.background }]}
-                          >
-                            <ThemedText type="caption2" style={{ color: purpleBadge.icon }}>
-                              深夜割増
-                            </ThemedText>
-                          </View>
-                        )}
-                      </View>
-                      <ThemedText type="footnote" themeColor="textSecondary">
-                        {formatShiftTimeRange(shiftType.startTime, shiftType.endTime, isOvernight)}
-                      </ThemedText>
-                    </View>
-                    <View style={styles.shiftTypeAmountColumn}>
-                      <ThemedText type="headline">{formatYen(breakdown.earnings)}</ThemedText>
-                      <View style={styles.editAffordance}>
-                        <ThemedText type="caption1" themeColor="primary">
-                          編集
-                        </ThemedText>
-                        <ChevronRight size={IconSize.small} color={theme.primary} />
-                      </View>
-                    </View>
-                  </Pressable>
-                );
-              })
-            )}
-          </Card>
-
-          <View style={styles.shiftTypeHint}>
-            <Info size={IconSize.small} color={theme.textSecondary} style={styles.hintIcon} />
-            <ThemedText type="caption2" themeColor="textSecondary" style={styles.hintText}>
-              カメラでシフト表を撮影すると、ここに登録した名前と時間帯がAIによる読み取りの手がかりとして使われます。
-            </ThemedText>
-          </View>
-        </View>
-
-        <Pressable
-          onPress={() => {
-            if (!user?.settings.isPro) {
-              router.push('/paywall');
-              return;
-            }
-            if (shiftTypes.length >= MAX_SHIFT_TYPES) {
-              Alert.alert(
-                'シフト種別は8つまでです',
-                '使っていない種別を削除すると、新しく追加できます。',
-              );
-              return;
-            }
-            handleStartAdd();
-          }}
-          style={[styles.addBigButton, { backgroundColor: blueBadge.background }]}
-        >
-          <Plus size={IconSize.medium} color={blueBadge.icon} />
-          <ThemedText type="headline" style={{ color: blueBadge.icon }}>
-            新しいシフト種別を追加
-          </ThemedText>
-        </Pressable>
       </ScrollView>
 
       <Dialog visible={isNameDialogOpen} onClose={() => setNameDialogOpen(false)}>
@@ -1120,12 +1121,14 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
     paddingLeft: 52,
   },
+  // 行そのものの余白は中の infoRow が持つ。給与形態などの行と左端を揃えるため、ここでは横の余白を付けない
   premiumBlock: {
-    padding: Spacing.three,
     gap: Spacing.two,
   },
   nestedGroup: {
-    marginLeft: 48,
+    marginLeft: Spacing.three + 48,
+    marginRight: Spacing.three,
+    marginBottom: Spacing.three,
     borderRadius: Radius.smallLarge,
     overflow: 'hidden',
   },
@@ -1157,7 +1160,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   premiumRow: {
-    marginLeft: 48,
+    marginLeft: Spacing.three + 48,
+    marginRight: Spacing.three,
+    marginBottom: Spacing.three,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
