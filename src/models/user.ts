@@ -36,7 +36,7 @@ export interface User {
   settings: UserSettings;
   /** Job profiles (掛け持ち). Everyone has at least one; additional ones are PRO-gated. */
   workplaces: Workplace[];
-  /** Which workplace is active in the テンプレ tab and used when registering new shifts. */
+  /** Which workplace is active in the マイカスタム tab and used when registering new shifts. */
   activeWorkplaceId: string;
 }
 

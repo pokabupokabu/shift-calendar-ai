@@ -37,3 +37,16 @@ export interface AIProvider {
   readonly id: string;
   analyzeShiftImages(input: AnalyzeShiftImagesInput): Promise<ShiftAnalysisResult>;
 }
+
+/**
+ * AIによる解析そのものが行われなかったことを表すエラー（通信できなかった、
+ * サーバーが受け付けなかった、送る画像が無い等）。解析回数を消費させないため、
+ * 呼び出し側はこのエラーかどうかで回数の記録を分ける。
+ * AIが応答したうえで読み取れなかった場合は、通常の Error を使う。
+ */
+export class AnalysisNotPerformedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AnalysisNotPerformedError';
+  }
+}

@@ -2,7 +2,7 @@ import { env } from '@/config/env';
 import type { ShiftAnalysisResult } from '@/models';
 import { hasUsableTimeRange } from '@/utils/shiftTime';
 
-import type { AIProvider, AnalyzeShiftImagesInput } from './types';
+import { AnalysisNotPerformedError, type AIProvider, type AnalyzeShiftImagesInput } from './types';
 
 /**
  * OpenAPI-subset schema Gemini must fill in (responseSchema), mirroring
@@ -195,12 +195,12 @@ export class GeminiProvider implements AIProvider {
 
   async analyzeShiftImages(input: AnalyzeShiftImagesInput): Promise<ShiftAnalysisResult> {
     if (!this.proxyUrl || !this.proxySecret) {
-      throw new Error(
+      throw new AnalysisNotPerformedError(
         'EXPO_PUBLIC_AI_PROXY_URL / EXPO_PUBLIC_AI_PROXY_SECRET is not set. Add it to .env (see .env.example).',
       );
     }
     if (input.images.length === 0) {
-      throw new Error('解析する画像がありません。');
+      throw new AnalysisNotPerformedError('解析する画像がありません。');
     }
 
     const requestBody = {
@@ -233,7 +233,7 @@ export class GeminiProvider implements AIProvider {
         body: JSON.stringify(requestBody),
       });
     } catch {
-      throw new Error(
+      throw new AnalysisNotPerformedError(
         'AIサーバーへの通信に失敗しました。通信環境を確認してもう一度お試しください。',
       );
     }
@@ -244,7 +244,7 @@ export class GeminiProvider implements AIProvider {
         isPlainObject(errorBody) && isPlainObject(errorBody.error)
           ? String(errorBody.error.message ?? response.statusText)
           : response.statusText;
-      throw new Error(`AI解析に失敗しました（${response.status}）: ${message}`);
+      throw new AnalysisNotPerformedError(`AI解析に失敗しました（${response.status}）: ${message}`);
     }
 
     const data = (await response.json()) as GeminiGenerateContentResponse;

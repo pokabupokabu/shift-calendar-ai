@@ -1,4 +1,5 @@
 import {
+  CalendarDays,
   CheckCircle2,
   ChevronRight,
   Coffee,
@@ -12,8 +13,8 @@ import {
   User,
   Wallet,
 } from 'lucide-react-native';
-import { router } from 'expo-router';
-import { useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 
 import { AdPlaceholder } from '@/components/ad-placeholder';
@@ -30,9 +31,11 @@ import { useTheme } from '@/hooks/use-theme';
 import {
   DEFAULT_WORKPLACE_SETTINGS,
   type BreakRule,
+  type CalendarProviderId,
   type PremiumRule,
   type Workplace,
 } from '@/models';
+import { getConnectedProviders } from '@/services/calendar/getConnectedProviders';
 import { useAppStore } from '@/store/useAppStore';
 import { computeShiftBreakdown, hoursBetween } from '@/utils/computePayroll';
 import { formatShiftTimeRange } from '@/utils/formatShift';
@@ -101,7 +104,13 @@ function overlapsBand(
   });
 }
 
-/** テンプレタブ: シフト登録の挙動そのものを決める設定 (requirements section 4, 13). */
+/** 必須基本情報に最初から並べるカレンダー（対応しているのはこの2つだけ）。 */
+const CALENDAR_PROVIDER_ROWS: { id: CalendarProviderId; tone: IconBadgeTone }[] = [
+  { id: 'apple', tone: 'neutral' },
+  { id: 'google', tone: 'blue' },
+];
+
+/** マイカスタムタブ（ルート名は template）: シフト登録の挙動そのものを決める設定 (requirements section 4, 13). */
 export default function TemplateTab() {
   const theme = useTheme();
   const blueBadge = useIconBadgeColors('blue');
@@ -134,6 +143,19 @@ export default function TemplateTab() {
     user?.workplaces.find((workplace) => workplace.id === user.activeWorkplaceId) ??
     user?.workplaces[0];
   const settings = activeWorkplace?.settings ?? DEFAULT_WORKPLACE_SETTINGS;
+  // 連携の画面から戻ってきたときに状態を取り直すため、タブが表示されるたびに確認する
+  const [connectedProviderIds, setConnectedProviderIds] = useState<CalendarProviderId[]>(['apple']);
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      void getConnectedProviders().then((ids) => {
+        if (active) setConnectedProviderIds(ids);
+      });
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
   const shiftTypes = activeWorkplace?.shiftTypes ?? [];
 
   const [isNameDialogOpen, setNameDialogOpen] = useState(false);
@@ -281,7 +303,7 @@ export default function TemplateTab() {
   return (
     <Screen>
       <View style={styles.headerRow}>
-        <ThemedText type="subtitle">テンプレ</ThemedText>
+        <ThemedText type="subtitle">マイカスタム</ThemedText>
         <AdPlaceholder slot="template" size="inline" />
       </View>
 
@@ -322,7 +344,7 @@ export default function TemplateTab() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.block}>
           <ThemedText type="caption1" themeColor="textSecondary" style={styles.sectionHeaderLabel}>
-            基本情報 & 連携
+            必須基本情報
           </ThemedText>
 
           <Card style={styles.group}>
@@ -344,35 +366,219 @@ export default function TemplateTab() {
               </View>
             </Pressable>
 
-            <View style={[styles.infoRow, styles.blockBorder, { borderTopColor: theme.border }]}>
-              <IconBadge tone="green">
-                <CheckCircle2 size={ROW_ICON_SIZE} color={greenBadge.icon} />
-              </IconBadge>
-              <View style={styles.infoRowLabel}>
-                <ThemedText type="footnote" themeColor="textSecondary">
-                  連携カレンダー
-                </ThemedText>
-                <ThemedText type="headline" style={styles.regularWeight}>
-                  {CALENDAR_PROVIDER_LABEL[settings.defaultCalendarProvider]}
-                </ThemedText>
-              </View>
-              <View style={[styles.connectedTag, { backgroundColor: greenBadge.background }]}>
-                <CheckCircle2 size={IconSize.small} color={theme.success} />
-                <ThemedText type="caption2" themeColor="success">
-                  連携済み
-                </ThemedText>
-              </View>
+            <View
+              style={[
+                styles.calendarSubHeader,
+                styles.blockBorder,
+                { borderTopColor: theme.border },
+              ]}
+            >
+              <ThemedText type="footnote" themeColor="textSecondary">
+                連携カレンダー
+              </ThemedText>
             </View>
+            {CALENDAR_PROVIDER_ROWS.map(({ id, tone }) => {
+              const isConnected = connectedProviderIds.includes(id);
+              const isDefault = settings.defaultCalendarProvider === id;
+              const badge = tone === 'blue' ? blueBadge : neutralBadge;
+              return (
+                <Pressable
+                  key={id}
+                  disabled={isDefault}
+                  onPress={() => {
+                    if (!isConnected) {
+                      router.push({
+                        pathname: '/settings/calendar-connect',
+                        params: { provider: id },
+                      });
+                      return;
+                    }
+                    if (activeWorkplace) {
+                      updateWorkplaceSettings(activeWorkplace.id, { defaultCalendarProvider: id });
+                    }
+                  }}
+                  style={[styles.infoRow, styles.blockBorder, { borderTopColor: theme.border }]}
+                >
+                  <IconBadge tone={tone}>
+                    <CalendarDays size={ROW_ICON_SIZE} color={badge.icon} />
+                  </IconBadge>
+                  <View style={styles.infoRowLabel}>
+                    <ThemedText type="body">{CALENDAR_PROVIDER_LABEL[id]}</ThemedText>
+                    <ThemedText type="caption1" themeColor="textSecondary">
+                      {isConnected ? '連携済み' : '未連携'}
+                    </ThemedText>
+                  </View>
+                  {isDefault ? (
+                    <View style={[styles.connectedTag, { backgroundColor: greenBadge.background }]}>
+                      <CheckCircle2 size={IconSize.small} color={theme.success} />
+                      <ThemedText type="caption2" themeColor="success">
+                        登録先
+                      </ThemedText>
+                    </View>
+                  ) : (
+                    <View style={styles.changeAffordance}>
+                      <ThemedText type="subheadline" themeColor="primary">
+                        {isConnected ? '登録先にする' : '連携する'}
+                      </ThemedText>
+                      {!isConnected && <ChevronRight size={IconSize.small} color={theme.primary} />}
+                    </View>
+                  )}
+                </Pressable>
+              );
+            })}
 
             <Pressable
-              onPress={() => router.push('/settings/calendar-providers')}
+              onPress={() => router.push('/settings/other-calendars')}
               style={[styles.otherRow, styles.blockBorder, { borderTopColor: theme.border }]}
             >
               <ThemedText type="body">その他カレンダーとの連携</ThemedText>
               <ChevronRight size={IconSize.medium} color={theme.textSecondary} />
             </Pressable>
+          </Card>
+        </View>
 
-            <View style={[styles.infoRow, styles.blockBorder, { borderTopColor: theme.border }]}>
+        <View style={styles.block}>
+          <View style={styles.sectionHeaderRow}>
+            <View style={styles.shiftTypeHeaderLeft}>
+              <ThemedText
+                type="caption1"
+                themeColor="textSecondary"
+                style={styles.sectionHeaderLabel}
+              >
+                シフト種別セット
+              </ThemedText>
+              <ThemedText type="caption1" themeColor="primary" style={styles.boldWeight}>
+                （{shiftTypes.length}件登録）
+              </ThemedText>
+            </View>
+          </View>
+          <Card style={styles.group}>
+            {shiftTypes.length === 0 ? (
+              <View style={styles.infoRow}>
+                <ThemedText type="small" themeColor="textSecondary">
+                  まだシフト種別がありません
+                </ThemedText>
+              </View>
+            ) : (
+              shiftTypes.map((shiftType, index) => {
+                const fallbackPreset =
+                  SHIFT_TYPE_ICON_PRESETS[index % SHIFT_TYPE_ICON_PRESETS.length];
+                const { Icon: PresetIcon, tone: presetTone } = shiftType.icon
+                  ? (SHIFT_TYPE_ICON_PRESETS.find((preset) => preset.key === shiftType.icon) ??
+                    fallbackPreset)
+                  : fallbackPreset;
+                const presetColors = badgeColorsByTone[presetTone];
+                const isOvernight = shiftType.endTime <= shiftType.startTime;
+                const workedHours = hoursBetween(shiftType.startTime, shiftType.endTime);
+                const hasLateNightPremium =
+                  settings.wageType === 'hourly' &&
+                  settings.lateNightPremium.enabled &&
+                  overlapsBand(shiftType.startTime, shiftType.endTime, settings.lateNightPremium);
+                const breakdown = computeShiftBreakdown(
+                  shiftType.startTime,
+                  shiftType.endTime,
+                  settings.wageType,
+                  settings.hourlyWage,
+                  settings.dailyWage,
+                  settings.breakDeductionEnabled,
+                  settings.breakRules,
+                  settings.lateNightPremium,
+                  settings.earlyMorningPremium,
+                );
+
+                return (
+                  <Pressable
+                    key={shiftType.id}
+                    onPress={() => setEditingShiftTypeId(shiftType.id)}
+                    style={[
+                      styles.shiftTypeRow,
+                      index > 0 && styles.blockBorder,
+                      { borderTopColor: theme.border },
+                    ]}
+                  >
+                    <IconBadge tone={presetTone} size={44}>
+                      <PresetIcon size={IconSize.medium} color={presetColors.icon} />
+                    </IconBadge>
+                    <View style={styles.rowLabel}>
+                      <View style={styles.shiftTypeMetaRow}>
+                        <ThemedText type="headline">{shiftType.name}</ThemedText>
+                        <View style={[styles.metaPill, { backgroundColor: blueBadge.background }]}>
+                          <ThemedText type="caption2" style={{ color: blueBadge.icon }}>
+                            実働{formatWorkedHours(workedHours)}h
+                          </ThemedText>
+                        </View>
+                        {hasLateNightPremium && (
+                          <View
+                            style={[styles.metaPill, { backgroundColor: purpleBadge.background }]}
+                          >
+                            <ThemedText type="caption2" style={{ color: purpleBadge.icon }}>
+                              深夜割増
+                            </ThemedText>
+                          </View>
+                        )}
+                      </View>
+                      <ThemedText type="footnote" themeColor="textSecondary">
+                        {formatShiftTimeRange(shiftType.startTime, shiftType.endTime, isOvernight)}
+                      </ThemedText>
+                    </View>
+                    <View style={styles.shiftTypeAmountColumn}>
+                      <ThemedText type="headline">{formatYen(breakdown.earnings)}</ThemedText>
+                      <View style={styles.editAffordance}>
+                        <ThemedText type="caption1" themeColor="primary">
+                          編集
+                        </ThemedText>
+                        <ChevronRight size={IconSize.small} color={theme.primary} />
+                      </View>
+                    </View>
+                  </Pressable>
+                );
+              })
+            )}
+          </Card>
+
+          <View style={styles.shiftTypeHint}>
+            <Info size={IconSize.small} color={theme.textSecondary} style={styles.hintIcon} />
+            <ThemedText type="caption2" themeColor="textSecondary" style={styles.hintText}>
+              カメラでシフト表を撮影すると、ここに登録した名前と時間帯がAIによる読み取りの手がかりとして使われます。
+            </ThemedText>
+          </View>
+        </View>
+
+        <Pressable
+          onPress={() => {
+            if (!user?.settings.isPro) {
+              router.push('/paywall');
+              return;
+            }
+            if (shiftTypes.length >= MAX_SHIFT_TYPES) {
+              Alert.alert(
+                'シフト種別は8つまでです',
+                '使っていない種別を削除すると、新しく追加できます。',
+              );
+              return;
+            }
+            handleStartAdd();
+          }}
+          style={[styles.addBigButton, { backgroundColor: blueBadge.background }]}
+        >
+          <Plus size={IconSize.medium} color={blueBadge.icon} />
+          <ThemedText type="headline" style={{ color: blueBadge.icon }}>
+            新しいシフト種別を追加
+          </ThemedText>
+        </Pressable>
+
+        <View style={styles.block}>
+          <View style={styles.sectionHeaderRow}>
+            <ThemedText
+              type="caption1"
+              themeColor="textSecondary"
+              style={styles.sectionHeaderLabel}
+            >
+              給与関連情報
+            </ThemedText>
+          </View>
+          <Card style={styles.group}>
+            <View style={styles.infoRow}>
               <IconBadge tone="orange">
                 <Wallet size={ROW_ICON_SIZE} color={orangeBadge.icon} />
               </IconBadge>
@@ -425,21 +631,9 @@ export default function TemplateTab() {
                 <Pencil size={IconSize.small} color={theme.textSecondary} />
               </View>
             </Pressable>
-          </Card>
-        </View>
-
-        <View style={styles.block}>
-          <View style={styles.sectionHeaderRow}>
-            <ThemedText
-              type="caption1"
-              themeColor="textSecondary"
-              style={styles.sectionHeaderLabel}
+            <View
+              style={[styles.premiumBlock, styles.blockBorder, { borderTopColor: theme.border }]}
             >
-              手当 & 休憩自動控除
-            </ThemedText>
-          </View>
-          <Card style={styles.group}>
-            <View style={styles.premiumBlock}>
               <View style={styles.infoRow}>
                 <IconBadge tone="green">
                   <Coffee size={ROW_ICON_SIZE} color={greenBadge.icon} />
@@ -615,136 +809,6 @@ export default function TemplateTab() {
             )}
           </Card>
         </View>
-
-        <View style={styles.block}>
-          <View style={styles.sectionHeaderRow}>
-            <View style={styles.shiftTypeHeaderLeft}>
-              <ThemedText
-                type="caption1"
-                themeColor="textSecondary"
-                style={styles.sectionHeaderLabel}
-              >
-                シフト種別セット
-              </ThemedText>
-              <ThemedText type="caption1" themeColor="primary" style={styles.boldWeight}>
-                （{shiftTypes.length}件登録）
-              </ThemedText>
-            </View>
-          </View>
-          <Card style={styles.group}>
-            {shiftTypes.length === 0 ? (
-              <View style={styles.infoRow}>
-                <ThemedText type="small" themeColor="textSecondary">
-                  まだシフト種別がありません
-                </ThemedText>
-              </View>
-            ) : (
-              shiftTypes.map((shiftType, index) => {
-                const fallbackPreset =
-                  SHIFT_TYPE_ICON_PRESETS[index % SHIFT_TYPE_ICON_PRESETS.length];
-                const { Icon: PresetIcon, tone: presetTone } = shiftType.icon
-                  ? (SHIFT_TYPE_ICON_PRESETS.find((preset) => preset.key === shiftType.icon) ??
-                    fallbackPreset)
-                  : fallbackPreset;
-                const presetColors = badgeColorsByTone[presetTone];
-                const isOvernight = shiftType.endTime <= shiftType.startTime;
-                const workedHours = hoursBetween(shiftType.startTime, shiftType.endTime);
-                const hasLateNightPremium =
-                  settings.wageType === 'hourly' &&
-                  settings.lateNightPremium.enabled &&
-                  overlapsBand(shiftType.startTime, shiftType.endTime, settings.lateNightPremium);
-                const breakdown = computeShiftBreakdown(
-                  shiftType.startTime,
-                  shiftType.endTime,
-                  settings.wageType,
-                  settings.hourlyWage,
-                  settings.dailyWage,
-                  settings.breakDeductionEnabled,
-                  settings.breakRules,
-                  settings.lateNightPremium,
-                  settings.earlyMorningPremium,
-                );
-
-                return (
-                  <Pressable
-                    key={shiftType.id}
-                    onPress={() => setEditingShiftTypeId(shiftType.id)}
-                    style={[
-                      styles.shiftTypeRow,
-                      index > 0 && styles.blockBorder,
-                      { borderTopColor: theme.border },
-                    ]}
-                  >
-                    <IconBadge tone={presetTone} size={44}>
-                      <PresetIcon size={IconSize.medium} color={presetColors.icon} />
-                    </IconBadge>
-                    <View style={styles.rowLabel}>
-                      <View style={styles.shiftTypeMetaRow}>
-                        <ThemedText type="headline">{shiftType.name}</ThemedText>
-                        <View style={[styles.metaPill, { backgroundColor: blueBadge.background }]}>
-                          <ThemedText type="caption2" style={{ color: blueBadge.icon }}>
-                            実働{formatWorkedHours(workedHours)}h
-                          </ThemedText>
-                        </View>
-                        {hasLateNightPremium && (
-                          <View
-                            style={[styles.metaPill, { backgroundColor: purpleBadge.background }]}
-                          >
-                            <ThemedText type="caption2" style={{ color: purpleBadge.icon }}>
-                              深夜割増
-                            </ThemedText>
-                          </View>
-                        )}
-                      </View>
-                      <ThemedText type="footnote" themeColor="textSecondary">
-                        {formatShiftTimeRange(shiftType.startTime, shiftType.endTime, isOvernight)}
-                      </ThemedText>
-                    </View>
-                    <View style={styles.shiftTypeAmountColumn}>
-                      <ThemedText type="headline">{formatYen(breakdown.earnings)}</ThemedText>
-                      <View style={styles.editAffordance}>
-                        <ThemedText type="caption1" themeColor="primary">
-                          編集
-                        </ThemedText>
-                        <ChevronRight size={IconSize.small} color={theme.primary} />
-                      </View>
-                    </View>
-                  </Pressable>
-                );
-              })
-            )}
-          </Card>
-
-          <View style={styles.shiftTypeHint}>
-            <Info size={IconSize.small} color={theme.textSecondary} style={styles.hintIcon} />
-            <ThemedText type="caption2" themeColor="textSecondary" style={styles.hintText}>
-              カメラでシフト表を撮影すると、ここに登録した名前と時間帯がAIによる読み取りの手がかりとして使われます。
-            </ThemedText>
-          </View>
-        </View>
-
-        <Pressable
-          onPress={() => {
-            if (!user?.settings.isPro) {
-              router.push('/paywall');
-              return;
-            }
-            if (shiftTypes.length >= MAX_SHIFT_TYPES) {
-              Alert.alert(
-                'シフト種別は8つまでです',
-                '使っていない種別を削除すると、新しく追加できます。',
-              );
-              return;
-            }
-            handleStartAdd();
-          }}
-          style={[styles.addBigButton, { backgroundColor: blueBadge.background }]}
-        >
-          <Plus size={IconSize.medium} color={blueBadge.icon} />
-          <ThemedText type="headline" style={{ color: blueBadge.icon }}>
-            新しいシフト種別を追加
-          </ThemedText>
-        </Pressable>
       </ScrollView>
 
       <Dialog visible={isNameDialogOpen} onClose={() => setNameDialogOpen(false)}>
@@ -1079,6 +1143,10 @@ const styles = StyleSheet.create({
   blockBorder: {
     borderTopWidth: 1,
   },
+  calendarSubHeader: {
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.two,
+  },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1120,12 +1188,14 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
     paddingLeft: 52,
   },
+  // 行そのものの余白は中の infoRow が持つ。給与形態などの行と左端を揃えるため、ここでは横の余白を付けない
   premiumBlock: {
-    padding: Spacing.three,
     gap: Spacing.two,
   },
   nestedGroup: {
-    marginLeft: 48,
+    marginLeft: Spacing.three + 48,
+    marginRight: Spacing.three,
+    marginBottom: Spacing.three,
     borderRadius: Radius.smallLarge,
     overflow: 'hidden',
   },
@@ -1157,7 +1227,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   premiumRow: {
-    marginLeft: 48,
+    marginLeft: Spacing.three + 48,
+    marginRight: Spacing.three,
+    marginBottom: Spacing.three,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

@@ -45,6 +45,7 @@ export default function RootLayout() {
         />
         <Stack.Screen name="settings/calendar-providers" options={{ title: '対応カレンダー' }} />
         <Stack.Screen name="settings/calendar-connect" options={{ title: 'カレンダー連携' }} />
+        <Stack.Screen name="settings/other-calendars" options={{ title: 'その他のカレンダー' }} />
         <Stack.Screen name="settings/account" options={{ title: 'アカウント設定' }} />
         <Stack.Screen
           name="paywall"
