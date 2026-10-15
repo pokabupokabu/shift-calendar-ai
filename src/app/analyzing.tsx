@@ -137,6 +137,7 @@ export default function AnalyzingScreen() {
   const shiftTableHasNoNames = useAppStore((state) => state.user?.shiftTableHasNoNames ?? false);
   const user = useAppStore((state) => state.user);
   const recordScanUsage = useAppStore((state) => state.recordScanUsage);
+  const markTutorialFreeScanUsed = useAppStore((state) => state.markTutorialFreeScanUsed);
   // 写真選択画面で選んだ勤務先（未指定なら従来通りactiveWorkplaceにフォールバック）。
   const activeWorkplace =
     user?.workplaces.find((w) => w.id === scanWorkplaceId) ??
@@ -155,6 +156,8 @@ export default function AnalyzingScreen() {
     let cancelled = false;
 
     async function run() {
+      // 解析を始めた時点のお試し状態で判断する（途中で変わっても数え方がぶれないように）
+      const isTutorialFreeScan = useAppStore.getState().tutorialFreeScan === 'available';
       progressAnim.setValue(0);
       Animated.timing(progressAnim, {
         toValue: ESTIMATED_PROGRESS_CEILING,
@@ -169,8 +172,10 @@ export default function AnalyzingScreen() {
           shiftTableHasNoNames,
           knownShiftTypes,
         });
-        // 解析回数はAIが実際に解析したときだけ数える（通信エラー等では消費しない）
-        recordScanUsage();
+        // 解析回数はAIが実際に解析したときだけ数える（通信エラー等では消費しない）。
+        // チュートリアルのお試し中は回数に数えず、成功した時点でお試しを使い終えたことにする。
+        if (isTutorialFreeScan) markTutorialFreeScanUsed();
+        else recordScanUsage();
         if (cancelled) return;
         Animated.timing(progressAnim, {
           toValue: 100,
@@ -186,7 +191,8 @@ export default function AnalyzingScreen() {
         });
       } catch (error) {
         // AIが応答したうえで読み取れなかった場合は、解析は行われたので回数に数える
-        if (!(error instanceof AnalysisNotPerformedError)) recordScanUsage();
+        // お試し中の失敗は数えない（成功するまで何度でも試せる）
+        if (!isTutorialFreeScan && !(error instanceof AnalysisNotPerformedError)) recordScanUsage();
         if (cancelled) return;
         setAnalysisError(
           error instanceof Error ? error.message : 'シフト表をうまく読み取れませんでした',

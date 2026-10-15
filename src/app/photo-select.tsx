@@ -212,7 +212,9 @@ export default function PhotoSelectScreen() {
   const recordBonusScan = useAppStore((state) => state.recordBonusScan);
   const remainingScans = computeRemainingScans(scanUsage, isPro);
   const scanLimit = scanLimitFor(isPro);
-  const quotaExceeded = remainingScans <= 0;
+  // チュートリアルのお試し中は、回数が残っていなくても1回解析できる（広告も出さない）
+  const isTutorialFreeScan = useAppStore((state) => state.tutorialFreeScan === 'available');
+  const quotaExceeded = remainingScans <= 0 && !isTutorialFreeScan;
   const canWatchAdForBonus = quotaExceeded && canEarnBonusScan(scanUsage, isPro);
   // 「いつ戻るか」が分からないと、使い切ったユーザーが待てばいいのか課金すべきか判断できない。
   const recoveryAt = nextRecoveryAt(scanUsage);
@@ -332,21 +334,23 @@ export default function PhotoSelectScreen() {
             { color: quotaExceeded ? MOCK_COLORS.tipsBadgeIcon : MOCK_COLORS.muted },
           ]}
         >
-          {quotaExceeded
-            ? [
-                '解析できる回数を使い切りました。',
-                recoveryLabel ? `${recoveryLabel}に戻ります。` : '',
-                canWatchAdForBonus ? '広告を見ると今すぐ1回追加できます。' : '',
-                isPro ? '' : 'PROなら15回まで使えます。',
-              ]
-                .filter(Boolean)
-                .join('')
-            : [
-                `解析: 残り${remainingScans}/${scanLimit}回`,
-                recoveryLabel ? `（${recoveryLabel}に満タンへ戻ります）` : '',
-              ]
-                .filter(Boolean)
-                .join('')}
+          {isTutorialFreeScan
+            ? 'お試し中: 今回の解析は回数に数えません'
+            : quotaExceeded
+              ? [
+                  '解析できる回数を使い切りました。',
+                  recoveryLabel ? `${recoveryLabel}に戻ります。` : '',
+                  canWatchAdForBonus ? '広告を見ると今すぐ1回追加できます。' : '',
+                  isPro ? '' : 'PROなら15回まで使えます。',
+                ]
+                  .filter(Boolean)
+                  .join('')
+              : [
+                  `解析: 残り${remainingScans}/${scanLimit}回`,
+                  recoveryLabel ? `（${recoveryLabel}に満タンへ戻ります）` : '',
+                ]
+                  .filter(Boolean)
+                  .join('')}
         </ThemedText>
 
         <TipsSection />
