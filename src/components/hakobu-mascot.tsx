@@ -9,7 +9,6 @@ import Animated, {
   withDelay,
   withRepeat,
   withSequence,
-  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
@@ -40,7 +39,6 @@ export function HakobuMascot({ pose, size = 112 }: HakobuMascotProps) {
 
   const translateY = useSharedValue(0);
   const rotate = useSharedValue(0);
-  const scale = useSharedValue(reduceMotion || pose !== 'happy' ? 1 : 0.3);
   const questionOpacity = useSharedValue(reduceMotion ? 1 : 0);
 
   useEffect(() => {
@@ -64,8 +62,7 @@ export function HakobuMascot({ pose, size = 112 }: HakobuMascotProps) {
         -1,
       );
     } else if (pose === 'happy') {
-      // ぽんっと出てきて、そのあと時々跳ねる
-      scale.value = withSpring(1, { damping: 9, stiffness: 160 });
+      // 時々跳ねる（登場時に大きさを変える演出は違和感があるため入れない）
       translateY.value = withDelay(
         700,
         withRepeat(
@@ -98,14 +95,10 @@ export function HakobuMascot({ pose, size = 112 }: HakobuMascotProps) {
         -1,
       );
     }
-  }, [pose, questionOpacity, reduceMotion, rotate, scale, size, translateY]);
+  }, [pose, questionOpacity, reduceMotion, rotate, size, translateY]);
 
   const bodyStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: translateY.value },
-      { rotate: `${rotate.value}deg` },
-      { scale: scale.value },
-    ],
+    transform: [{ translateY: translateY.value }, { rotate: `${rotate.value}deg` }],
   }));
   const questionStyle = useAnimatedStyle(() => ({
     opacity: questionOpacity.value,
