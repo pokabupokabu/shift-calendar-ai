@@ -20,6 +20,7 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useIconBadgeColors } from '@/hooks/use-icon-badge-colors';
 import { useTheme } from '@/hooks/use-theme';
 import { useAppStore } from '@/store/useAppStore';
+import { useTourStore } from '@/store/useTourStore';
 
 /** 5枚目に重ねる、カレンダーに予定が入った様子の絵（Appleの画面そのものは使わない）。 */
 function CalendarCard() {
@@ -93,11 +94,10 @@ export default function TutorialScreen() {
   // 横スクロールの中では子が縦に伸びないため、表示領域の高さを測って各ページに渡す
   const [slideHeight, setSlideHeight] = useState(0);
   const [step, setStep] = useState<Step>('slides');
-  const shiftName = useAppStore((state) => state.user?.shiftName);
-  const shiftTableHasNoNames = useAppStore((state) => state.user?.shiftTableHasNoNames);
   const tutorialFreeScan = useAppStore((state) => state.tutorialFreeScan);
   const setHasSeenTutorial = useAppStore((state) => state.setHasSeenTutorial);
   const chooseTutorialFreeScan = useAppStore((state) => state.chooseTutorialFreeScan);
+  const startTour = useTourStore((state) => state.start);
 
   // 「今だけ」の枠は、まだ分岐で選んでいない人にだけ見せる（データ初期化でのやり直しを除き一度きり）
   const canOfferFreeScan = tutorialFreeScan === 'unoffered';
@@ -119,10 +119,9 @@ export default function TutorialScreen() {
   const handleTry = () => {
     chooseTutorialFreeScan(true);
     setHasSeenTutorial();
-    // 名前の設定を終えたかどうかの判定。「名前が載っていない」を選んだ人は
-    // shiftName が空のままなので、そちらも設定済みとして扱う。
-    const nameStepDone = Boolean(shiftName) || Boolean(shiftTableHasNoNames);
-    router.replace(nameStepDone ? '/photo-select' : '/name-input');
+    // ここから案内付きの操作: カレンダー画面 → マイカスタム → 名前 → スキャン → 解析 → 登録完了
+    startTour();
+    router.replace('/(tabs)/calendar-view');
   };
 
   const handleDecline = () => {

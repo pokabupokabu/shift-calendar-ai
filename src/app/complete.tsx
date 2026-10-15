@@ -11,9 +11,11 @@ import { ThemedText } from '@/components/themed-text';
 import { BottomTabInset, IconSize, Radius, Spacing } from '@/constants/theme';
 import { useIconBadgeColors } from '@/hooks/use-icon-badge-colors';
 import { useTheme } from '@/hooks/use-theme';
+import { useTourStepOnFocus } from '@/hooks/use-tour-step';
 import { getCalendarProvider } from '@/services/calendar';
 import { useAppStore } from '@/store/useAppStore';
 import { useShiftSessionStore } from '@/store/useShiftSessionStore';
+import { useTourStore } from '@/store/useTourStore';
 import { deferNavigation } from '@/utils/deferNavigation';
 import { formatShiftDate } from '@/utils/formatShift';
 
@@ -24,6 +26,7 @@ const CALENDAR_PROVIDER_LABEL = {
 
 /** 登録完了画面 (requirements section 17). */
 export default function CompleteScreen() {
+  useTourStepOnFocus('done');
   const theme = useTheme();
   const providerBadgeColors = useIconBadgeColors('blue');
   const { count } = useLocalSearchParams<{ count: string }>();
@@ -58,6 +61,8 @@ export default function CompleteScreen() {
   };
 
   const handleDone = () => {
+    // 案内中に自分でホームへ戻った場合も、案内はここで終わり
+    useTourStore.getState().end();
     resetSession();
     deferNavigation(() => router.replace('/'));
   };

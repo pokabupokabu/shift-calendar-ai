@@ -6,16 +6,19 @@ import { Alert, FlatList, Image, Pressable, StyleSheet, TextInput, View } from '
 
 import { Dialog } from '@/components/dialog';
 import { PrimaryButton } from '@/components/primary-button';
+import { TourTarget } from '@/components/tour/tour-target';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { IconSize, Radius, Spacing, type ThemeColor } from '@/constants/theme';
 import { useIconBadgeColors } from '@/hooks/use-icon-badge-colors';
 import { useTheme } from '@/hooks/use-theme';
+import { useTourStepOnFocus } from '@/hooks/use-tour-step';
 import type { Shift, ShiftRegistrationStatus } from '@/models';
 import { getCalendarProvider } from '@/services/calendar';
 import { ensureCalendarAccess } from '@/services/calendar/ensureCalendarAccess';
 import { useAppStore } from '@/store/useAppStore';
 import { useShiftSessionStore } from '@/store/useShiftSessionStore';
+import { useTourStore } from '@/store/useTourStore';
 import { classifyShift } from '@/utils/classifyShifts';
 import { deferNavigation } from '@/utils/deferNavigation';
 import { buildEventTitle } from '@/utils/eventTitle';
@@ -48,6 +51,7 @@ interface ClassifiedShift {
  * 登録対象を調整してから一括登録する (requirements section 11, 12)。
  */
 export default function CalendarConfirmScreen() {
+  useTourStepOnFocus('confirm');
   const theme = useTheme();
   const badgeColors = useIconBadgeColors('blue');
   const images = useShiftSessionStore((state) => state.images);
@@ -126,7 +130,13 @@ export default function CalendarConfirmScreen() {
   const handleRegister = async () => {
     if (!settings || !activeWorkplace) return;
     const provider = getCalendarProvider(settings.defaultCalendarProvider);
-    if (!(await ensureCalendarAccess(provider))) return;
+    if (!(await ensureCalendarAccess(provider))) {
+      // 案内中に許可を断られたら、先に進めないので出口の画面を出す
+      if (useTourStore.getState().step) {
+        router.push({ pathname: '/tour-exit', params: { reason: 'permission' } });
+      }
+      return;
+    }
 
     setRegistering(true);
     let successCount = 0;
@@ -308,11 +318,13 @@ export default function CalendarConfirmScreen() {
         </ThemedText>
       </Pressable>
 
-      <PrimaryButton
-        label={registering ? '登録中…' : `カレンダーに登録（${visible.length}件）`}
-        onPress={handleRegister}
-        disabled={registering || visible.length === 0}
-      />
+      <TourTarget id="register-button">
+        <PrimaryButton
+          label={registering ? '登録中…' : `カレンダーに登録（${visible.length}件）`}
+          onPress={handleRegister}
+          disabled={registering || visible.length === 0}
+        />
+      </TourTarget>
 
       <Dialog visible={isAddDialogOpen} onClose={() => setAddDialogOpen(false)}>
         <ThemedText type="headline" style={styles.dialogTitle}>

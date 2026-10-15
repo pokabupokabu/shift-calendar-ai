@@ -10,6 +10,7 @@ import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
+import { TourTarget } from '@/components/tour/tour-target';
 import { IconSize, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -28,12 +29,14 @@ function ScanTabButton() {
   return (
     <View style={styles.scanButtonWrapper}>
       <View style={styles.scanButtonLift}>
-        <Pressable
-          onPress={() => router.push('/photo-select')}
-          style={[styles.scanButton, { backgroundColor: theme.accent, shadowColor: theme.text }]}
-        >
-          <ScanText size={IconSize.large} color={theme.onPrimary} />
-        </Pressable>
+        <TourTarget id="tab-scan" followsScreenFocus={false}>
+          <Pressable
+            onPress={() => router.push('/photo-select')}
+            style={[styles.scanButton, { backgroundColor: theme.accent, shadowColor: theme.text }]}
+          >
+            <ScanText size={IconSize.large} color={theme.onPrimary} />
+          </Pressable>
+        </TourTarget>
       </View>
       <ThemedText type="small" themeColor="textSecondary" style={styles.tabBarLabel}>
         スキャン
@@ -78,6 +81,13 @@ export default function TabsLayout() {
         options={{
           title: 'マイカスタム',
           tabBarIcon: ({ color }) => <LayoutTemplate size={IconSize.medium} color={color} />,
+          // 案内付き操作で光らせるため、標準のタブボタンを位置を測れる部品で包む
+          // （href を渡すと Web ではリンクとして描かれ、押すとページごと読み込み直して案内が消えるので外す）
+          tabBarButton: ({ ref: _ref, href: _href, ...props }) => (
+            <TourTarget id="tab-mycustom" followsScreenFocus={false} style={styles.tabButtonTarget}>
+              <Pressable {...props} style={[props.style, styles.tabButtonTarget]} />
+            </TourTarget>
+          ),
         }}
       />
       <Tabs.Screen
@@ -113,6 +123,9 @@ export default function TabsLayout() {
 }
 
 const styles = StyleSheet.create({
+  tabButtonTarget: {
+    flex: 1,
+  },
   tabBarLabel: {
     fontSize: 11,
   },

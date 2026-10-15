@@ -11,9 +11,11 @@ import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { BottomTabInset, IconSize, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useTourStepOnFocus } from '@/hooks/use-tour-step';
 import { AnalysisNotPerformedError, getAiProvider } from '@/services/ai';
 import { useAppStore } from '@/store/useAppStore';
 import { useShiftSessionStore } from '@/store/useShiftSessionStore';
+import { useTourStore } from '@/store/useTourStore';
 import { deferNavigation } from '@/utils/deferNavigation';
 
 const ESTIMATED_ANALYSIS_DURATION_MS = 7000;
@@ -210,6 +212,20 @@ export default function AnalyzingScreen() {
 
   const handleAbort = () => router.replace('/photo-select');
 
+  useTourStepOnFocus('analyzing');
+  const isTouring = useTourStore((state) => state.step !== null);
+  const endTour = useTourStore((state) => state.end);
+  const forfeitTutorialFreeScan = useAppStore((state) => state.forfeitTutorialFreeScan);
+  // 案内中に解析が失敗したときの出口。「今だけ」の無料枠は、ここでやめたら失効する
+  useEffect(() => {
+    if (analysisError) useTourStore.getState().goTo('analyzeFailed');
+  }, [analysisError]);
+  const handleGiveUpTour = () => {
+    forfeitTutorialFreeScan();
+    endTour();
+    router.replace('/(tabs)/calendar-view');
+  };
+
   if (analysisError) {
     return (
       <Screen style={styles.center}>
@@ -222,7 +238,17 @@ export default function AnalyzingScreen() {
         <ThemedText themeColor="textSecondary" style={styles.centerText}>
           {analysisError}
         </ThemedText>
-        <PrimaryButton label="別の画像を選び直す" onPress={handleAbort} />
+        <PrimaryButton
+          label={isTouring ? 'もう一度試す' : '別の画像を選び直す'}
+          onPress={handleAbort}
+        />
+        {isTouring && (
+          <Pressable onPress={handleGiveUpTour} hitSlop={Spacing.two}>
+            <ThemedText type="headline" themeColor="textSecondary">
+              また今度
+            </ThemedText>
+          </Pressable>
+        )}
       </Screen>
     );
   }

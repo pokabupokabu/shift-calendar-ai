@@ -19,6 +19,7 @@ import { ThemedText } from '@/components/themed-text';
 import { BottomTabInset, IconSize, Spacing } from '@/constants/theme';
 import { useIconBadgeColors } from '@/hooks/use-icon-badge-colors';
 import { useTheme } from '@/hooks/use-theme';
+import { useTourStepOnFocus } from '@/hooks/use-tour-step';
 import { getAiProvider } from '@/services/ai';
 import { useAppStore } from '@/store/useAppStore';
 import { useShiftSessionStore } from '@/store/useShiftSessionStore';
@@ -30,6 +31,7 @@ import { deferNavigation } from '@/utils/deferNavigation';
  * confidenceは内部値のため、数値は一切出さず「推奨」の定性バッジのみで表現する。
  */
 export default function UserMatchSelectScreen() {
+  useTourStepOnFocus('userMatch');
   const theme = useTheme();
   const infoBadgeColors = useIconBadgeColors('blue');
   const images = useShiftSessionStore((state) => state.images);

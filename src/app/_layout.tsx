@@ -3,6 +3,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
+import { TourOverlay } from '@/components/tour/tour-overlay';
 import { initPurchases } from '@/utils/purchases';
 
 SplashScreen.preventAutoHideAsync();
@@ -47,11 +48,14 @@ export default function RootLayout() {
         <Stack.Screen name="settings/calendar-connect" options={{ title: 'カレンダー連携' }} />
         <Stack.Screen name="settings/other-calendars" options={{ title: 'その他のカレンダー' }} />
         <Stack.Screen name="settings/account" options={{ title: 'アカウント設定' }} />
+        <Stack.Screen name="tour-exit" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen
           name="paywall"
           options={{ title: 'PROにアップグレード', presentation: 'modal' }}
         />
       </Stack>
+      {/* 案内付き操作の重ね絵。どの画面よりも手前に出すため、Stack の後ろに置く */}
+      <TourOverlay />
     </ThemeProvider>
   );
 }
