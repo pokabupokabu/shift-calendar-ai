@@ -1,8 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { Calendar, Camera, Check, Wallet } from 'lucide-react-native';
+import { Calendar, Camera, Wallet } from 'lucide-react-native';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AdPlaceholder } from '@/components/ad-placeholder';
+import { HakobuMascot } from '@/components/hakobu-mascot';
 import { IconBadge } from '@/components/icon-badge';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
@@ -66,10 +67,7 @@ export default function CompleteScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.center}>
           <View style={styles.successIconWrap}>
-            <View style={[styles.successHalo, { backgroundColor: theme.success, opacity: 0.2 }]} />
-            <View style={[styles.successCircle, { backgroundColor: theme.success }]}>
-              <Check size={IconSize.large} color={theme.onPrimary} strokeWidth={3} />
-            </View>
+            <HakobuMascot pose="happy" size={120} />
           </View>
           <ThemedText type="title2" style={styles.centerText}>
             カレンダー登録が完了しました
@@ -167,24 +165,9 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   successIconWrap: {
-    width: 112,
-    height: 112,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.two,
-  },
-  successHalo: {
-    position: 'absolute',
-    width: 112,
-    height: 112,
-    borderRadius: 56,
-  },
-  successCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   centerText: {
     textAlign: 'center',

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 
 import { Card } from '@/components/card';
+import { HakobuMascot } from '@/components/hakobu-mascot';
 import { IconBadge } from '@/components/icon-badge';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
@@ -122,11 +123,14 @@ export default function UserMatchSelectScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.introBlock}>
-          <ThemedText type="title2">{introTitle}</ThemedText>
-          <ThemedText type="subheadline" themeColor="textSecondary" style={styles.introSubtitle}>
-            {introSubtitle}
-          </ThemedText>
+        <View style={styles.introRow}>
+          <View style={styles.introBlock}>
+            <ThemedText type="title2">{introTitle}</ThemedText>
+            <ThemedText type="subheadline" themeColor="textSecondary" style={styles.introSubtitle}>
+              {introSubtitle}
+            </ThemedText>
+          </View>
+          <HakobuMascot pose="puzzled" size={84} />
         </View>
 
         {hasCandidates && (
@@ -303,7 +307,13 @@ const styles = StyleSheet.create({
     paddingBottom: BottomTabInset,
     gap: Spacing.five,
   },
+  introRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
   introBlock: {
+    flex: 1,
     gap: Spacing.one,
   },
   introSubtitle: {

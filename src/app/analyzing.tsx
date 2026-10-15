@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Animated, Easing, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Card } from '@/components/card';
-import { CircularProgress } from '@/components/circular-progress';
+import { HakobuMascot } from '@/components/hakobu-mascot';
 import { IconBadge } from '@/components/icon-badge';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
@@ -232,13 +232,12 @@ export default function AnalyzingScreen() {
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.progressBlock}>
-          <CircularProgress
-            progress={progress}
-            size={112}
-            strokeWidth={8}
-            trackColor={theme.border}
-            textType="title1"
-          />
+          <View style={styles.mascotBlock}>
+            <HakobuMascot pose="running" size={112} />
+            <ThemedText type="title1" themeColor="primary">
+              {Math.round(progress)}%
+            </ThemedText>
+          </View>
           <View style={styles.progressTextBlock}>
             <ThemedText type="title2" style={styles.centerText}>
               シフト表を解析中...
@@ -338,6 +337,10 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.three,
     paddingBottom: Spacing.four,
     gap: Spacing.four,
+  },
+  mascotBlock: {
+    alignItems: 'center',
+    gap: Spacing.two,
   },
   progressTextBlock: {
     alignItems: 'center',
