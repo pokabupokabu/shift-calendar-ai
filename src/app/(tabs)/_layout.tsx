@@ -76,7 +76,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="template"
         options={{
-          title: 'テンプレ',
+          title: 'マイカスタム',
           tabBarIcon: ({ color }) => <LayoutTemplate size={IconSize.medium} color={color} />,
         }}
       />

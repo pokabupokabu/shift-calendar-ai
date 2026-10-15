@@ -101,7 +101,7 @@ function overlapsBand(
   });
 }
 
-/** テンプレタブ: シフト登録の挙動そのものを決める設定 (requirements section 4, 13). */
+/** マイカスタムタブ（ルート名は template）: シフト登録の挙動そのものを決める設定 (requirements section 4, 13). */
 export default function TemplateTab() {
   const theme = useTheme();
   const blueBadge = useIconBadgeColors('blue');
@@ -281,7 +281,7 @@ export default function TemplateTab() {
   return (
     <Screen>
       <View style={styles.headerRow}>
-        <ThemedText type="subtitle">テンプレ</ThemedText>
+        <ThemedText type="subtitle">マイカスタム</ThemedText>
         <AdPlaceholder slot="template" size="inline" />
       </View>
 

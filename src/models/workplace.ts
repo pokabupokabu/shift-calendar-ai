@@ -42,7 +42,7 @@ export interface WorkplaceSettings {
 
 /**
  * One job/employer profile. Every user has at least one; additional workplaces
- * (掛け持ち) are a PRO feature gated in the テンプレ tab, not here in the store.
+ * (掛け持ち) are a PRO feature gated in the マイカスタム tab, not here in the store.
  */
 export interface Workplace {
   id: string;
