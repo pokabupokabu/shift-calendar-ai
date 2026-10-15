@@ -138,7 +138,7 @@ function SettingsRowGroup({ rows, caption }: { rows: SettingsRow[]; caption?: st
   );
 }
 
-/** 「外観」の実インライン切り替え行。テンプレタブの wageTypeToggle と同じピル型セグメントコントロール。 */
+/** 「外観」の実インライン切り替え行。マイカスタムタブの wageTypeToggle と同じピル型セグメントコントロール。 */
 function AppearanceRow({ withTopSeparator }: { withTopSeparator: boolean }) {
   const theme = useTheme();
   const user = useAppStore((state) => state.user);
@@ -188,7 +188,7 @@ function AppearanceRow({ withTopSeparator }: { withTopSeparator: boolean }) {
   );
 }
 
-/** 設定タブ: 一般的なアプリ設定（アカウント・通知・外観・規約など）。シフト登録の挙動自体は「テンプレ」タブが担う。 */
+/** 設定タブ: 一般的なアプリ設定（アカウント・通知・外観・規約など）。シフト登録の挙動自体は「マイカスタム」タブが担う。 */
 export default function SettingsTab() {
   const theme = useTheme();
   const resolvedScheme = useResolvedColorScheme();
