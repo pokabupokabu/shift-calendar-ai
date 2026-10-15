@@ -20,14 +20,17 @@ import { Alert, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } fro
 import { AdPlaceholder } from '@/components/ad-placeholder';
 import { Card } from '@/components/card';
 import { Dialog } from '@/components/dialog';
+import { HakobuMascot } from '@/components/hakobu-mascot';
 import { IconBadge } from '@/components/icon-badge';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
+import { TourTarget } from '@/components/tour/tour-target';
 import { SHIFT_TYPE_ICON_PRESETS } from '@/constants/shiftTypeIcons';
 import { BottomTabInset, type IconBadgeTone, IconSize, Radius, Spacing } from '@/constants/theme';
 import { useIconBadgeColors } from '@/hooks/use-icon-badge-colors';
 import { useTheme } from '@/hooks/use-theme';
+import { useTourStepOnFocus } from '@/hooks/use-tour-step';
 import {
   DEFAULT_WORKPLACE_SETTINGS,
   type BreakRule,
@@ -37,6 +40,7 @@ import {
 } from '@/models';
 import { getConnectedProviders } from '@/services/calendar/getConnectedProviders';
 import { useAppStore } from '@/store/useAppStore';
+import { useTourStore } from '@/store/useTourStore';
 import { computeShiftBreakdown, hoursBetween } from '@/utils/computePayroll';
 import { formatShiftTimeRange } from '@/utils/formatShift';
 
@@ -159,6 +163,25 @@ export default function TemplateTab() {
   const shiftTypes = activeWorkplace?.shiftTypes ?? [];
 
   const [isNameDialogOpen, setNameDialogOpen] = useState(false);
+  const tourStep = useTourStore((state) => state.step);
+  const goToTourStep = useTourStore((state) => state.goTo);
+  useTourStepOnFocus(
+    useCallback(() => (useTourStore.getState().step === 'tabMyCustom' ? 'keywordRow' : null), []),
+  );
+
+  const openNameDialog = () => {
+    setNameDialogOpen(true);
+    if (tourStep === 'keywordRow') goToTourStep('keywordDialog');
+  };
+  const closeNameDialog = () => {
+    setNameDialogOpen(false);
+    if (tourStep !== 'keywordDialog') return;
+    // 名前を入れた（または「名前が載っていない」を選んだ）ときだけ次へ。空のままなら入力からやり直す
+    const state = useAppStore.getState();
+    const named =
+      Boolean(state.user?.shiftName?.trim()) || Boolean(state.user?.shiftTableHasNoNames);
+    goToTourStep(named ? 'tabScan' : 'keywordRow');
+  };
   const [editingShiftTypeId, setEditingShiftTypeId] = useState<string | null>(null);
   const [addDraft, setAddDraft] = useState<
     (ShiftTypeFields & { id: string; icon?: string }) | null
@@ -348,23 +371,25 @@ export default function TemplateTab() {
           </ThemedText>
 
           <Card style={styles.group}>
-            <Pressable onPress={() => setNameDialogOpen(true)} style={styles.infoRow}>
-              <IconBadge tone="blue">
-                <User size={ROW_ICON_SIZE} color={blueBadge.icon} />
-              </IconBadge>
-              <View style={styles.infoRowLabel}>
-                <ThemedText type="footnote" themeColor="textSecondary">
-                  登録者キーワード
-                </ThemedText>
-                <ThemedText type="headline">{user?.shiftName || '未設定'}</ThemedText>
-              </View>
-              <View style={styles.changeAffordance}>
-                <ThemedText type="subheadline" themeColor="primary">
-                  変更
-                </ThemedText>
-                <ChevronRight size={IconSize.small} color={theme.primary} />
-              </View>
-            </Pressable>
+            <TourTarget id="keyword-row">
+              <Pressable onPress={openNameDialog} style={styles.infoRow}>
+                <IconBadge tone="blue">
+                  <User size={ROW_ICON_SIZE} color={blueBadge.icon} />
+                </IconBadge>
+                <View style={styles.infoRowLabel}>
+                  <ThemedText type="footnote" themeColor="textSecondary">
+                    登録者キーワード
+                  </ThemedText>
+                  <ThemedText type="headline">{user?.shiftName || '未設定'}</ThemedText>
+                </View>
+                <View style={styles.changeAffordance}>
+                  <ThemedText type="subheadline" themeColor="primary">
+                    変更
+                  </ThemedText>
+                  <ChevronRight size={IconSize.small} color={theme.primary} />
+                </View>
+              </Pressable>
+            </TourTarget>
 
             <View
               style={[
@@ -811,8 +836,16 @@ export default function TemplateTab() {
         </View>
       </ScrollView>
 
-      <Dialog visible={isNameDialogOpen} onClose={() => setNameDialogOpen(false)}>
+      <Dialog visible={isNameDialogOpen} onClose={closeNameDialog}>
         <ThemedText type="smallBold">登録者キーワードを編集</ThemedText>
+        {tourStep === 'keywordDialog' && (
+          <View style={styles.tourHint}>
+            <HakobuMascot pose="happy" size={48} />
+            <ThemedText type="footnote" style={styles.tourHintText}>
+              シフト表に書いてあるとおりに名前を入れたら「閉じる」を押してね
+            </ThemedText>
+          </View>
+        )}
         <TextInput
           value={user?.shiftName ?? ''}
           onChangeText={setShiftName}
@@ -835,7 +868,7 @@ export default function TemplateTab() {
             このキーワードをもとに、AIがシフト表からあなたの行を抽出します。
           </ThemedText>
         )}
-        <PrimaryButton label="閉じる" onPress={() => setNameDialogOpen(false)} />
+        <PrimaryButton label="閉じる" onPress={closeNameDialog} />
       </Dialog>
 
       <Dialog visible={isAddWorkplaceDialogOpen} onClose={() => setAddWorkplaceDialogOpen(false)}>
@@ -1142,6 +1175,14 @@ const styles = StyleSheet.create({
   },
   blockBorder: {
     borderTopWidth: 1,
+  },
+  tourHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  tourHintText: {
+    flex: 1,
   },
   calendarSubHeader: {
     paddingHorizontal: Spacing.three,

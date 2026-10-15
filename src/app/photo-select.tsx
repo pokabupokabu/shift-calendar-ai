@@ -11,7 +11,7 @@ import {
   ScanLine,
   type LucideIcon,
 } from 'lucide-react-native';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Dialog } from '@/components/dialog';
@@ -19,11 +19,13 @@ import { IconBadge } from '@/components/icon-badge';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
+import { TourTarget } from '@/components/tour/tour-target';
 import { IconSize, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { ShiftImage } from '@/services/ai';
 import { useAppStore } from '@/store/useAppStore';
 import { useShiftSessionStore } from '@/store/useShiftSessionStore';
+import { useTourStore } from '@/store/useTourStore';
 import { resizeShiftImage } from '@/utils/resizeShiftImage';
 import { showRewardedAd } from '@/utils/rewardedAd';
 import {
@@ -253,6 +255,17 @@ export default function PhotoSelectScreen() {
     setImages(await toShiftImages(result));
   };
 
+  // 案内中: 写真を選ぶ前は「撮る/選ぶ」、選んだあとは「解析する」を指す
+  const tourStep = useTourStore((state) => state.step);
+  const goToTourStep = useTourStore((state) => state.goTo);
+  const isTouring = tourStep !== null;
+  const hasImages = images.length > 0;
+  useEffect(() => {
+    if (tourStep === 'tabScan' || tourStep === 'pickPhoto' || tourStep === 'analyze') {
+      goToTourStep(hasImages ? 'analyze' : 'pickPhoto');
+    }
+  }, [goToTourStep, hasImages, tourStep]);
+
   const handleNext = () => {
     setSessionImages(images);
     setScanWorkplaceId(effectiveWorkplaceId);
@@ -292,6 +305,11 @@ export default function PhotoSelectScreen() {
       router.push('/paywall');
       return;
     }
+    // 案内中は確認ダイアログを挟まず、そのまま解析へ進む（案内の吹き出しで説明済みのため）
+    if (isTouring) {
+      handleNext();
+      return;
+    }
     setConfirmDialogOpen(true);
   };
 
@@ -312,20 +330,29 @@ export default function PhotoSelectScreen() {
         <PhotoPreview images={images} />
 
         <View style={styles.buttonRow}>
-          <ActionButton icon={Camera} label="写真を撮る" onPress={pickFromCamera} variant="dark" />
-          <ActionButton
-            icon={ImageIcon}
-            label="ライブラリから選ぶ"
-            onPress={pickFromLibrary}
-            variant="outline"
-          />
-          <ActionButton
-            icon={ScanLine}
-            label={watchingAd ? '広告を読み込み中…' : '解析する'}
-            onPress={handlePressAnalyze}
-            disabled={!canAnalyze || watchingAd}
-            variant={canAnalyze && !watchingAd ? 'primary' : 'disabled'}
-          />
+          <TourTarget id="photo-buttons" style={styles.tourButtonGroup}>
+            <ActionButton
+              icon={Camera}
+              label="写真を撮る"
+              onPress={pickFromCamera}
+              variant="dark"
+            />
+            <ActionButton
+              icon={ImageIcon}
+              label="ライブラリから選ぶ"
+              onPress={pickFromLibrary}
+              variant="outline"
+            />
+          </TourTarget>
+          <TourTarget id="analyze-button">
+            <ActionButton
+              icon={ScanLine}
+              label={watchingAd ? '広告を読み込み中…' : '解析する'}
+              onPress={handlePressAnalyze}
+              disabled={!canAnalyze || watchingAd}
+              variant={canAnalyze && !watchingAd ? 'primary' : 'disabled'}
+            />
+          </TourTarget>
         </View>
 
         <ThemedText
@@ -529,6 +556,9 @@ const styles = StyleSheet.create({
   buttonRow: {
     gap: 12,
     marginBottom: 16,
+  },
+  tourButtonGroup: {
+    gap: 12,
   },
   quotaNote: {
     fontSize: 12,

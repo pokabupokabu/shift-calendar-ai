@@ -67,6 +67,8 @@ interface AppState {
   /** 分岐画面での選択を記録する。一度決まったら（used/forfeited）上書きしない。 */
   chooseTutorialFreeScan: (accept: boolean) => void;
   markTutorialFreeScanUsed: () => void;
+  /** 案内の途中で「また今度」を選んだとき。「今だけ」の枠なので、まだ使っていなければ失効させる。 */
+  forfeitTutorialFreeScan: () => void;
   updateSettings: (settings: Partial<UserSettings>) => void;
   addWorkplace: (name: string) => void;
   removeWorkplace: (id: string) => void;
@@ -100,6 +102,11 @@ export const useAppStore = create<AppState>()(
           state.tutorialFreeScan === 'unoffered'
             ? { tutorialFreeScan: accept ? 'available' : 'forfeited' }
             : {},
+        ),
+
+      forfeitTutorialFreeScan: () =>
+        set((state) =>
+          state.tutorialFreeScan === 'available' ? { tutorialFreeScan: 'forfeited' } : {},
         ),
 
       markTutorialFreeScanUsed: () =>

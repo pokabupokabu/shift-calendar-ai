@@ -31,7 +31,7 @@
 - 変更後は `npm run lint` / `npm run typecheck` / `npm run format` を通す。
 - iPhone専用。実機/シミュレータでの確認ができない場合はその旨を明記する。
 
-## 引き継ぎメモ（2026-10-14時点、次セッション向け）
+## 引き継ぎメモ（2026-10-15時点、次セッション向け）
 
 ### このプロジェクトは何か
 
@@ -40,7 +40,7 @@ Expo Router（SDK 57.0.24）+ TypeScript の **iPhone専用アプリ「シフTo�
 | 項目          | 値                                                                                                                                      |
 | ------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | リポジトリ    | https://github.com/pokabupokabu/shift-calendar-ai **（⚠️ PUBLIC。秘密情報を絶対にコミットしない）**                                     |
-| `main` の先頭 | **`ce0c09c`**（PR #16 のマージコミット）。PR #1〜#16 マージ済み。**PR #17（はこブーのアニメーション）はレビュー待ち**                   |
+| `main` の先頭 | **`12f6412`**（PR #19 のマージコミット）。PR #1〜#19 マージ済み。**#20・#21・#22 はレビュー待ち**（下の「PRの積み重ね」参照）           |
 | アプリ名      | **「シフToカレ」で確定**（`expo.name` はASCIIの `ShifToKare`、表示名は `ios.infoPlist.CFBundleDisplayName`）                            |
 | Bundle ID     | **`com.pokabu.shiftcalendarai`（登録済み）**。Team ID `7Q63PJ345L`                                                                      |
 | AIプロキシ    | Cloudflare Worker `gemini-shift-proxy`（`server/gemini-proxy/`）。**デプロイ済み**（Version ID `54164062-f3bb-47d1-a53e-f1256ff430e9`） |
@@ -61,15 +61,15 @@ PR #14（2026-10-14マージ）で `web/` を追跡対象から外し、`.gitign
 
 **リリース前の作業7項目**に着手したところ。**順番はユーザー確定済み**（2026-10-14）。
 
-| 順    | 項目                                                             | 状態                                               |
-| ----- | ---------------------------------------------------------------- | -------------------------------------------------- |
-| 1     | キャラクターのデザイン                                           | ✅ ChatGPTで作画済み（`docs/character/hakobu.md`） |
-| 2     | キャラクターのアニメーション                                     | ✅ PR #17（実機では未確認）                        |
-| 3     | アプリアイコン                                                   | ✅ PR #16                                          |
-| **4** | **チュートリアルの改善**                                         | 🟠 説明5枚＋分岐はPR #20。**案内付き操作は未着手** |
-| 5     | **UI全体の見直し**（全画面・色・余白・文字サイズ・ボタンの統一） | 未着手                                             |
-| 6     | サブタイトル・説明文・キーワード                                 | 未着手。**他に依存しないので待ち時間に差し込める** |
-| 7     | App Storeのプレビュー画面                                        | 🔴 **EAS Buildが通るまで物理的に撮影できない**     |
+| 順    | 項目                                                             | 状態                                                                              |
+| ----- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| 1     | キャラクターのデザイン                                           | ✅ ChatGPTで作画済み（`docs/character/hakobu.md`）                                |
+| 2     | キャラクターのアニメーション                                     | ✅ PR #17（実機では未確認）                                                       |
+| 3     | アプリアイコン                                                   | ✅ PR #16                                                                         |
+| 4     | チュートリアルの改善                                             | ✅ PR #20（説明＋分岐）・#21（案内付き操作）                                      |
+| **5** | **UI全体の見直し**（全画面・色・余白・文字サイズ・ボタンの統一） | 🟠 **ここから**。共通ルールは PR #22。次はグループAのスクショ撮りと修正方針の共有 |
+| 6     | サブタイトル・説明文・キーワード                                 | 未着手。**他に依存しないので待ち時間に差し込める**                                |
+| 7     | App Storeのプレビュー画面                                        | 🔴 **EAS Buildが通るまで物理的に撮影できない**                                    |
 
 #### キャラクター（2026-10-14にユーザー決定）
 
@@ -90,22 +90,35 @@ PR #14（2026-10-14マージ）で `web/` を追跡対象から外し、`.gitign
 
 ### 進捗状況（コード）
 
-| サブタスク                                    | コード | 検証                  | マージ                          |
-| --------------------------------------------- | ------ | --------------------- | ------------------------------- |
-| UI改善・ペイウォール特商法対応・ATT・法務文書 | ✅     | ✅ Expo Web           | ✅ PR #1                        |
-| 扶養の壁アラートの全面修正 / iOS権限文言      | ✅     | ✅                    | ✅ PR #2                        |
-| 法務文書の連絡先を実アドレスへ                | ✅     | —                     | ✅ PR #3                        |
-| 設定タブの整理・アプリ名統一                  | ✅     | ✅                    | ✅ PR #4                        |
-| WorkerのIPハッシュ化・一時画像の削除          | ✅     | ✅                    | ✅ PR #5                        |
-| 個人用シフト表対応（名前なしの表）            | ✅     | ✅ 実画像             | ✅ PR #6                        |
-| CI（GitHub Actions）                          | ✅     | ✅                    | ✅ PR #7                        |
-| 終日シフト対応＋モデル出し分け                | ✅     | ✅ Expo Web           | ✅ PR #8                        |
-| Workerの防御強化                              | ✅     | ✅ ライブ10項目       | ✅ PR #9・**デプロイ済み**      |
-| 引き継ぎメモ更新                              | ✅     | —                     | ✅ PR #10                       |
-| 法務文書の旧アプリ名を修正                    | ✅     | —                     | ✅ PR #11                       |
-| 価格を330円に変更                             | ✅     | —                     | ✅ PR #12                       |
-| **PROプランの仕様見直し＋既存バグ修正**       | ✅     | ✅ 単体実行＋Expo Web | ✅ PR #13                       |
-| **法務ページの静的サイト生成**                | ✅     | ✅ 原文一致を独立検証 | 🔴 **ローカルのみ・未プッシュ** |
+| サブタスク                                     | コード | 検証                  | マージ                          |
+| ---------------------------------------------- | ------ | --------------------- | ------------------------------- |
+| UI改善・ペイウォール特商法対応・ATT・法務文書  | ✅     | ✅ Expo Web           | ✅ PR #1                        |
+| 扶養の壁アラートの全面修正 / iOS権限文言       | ✅     | ✅                    | ✅ PR #2                        |
+| 法務文書の連絡先を実アドレスへ                 | ✅     | —                     | ✅ PR #3                        |
+| 設定タブの整理・アプリ名統一                   | ✅     | ✅                    | ✅ PR #4                        |
+| WorkerのIPハッシュ化・一時画像の削除           | ✅     | ✅                    | ✅ PR #5                        |
+| 個人用シフト表対応（名前なしの表）             | ✅     | ✅ 実画像             | ✅ PR #6                        |
+| CI（GitHub Actions）                           | ✅     | ✅                    | ✅ PR #7                        |
+| 終日シフト対応＋モデル出し分け                 | ✅     | ✅ Expo Web           | ✅ PR #8                        |
+| Workerの防御強化                               | ✅     | ✅ ライブ10項目       | ✅ PR #9・**デプロイ済み**      |
+| 引き継ぎメモ更新                               | ✅     | —                     | ✅ PR #10                       |
+| 法務文書の旧アプリ名を修正                     | ✅     | —                     | ✅ PR #11                       |
+| 価格を330円に変更                              | ✅     | —                     | ✅ PR #12                       |
+| **PROプランの仕様見直し＋既存バグ修正**        | ✅     | ✅ 単体実行＋Expo Web | ✅ PR #13                       |
+| **法務ページの静的サイト生成**                 | ✅     | ✅ 原文一致を独立検証 | 🔴 **ローカルのみ・未プッシュ** |
+| web/ の追跡解除・メモ更新・アイコン            | ✅     | ✅                    | ✅ PR #14〜#16                  |
+| はこブーのアニメーション（登場時の拡大は廃止） | ✅     | ✅ Expo Web           | ✅ PR #17                       |
+| 通信エラーで解析回数を減らさない               | ✅     | ✅ Node＋Expo Web     | ✅ PR #18                       |
+| マイカスタム（旧テンプレ）タブの整理           | ✅     | ✅ Expo Web           | ✅ PR #19                       |
+| **チュートリアル: 説明5枚＋分岐＋お試し枠**    | ✅     | ✅ Expo Web           | 🟠 **PR #20 レビュー待ち**      |
+| **チュートリアル: 案内付き操作**               | ✅     | ✅ Expo Web（全経路） | 🟠 **PR #21 レビュー待ち**      |
+| **UIの共通ルール（docs/design-system.md）**    | ✅     | —                     | 🟠 **PR #22 レビュー待ち**      |
+
+#### 🟠 PRの積み重ね（マージ順に注意）
+
+- **#20 → #21 の順でマージ**。#21 は #20 の上に積んでいる（ブランチ `feat/tutorial-slides` → `feat/guided-tour`）。#17〜#19 はマージ済みなので、#20 の差分はもう #20 固有の分だけ
+- #22（`docs/design-system`）は `main` から分岐した資料だけのPR。順番は自由
+- **このメモ（CLAUDE.md）の最新版は `feat/guided-tour`（#21）に入っている**。#21 がマージされるまでは、作業前に `git checkout feat/guided-tour` してから読むこと
 
 #### 🔴 `feat/legal-site` ブランチが未プッシュで残っている
 
@@ -123,12 +136,13 @@ git log main..feat/legal-site --oneline   # 91f7435 が該当のコミット
 
 ### 保存データ（persist）の状態
 
-`src/store/useAppStore.ts` の zustand persist。**現在 version 15**。
+`src/store/useAppStore.ts` の zustand persist。**現在 version 16**（#20 で追加。`main` はまだ 15）。
 
 | version | 内容                                                                                                                                                 |
 | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 14      | `User.shiftTableHasNoNames` の追加（任意項目のため migration 処理なし）                                                                              |
-| **15**  | **解析回数の数え方を全面変更**。旧形式（`yearMonth`/`count`/`bonusScans`）とは数え方が違い移し替えられないため、**既存ユーザーは満タンから再開**する |
+| 15      | **解析回数の数え方を全面変更**。旧形式（`yearMonth`/`count`/`bonusScans`）とは数え方が違い移し替えられないため、**既存ユーザーは満タンから再開**する |
+| **16**  | `tutorialFreeScan`（チュートリアルのお試し枠）を追加。チュートリアル済みの既存ユーザーは `forfeited` で移行（Expo Webで検証済み）                    |
 
 ---
 
@@ -174,6 +188,14 @@ git log main..feat/legal-site --oneline   # 91f7435 が該当のコミット
 
 ネットの情報では「ローマ字で入力」という記述と「登録情報から自動で入る」という記述の両方があり、**どの一次情報でも断定できなかった**。推測で提出しないこと。
 
+**2026-10-15時点で返事なし**（問い合わせは10/14）。調べた結果（ユーザーに共有済み）:
+
+- 返事は**問い合わせたApple Account（デベロッパのアカウント）のメールアドレス宛てにメール**で届く
+- Appleが示す目安は2〜3営業日。ただし**税金・財務の窓口は数週間かかった報告が複数**ある（開発者フォーラム）。土日を挟むので**10/20ごろまでは様子見**
+- ユーザーに確認を頼んだこと: 迷惑メール・プロモーションタブ、送信直後の**ケースID付きの受付メール**の有無（無ければ送れていない可能性）、英語の件名
+- 10/20を過ぎても無ければ、受付メールにケースIDを添えて返信で催促（新規に何度も問い合わせない）。問い合わせページには電話の選択肢もあるが、税金の項目で選べるかは未確認（ログインが必要だった）
+- 私（Claude）はメールを読む手段を持っていない
+
 ---
 
 ### 🟠 チュートリアル（2026-10-15にユーザー決定）
@@ -191,7 +213,40 @@ git log main..feat/legal-site --oneline   # 91f7435 が該当のコミット
 | 途中でやめる   | **やめられない**。ただし詰まったとき（⑤で表が手元にない／⑥で失敗／カレンダーの許可を断った）だけ出口を出す                                                                |
 | サンプルで試す | **足さない**（Appleの審査担当者が詰まる懸念は伝えた上での判断。審査メモに手順と画像を添える必要あり）                                                                     |
 
-お試し枠は `useAppStore` の `tutorialFreeScan`（`unoffered` / `available` / `used` / `forfeited`、persist version 16）。案内付き操作ができるまでの暫定で、「やってみる」は名前入力→写真選択へ進むだけ。
+お試し枠は `useAppStore` の `tutorialFreeScan`（`unoffered` / `available` / `used` / `forfeited`、persist version 16）。案内付き操作は `src/components/tour/`（手順は `tour-steps.ts`、状態は保存しない `useTourStore`）。光らせる部品は `TourTarget` で包む。タブバーの部品は `followsScreenFocus={false}` が必要（画面のフォーカスを追えないため）。
+
+---
+
+### 🟠 UI全体の見直し（2026-10-15に進め方をユーザー決定）
+
+**共通ルールは `docs/design-system.md`（PR #22）。** Stitchへ毎回添える英語の指示文もここにある。
+
+| 決定事項 | 内容                                                                                                                                                                                              |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 主ボタン | **青（`#007AFF`）・ピル型・横いっぱい**。副ボタンも同じピル型（白地＋枠＋青文字）。10色を比べて決定。**画面によって青でないほうが良い場所は、グループごとに都度相談**                             |
+| 文字     | 昔の段階（`title`/`subtitle`/`default`/`small`/`smallBold`/`link`）は**廃止**。約35か所を見直しの中で iPhone標準の段階へ置き換える                                                                |
+| 角の丸み | Stitch案の20・32は**足さない**。シートは16、ダイアログ・大きなカードは24                                                                                                                          |
+| 進め方   | グループごとに **①私が修正方針を共有 → ②ディスカッション → ③ユーザーがOKを出したらStitch用プロンプトを作る → ④架空データのスクショとプロンプトをStitchへ（ログインはユーザー）→ ⑤案を選んで実装** |
+
+**グループ分け**（全21画面。ユーザーの異論なし）:
+
+| グループ                          | 画面                                                                           |
+| --------------------------------- | ------------------------------------------------------------------------------ |
+| **A. 毎日使うタブ**（最初にやる） | カレンダー、給与、マイカスタム、設定                                           |
+| B. スキャンの流れ                 | 写真選択、解析中（失敗時含む）、本人確認、内容確認、要確認・編集、登録完了     |
+| C. 初回体験                       | チュートリアル（説明5枚・分岐・やらない）、名前入力、案内の出口（`tour-exit`） |
+| D. 設定の下の画面                 | アカウント、カレンダー連携、対応カレンダー、その他のカレンダー、規約などの文書 |
+| E. 課金                           | ペイウォール                                                                   |
+
+**中断した地点**: グループAの画面を架空データ（10月に15件の勤務）で表示し始めたところで、ユーザーの指示でセッション終了。**修正方針はまだ何も共有していない。** 次はグループAの4画面を、状態（空・データあり・PRO/無料・日付の詳細ダイアログ・給与の扶養の壁カードなど）ごとに撮って、問題点と直し方を**スマホ画面のモックで**共有するところから。
+
+**過去のStitch作業の記録**（このとき分かったこと）:
+
+- 9/22のStitch向けプロンプトと、9/26の計画書 `~/.claude/plans/stitch-wondrous-globe.md`（Stitchが出したHTMLから読み取った色・文字・角丸・アイコン対応表）が残っている。**Stitchが出したHTML自体はどこにも保存されていない**
+- 当時の教訓: 言葉で説明して作らせても精度が出ず、**StitchのHTMLをそのまま実装の根拠に渡す**と再現できた。Stitchは仕様に無い機能（¥380のPRO、バックアップ、一致度98%など）を描き足すので、取り込むときに必ず外す
+- 9月のStitch刷新の対象は10画面だけ。その後に足した画面（設定の下・課金・扶養の壁カード等）は未刷新
+- **「基調色 `#0066FF`」は写真選択画面の `MOCK_COLORS.blue` にしか無い値だった**。アプリ全体の青は `#007AFF`
+- 写真選択画面は13色を直書き（白背景も直書き）で、**ダークモードで崩れている可能性**
 
 ---
 
@@ -202,6 +257,7 @@ git log main..feat/legal-site --oneline   # 91f7435 が該当のコミット
 - [ ] **AI解析が実機で通るか**。Expo Webでは**CORSで必ず失敗する**（Workerが `POST` 以外を405で返し、ブラウザの事前問い合わせ `OPTIONS` が通らない。Worker作成時からの仕様で、PR #17が原因ではない）。ネイティブの `fetch` はCORSの対象外なので通るはず。ユーザー判断でWorkerは直さない
 - [x] 解析中画面の、走るはこブー＋パーセント表示（2026-10-15、通信を止めた状態のExpo Webで確認済み）
 - [ ] はこブー3ポーズの動きと解像度（元絵が幅330〜350pxのため、120pt程度まで）
+- [ ] 案内付き操作をiPhoneで通しで（光らせる位置のずれ・スワイプで戻ったときの挙動・カレンダー許可の直前の一言→許可→登録完了の吹き出し）
 - [ ] 端末の「視差効果を減らす」がオンのとき、はこブーが静止すること
 - [ ] Googleカレンダーの「連携する」→連携→マイカスタムに戻ったとき、「連携済み・登録先」に変わること（Expo WebではGoogle認証が動かない）
 - [ ] 新しいアプリアイコンのホーム画面での見え方（`ios.icon` をPNGに変更済み）
@@ -211,18 +267,17 @@ git log main..feat/legal-site --oneline   # 91f7435 が該当のコミット
 
 ### 次のアクション（順番どおり）
 
-1. ~~`web/` を `main` の追跡から外す~~ → ✅ PR #14
-2. ~~キャラクターの方向性を決める~~ → ✅ はこブー（上記）
-3. ~~はこブーの作画・アイコン・アニメーション~~ → ✅ PR #16・#17
-   3.5. **チュートリアルの改善**（リリース前の作業の4番目）→ UI全体の見直し → サブタイトル・説明文・キーワード（160字）
-4. **Appleサポートの回答が来たら納税フォームを提出** → 有料アプリ契約が有効になる
-5. **アプリレコードの作成**（私が代行可。ASCの「マイApp」→「＋」）
-6. **法務ページの公開**（`feat/legal-site` をリベース → ダミー文の扱いを決める → `npx wrangler pages deploy web --project-name <名前>`）
-7. RevenueCatアカウント作成 → APIキー設定 → 商品登録（有料アプリ契約の完了後）
-8. AdMob本番アカウント作成 → `app.json` の `iosAppId` とad unit IDを**Googleのテスト値から差し替え**
-9. **EAS Build環境の構築**（`eas-cli` 未導入、`eas.json` 未作成）→ 初回ビルド
-10. 初回ビルド直後: `Pods/Google-Mobile-Ads-SDK/PrivacyInfo.xcprivacy` の `NSPrivacyTracking` を確認 → `ios.privacyManifests` を設定
-11. 実機検証 → スクリーンショット撮影 → TestFlight → 審査提出
+1. **PR #20 → #21 → #22 をユーザーがWebでマージ**（`gh pr merge` はこの環境では拒否される）
+2. **UI見直し・グループA**: 4画面を状態ごとに撮る（架空データ。手順は下のGotchas「ブラウザの保存データ」）→ 問題点と修正方針をスマホ画面のモックで共有 → ディスカッション → OKが出たらStitch用プロンプト（`docs/design-system.md` の7章＋グループ固有の指示）→ Stitchへ
+3. 以降グループ B → C → D → E を同じ手順で。**UIが固まったらチュートリアルの画面画像を撮り直す**（`docs/tutorial-screenshots.md`）
+4. **Appleサポートの回答が来たら納税フォームを提出**（10/20ごろまで待つ。来なければ催促）→ 有料アプリ契約が有効になる
+5. サブタイトル・説明文・キーワード（160字）。待ち時間に差し込める
+6. **アプリレコードの作成**（私が代行可。ASCの「マイApp」→「＋」）
+7. **法務ページの公開**（`feat/legal-site` をリベース → ダミー文の扱いを決める → `npx wrangler pages deploy web --project-name <名前>`）
+8. RevenueCatアカウント作成 → APIキー設定 → 商品登録（有料アプリ契約の完了後）
+9. AdMob本番アカウント作成 → `app.json` の `iosAppId` とad unit IDを**Googleのテスト値から差し替え**
+10. **EAS Build環境の構築**（`eas-cli` 未導入、`eas.json` 未作成）→ **開発用ビルド**で「📱 実機で確認すること」をまとめて試す → 初回ビルド直後に `Pods/Google-Mobile-Ads-SDK/PrivacyInfo.xcprivacy` の `NSPrivacyTracking` を確認 → `ios.privacyManifests` を設定
+11. App Storeのスクショ撮影 → TestFlight → 審査提出（**審査メモに、架空のシフト表画像と試し方を添える**。チュートリアルにサンプル体験は入れていないため）
 
 検査コマンド:
 
@@ -421,22 +476,44 @@ cd server/gemini-proxy && npm run typecheck
 - **`WebFetch` の要約は数字や内容を誤ることがある。** 検索エンジンの要約が別記事の内容と混ざっていた実例あり
 - **非エンジニア向けの説明は `/explain-plainly` スキルを使う。** 用語の言い換え表もそこに蓄積している（`~/.claude/skills/explain-plainly/SKILL.md`）
 - **方針の選択はユーザーが決める。** 検証結果から自分で決めて実装に進まない（2026-10-13に「勝手に判断して行動するな」と指摘を受けた）
+- **🔴 ブラウザの保存データ（localStorage）にはユーザー本人の実データが入っている。** 架空データで撮影・検証するときは、必ず先に `sessionStorage.setItem('__store_backup', localStorage.getItem('shift-calendar-ai-store'))` で退避し、終わったら戻して再読み込みする。**戻したあと、アプリが記憶している古い状態が書き戻さないよう必ずページを読み直す**。手順の全体は `docs/tutorial-screenshots.md`
+- **ユーザーがブラウザペインの既存タブを使っていることがある**（Google検索など）。自分の作業は `preview_start` の `url` で**新しいタブ**を開いて行う
+- **Expo Webで写真を選ばせるには**、`expo-image-picker` が `input.dispatchEvent(click)` を使うため、`document.createElement` を差し替えて file input の click を横取りし、`DataTransfer` でファイルを入れる（`docs/tutorial-screenshots.md` の3）。`HTMLInputElement.prototype.click` の差し替えでは効かない
+- **AIの結果を固定したいとき**は、`window.fetch` を差し替えて `generateContent` への通信に架空の Gemini 応答（`candidates[0].content.parts[0].text` に `ShiftAnalysisResult` のJSON）を返す。止めたいだけなら永遠に終わらない Promise を返す
+- **タブバーのボタンを `tabBarButton` で包むと、Webでは `href` 付きのリンクになり、押すとページごと読み込み直す**（メモリ上の状態が消える）。包むときは `href` を外す
+- **タブバーの中の部品では `useFocusEffect` が期待どおり動かない**（画面ではなくナビゲーターの部品のため）。`TourTarget` は `followsScreenFocus={false}` にする
+- **ブラウザの再読み込み（HMR含む）でメモリ上のストア（`useTourStore` など）は消える。** 案内付き操作の検証中にコードを保存すると状態がリセットされる
+- **画面の取り違えを防ぐため、PRを積み重ねたらマージ順をPR本文と引き継ぎメモの両方に書く**
 
 ---
 
-### 今セッションで変更したファイル
+### 今セッションで変更したファイル（2026-10-14〜15）
 
-**マージ済み（PR #10〜#13）**
+**マージ済み（PR #14〜#19）**
 
-新規: `.github/workflows/ci.yml`（PR #7）
+新規: `docs/character/hakobu.md`, `src/components/hakobu-mascot.tsx`, `assets/images/hakobu/{run,happy,puzzled}.png`, `src/app/settings/other-calendars.tsx`
+変更: `.gitignore`, `CLAUDE.md`, `app.json`, `assets/images/icon.png`, `src/app/analyzing.tsx`, `src/app/complete.tsx`, `src/app/user-match-select.tsx`, `src/services/ai/types.ts`, `src/services/ai/geminiProvider.ts`, `src/app/(tabs)/template.tsx`, `src/app/(tabs)/_layout.tsx`, `src/app/(tabs)/settings.tsx`, `src/app/_layout.tsx`, `src/models/user.ts`, `src/models/workplace.ts`
+削除（追跡のみ）: `web/*.html`
 
-変更: `CLAUDE.md`, `src/utils/scanQuota.ts`, `src/store/useAppStore.ts`, `src/config/env.ts`, `src/app/photo-select.tsx`, `src/app/calendar-confirm.tsx`, `src/app/shift-review.tsx`, `src/app/user-match-select.tsx`, `src/app/paywall.tsx`, `src/app/settings/account.tsx`, `src/app/(tabs)/settings.tsx`, `src/app/(tabs)/template.tsx`, `src/constants/legalContent.ts`, `.env.example`
+**レビュー待ち（PR #20 `feat/tutorial-slides`）**
 
-**未プッシュ（`feat/legal-site` ブランチ）**
+新規: `assets/images/tutorial/{sample-shift-table.png,screen-mycustom.jpg,screen-photo.jpg,screen-analyzing.jpg,screen-complete.jpg}`, `docs/tutorial-screenshots.md`
+変更: `src/app/tutorial.tsx`, `src/components/tutorial/tutorial-slide.tsx`, `src/store/useAppStore.ts`, `src/app/photo-select.tsx`, `src/app/analyzing.tsx`, `CLAUDE.md`
+
+**レビュー待ち（PR #21 `feat/guided-tour`）**
+
+新規: `src/store/useTourStore.ts`, `src/components/tour/{tour-overlay.tsx,tour-target.tsx,tour-steps.ts}`, `src/hooks/use-tour-step.ts`, `src/app/tour-exit.tsx`
+変更: `src/app/_layout.tsx`, `src/app/(tabs)/_layout.tsx`, `src/app/(tabs)/template.tsx`, `src/app/photo-select.tsx`, `src/app/analyzing.tsx`, `src/app/user-match-select.tsx`, `src/app/calendar-confirm.tsx`, `src/app/complete.tsx`, `src/app/tutorial.tsx`, `src/store/useAppStore.ts`, `CLAUDE.md`
+
+**レビュー待ち（PR #22 `docs/design-system`）**
+
+新規: `docs/design-system.md`
+
+**未プッシュ（`feat/legal-site` ブランチ。前セッションから変わらず）**
 
 新規: `scripts/build-site.mjs`, `scripts/README.md`
 変更: `package.json`, `.gitignore`
 
 **リポジトリ外**
 
-`~/.claude/skills/explain-plainly/SKILL.md`（用語表に16語を追記）、`~/.claude/projects/.../memory/` に feedback 1件・project 1件を追加
+`~/.claude/projects/.../memory/feedback_ui_review_discuss_before_stitch.md`（新規。UI見直しはグループごとに方針を議論してからStitchへ）
