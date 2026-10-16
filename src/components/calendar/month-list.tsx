@@ -10,7 +10,7 @@ import { useResolvedColorScheme } from '@/hooks/use-resolved-color-scheme';
 import type { CalendarEventRecord } from '@/models';
 import { useAppStore } from '@/store/useAppStore';
 import { formatShiftDate, formatShiftTimeRange } from '@/utils/formatShift';
-import { resolveShiftTypeTone } from '@/utils/resolveShiftTypeTone';
+import { resolveShiftTypeIcon, resolveShiftTypeTone } from '@/utils/resolveShiftTypeTone';
 
 export interface MonthListProps {
   month: Date;
@@ -31,7 +31,7 @@ export function MonthList({ month, eventsByDate, selectedDate, onSelectDate }: M
   if (dateKeys.length === 0) {
     return (
       <Card style={styles.emptyCard}>
-        <ThemedText type="small" themeColor="textSecondary">
+        <ThemedText type="subheadline" themeColor="textSecondary">
           この月のシフトはまだありません
         </ThemedText>
       </Card>
@@ -48,6 +48,10 @@ export function MonthList({ month, eventsByDate, selectedDate, onSelectDate }: M
           ? resolveShiftTypeTone(workplaces, first.workplaceId, first.shiftType)
           : 'blue';
         const badgeColors = IconBadgeTones[colorScheme][tone];
+        // マイカスタムで設定したシフト種別のアイコン。種別が無い・見つからない勤務はカレンダーの絵のまま。
+        const ShiftIcon =
+          (workplaces && resolveShiftTypeIcon(workplaces, first.workplaceId, first.shiftType)) ??
+          CalendarDays;
 
         return (
           <Card
@@ -57,7 +61,7 @@ export function MonthList({ month, eventsByDate, selectedDate, onSelectDate }: M
             style={styles.row}
           >
             <IconBadge tone={tone} size={32}>
-              <CalendarDays size={IconSize.small} color={badgeColors.icon} />
+              <ShiftIcon size={IconSize.small} color={badgeColors.icon} />
             </IconBadge>
             <View style={styles.rowText}>
               <ThemedText type="headline">{formatShiftDate(dateKey)}</ThemedText>
