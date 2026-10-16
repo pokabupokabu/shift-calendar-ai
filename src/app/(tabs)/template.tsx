@@ -26,7 +26,7 @@ import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { TourTarget } from '@/components/tour/tour-target';
-import { SHIFT_TYPE_ICON_PRESETS } from '@/constants/shiftTypeIcons';
+import { resolveShiftTypePreset, SHIFT_TYPE_ICON_PRESETS } from '@/constants/shiftTypeIcons';
 import { BottomTabInset, type IconBadgeTone, IconSize, Radius, Spacing } from '@/constants/theme';
 import { useIconBadgeColors } from '@/hooks/use-icon-badge-colors';
 import { useTheme } from '@/hooks/use-theme';
@@ -486,12 +486,10 @@ export default function TemplateTab() {
               </View>
             ) : (
               shiftTypes.map((shiftType, index) => {
-                const fallbackPreset =
-                  SHIFT_TYPE_ICON_PRESETS[index % SHIFT_TYPE_ICON_PRESETS.length];
-                const { Icon: PresetIcon, tone: presetTone } = shiftType.icon
-                  ? (SHIFT_TYPE_ICON_PRESETS.find((preset) => preset.key === shiftType.icon) ??
-                    fallbackPreset)
-                  : fallbackPreset;
+                const { Icon: PresetIcon, tone: presetTone } = resolveShiftTypePreset(
+                  shiftType.icon,
+                  index,
+                );
                 const presetColors = badgeColorsByTone[presetTone];
                 const isOvernight = shiftType.endTime <= shiftType.startTime;
                 const workedHours = hoursBetween(shiftType.startTime, shiftType.endTime);

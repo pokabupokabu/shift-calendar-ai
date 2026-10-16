@@ -27,3 +27,20 @@ export const SHIFT_TYPE_ICON_PRESETS: { key: string; Icon: LucideIcon; tone: Ico
   { key: 'home', Icon: Home, tone: 'blue' },
   { key: 'clock', Icon: Clock, tone: 'green' },
 ];
+
+export type ShiftTypeIconPreset = (typeof SHIFT_TYPE_ICON_PRESETS)[number];
+
+/**
+ * シフト種別のアイコンと色を決める唯一の規則（マイカスタム・カレンダーの月表示/リストで共通）。
+ * `icon` が設定されていればそのプリセット。未設定（基本3種など）や不明なキーは、勤務先の
+ * シフト種別の並び順（`index`）でプリセットを循環させた既定値（早番＝太陽・オレンジ、
+ * 遅番＝夕日・紫、夜勤＝月・青 …）。
+ */
+export function resolveShiftTypePreset(
+  icon: string | undefined,
+  index: number,
+): ShiftTypeIconPreset {
+  const fallbackPreset = SHIFT_TYPE_ICON_PRESETS[index % SHIFT_TYPE_ICON_PRESETS.length];
+  if (!icon) return fallbackPreset;
+  return SHIFT_TYPE_ICON_PRESETS.find((preset) => preset.key === icon) ?? fallbackPreset;
+}

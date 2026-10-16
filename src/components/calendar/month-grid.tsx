@@ -26,18 +26,39 @@ import { resolveShiftTypeTone } from '@/utils/resolveShiftTypeTone';
 
 const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
 
+/** 表のカードの枠線の太さ。曜日の見出しの左右をマスの列に揃えるためにも使う。 */
+const GRID_CARD_BORDER_WIDTH = 1;
+/** 無料版（広告あり）の1週ぶんの行の高さ。今までの日付マスの最低の高さと同じ。 */
+const FIXED_WEEK_ROW_MIN_HEIGHT = 74;
+/**
+ * 高さに合わせて伸ばすとき（PRO）の1週ぶんの行の最低の高さ。マスの中身がちょうど収まる高さ:
+ * 上下の内側余白 2+2 ＋ 日付の行 16 ＋ すき間 2 ＋ 時刻の欄 26（11pt×2行＋上下1）＝ 48。
+ * iPhone SE（375×667）で6週ある月でもスクロールせずに収まる値（calendar-view.tsx の説明を参照）。
+ */
+const FILL_WEEK_ROW_MIN_HEIGHT = 48;
+/** マスの中の文字は幅に余裕が無いため、iPhoneの文字サイズ設定で大きくしない。 */
+const CELL_TEXT_MAX_FONT_SCALE = 1;
+/** マスの中のシフト名は先頭2文字まで（「早番」はそのまま、3文字以上は切り詰める。「…」は付けない）。 */
+const SHIFT_NAME_MAX_CHARS = 2;
+
 export interface MonthGridProps {
   month: Date;
   eventsByDate: Record<string, CalendarEventRecord[]>;
   selectedDate?: string;
   onSelectDate: (date: string) => void;
+  /**
+   * true のとき、親（ScrollView の中身）の空いている高さいっぱいまで週の行を均等に伸ばす。
+   * 広告の無いPROで使う。親が flexGrow で高さを渡している前提。
+   */
+  fillAvailableHeight?: boolean;
 }
 
 interface DayLabel {
-  shiftTypeLabel?: string;
+  shiftTypeName?: string;
   startTime: string;
   endTime: string;
-  suffix: string;
+  /** 同じ日の2件目以降の件数。0なら「+N」を出さない。 */
+  extraCount: number;
   /** 終日シフトは時刻を持たないため、時刻の代わりに「終日」と出す。 */
   isAllDay: boolean;
 }
@@ -46,13 +67,13 @@ function toDayLabel(events: CalendarEventRecord[]): DayLabel | undefined {
   const [first, ...rest] = events;
   if (!first) return undefined;
 
-  const suffix = rest.length > 0 ? ` +${rest.length}` : '';
-  const shiftTypeInitial = first.shiftType ? (Array.from(first.shiftType)[0] ?? '') : '';
   return {
-    shiftTypeLabel: first.shiftType ? `${shiftTypeInitial}${suffix}` : undefined,
+    shiftTypeName: first.shiftType
+      ? Array.from(first.shiftType).slice(0, SHIFT_NAME_MAX_CHARS).join('')
+      : undefined,
     startTime: first.startTime,
     endTime: first.endTime,
-    suffix: first.shiftType ? '' : suffix,
+    extraCount: rest.length,
     isAllDay: !!first.isAllDay,
   };
 }
@@ -85,6 +106,14 @@ function useGridDays(month: Date): Date[] {
   return [...leadingDays, ...monthDays, ...trailingDays];
 }
 
+function chunkWeeks(days: Date[]): Date[][] {
+  const weeks: Date[][] = [];
+  for (let i = 0; i < days.length; i += 7) {
+    weeks.push(days.slice(i, i + 7));
+  }
+  return weeks;
+}
+
 function resolveDayTone(
   workplaces: Workplace[] | undefined,
   events: CalendarEventRecord[],
@@ -94,142 +123,178 @@ function resolveDayTone(
   return resolveShiftTypeTone(workplaces, first.workplaceId, first.shiftType);
 }
 
-export function MonthGrid({ month, eventsByDate, selectedDate, onSelectDate }: MonthGridProps) {
+export function MonthGrid({
+  month,
+  eventsByDate,
+  selectedDate,
+  onSelectDate,
+  fillAvailableHeight = false,
+}: MonthGridProps) {
   const theme = useTheme();
   const colorScheme = useResolvedColorScheme();
   const blueBadge = useIconBadgeColors('blue');
   const workplaces = useAppStore((state) => state.user?.workplaces);
-  const days = useGridDays(month);
+  const weeks = chunkWeeks(useGridDays(month));
+
+  const renderDay = (day: Date, columnIndex: number) => {
+    const dateKey = format(day, 'yyyy-MM-dd');
+    const columnDivider = columnIndex > 0 && [
+      styles.columnDivider,
+      { borderLeftColor: theme.border },
+    ];
+
+    if (!isSameMonth(day, month)) {
+      return (
+        <View key={dateKey} style={[styles.dayCell, columnDivider]}>
+          <View style={styles.dateRow}>
+            <View style={styles.dateBadge}>
+              <ThemedText
+                themeColor="textSecondary"
+                maxFontSizeMultiplier={CELL_TEXT_MAX_FONT_SCALE}
+                style={[styles.dateNumber, styles.adjacentDateNumber]}
+              >
+                {format(day, 'd')}
+              </ThemedText>
+            </View>
+          </View>
+        </View>
+      );
+    }
+
+    const dayEvents = eventsByDate[dateKey];
+    const hasEvents = !!dayEvents && dayEvents.length > 0;
+    const dayLabel = hasEvents ? toDayLabel(dayEvents) : undefined;
+    const dayTone = hasEvents ? resolveDayTone(workplaces, dayEvents) : 'blue';
+    const dayBadge = IconBadgeTones[colorScheme][dayTone];
+    const selected = dateKey === selectedDate;
+    const today = isToday(day);
+    const weekday = getDay(day);
+    const isSaturday = weekday === 6;
+    // 移動祝日・秋分/春分は日付計算が複雑なため holiday_jp に判定を委譲する。
+    const isSundayOrHoliday = weekday === 0 || holiday_jp.isHoliday(day);
+    const dateColor = today
+      ? theme.onPrimary
+      : isSundayOrHoliday
+        ? theme.danger
+        : isSaturday
+          ? theme.primary
+          : theme.text;
+
+    return (
+      <Pressable
+        key={dateKey}
+        style={[
+          styles.dayCell,
+          columnDivider,
+          {
+            backgroundColor: selected
+              ? theme.backgroundSelected
+              : today
+                ? blueBadge.background
+                : 'transparent',
+          },
+        ]}
+        onPress={() => onSelectDate(dateKey)}
+      >
+        <View style={styles.dateRow}>
+          {/* 今日は青い丸に白い数字（iPhone標準カレンダーと同じ表し方） */}
+          <View style={[styles.dateBadge, today && { backgroundColor: theme.primary }]}>
+            <ThemedText
+              maxFontSizeMultiplier={CELL_TEXT_MAX_FONT_SCALE}
+              style={[styles.dateNumber, { color: dateColor }]}
+            >
+              {format(day, 'd')}
+            </ThemedText>
+          </View>
+          {dayLabel?.shiftTypeName && (
+            <ThemedText
+              type="caption2"
+              maxFontSizeMultiplier={CELL_TEXT_MAX_FONT_SCALE}
+              style={[styles.shiftTypeName, { color: dayBadge.icon }]}
+            >
+              {dayLabel.shiftTypeName}
+            </ThemedText>
+          )}
+        </View>
+        {dayLabel && (
+          <View style={[styles.timeBlock, { backgroundColor: dayBadge.background }]}>
+            {dayLabel.isAllDay ? (
+              <ThemedText
+                maxFontSizeMultiplier={CELL_TEXT_MAX_FONT_SCALE}
+                style={[styles.timeLabel, { color: dayBadge.icon }]}
+              >
+                {ALL_DAY_LABEL}
+              </ThemedText>
+            ) : (
+              <>
+                <ThemedText
+                  maxFontSizeMultiplier={CELL_TEXT_MAX_FONT_SCALE}
+                  style={[styles.timeLabel, { color: dayBadge.icon }]}
+                >
+                  {dayLabel.startTime}
+                </ThemedText>
+                <ThemedText
+                  maxFontSizeMultiplier={CELL_TEXT_MAX_FONT_SCALE}
+                  style={[styles.timeLabel, { color: dayBadge.icon }]}
+                >
+                  {dayLabel.endTime}
+                </ThemedText>
+              </>
+            )}
+          </View>
+        )}
+        {dayLabel && dayLabel.extraCount > 0 && (
+          <ThemedText
+            type="caption2"
+            maxFontSizeMultiplier={CELL_TEXT_MAX_FONT_SCALE}
+            style={[styles.extraCount, { color: dayBadge.icon }]}
+          >
+            +{dayLabel.extraCount}
+          </ThemedText>
+        )}
+      </Pressable>
+    );
+  };
 
   return (
-    <View>
-      <View style={styles.week}>
+    <View style={fillAvailableHeight && styles.fill}>
+      <View style={styles.weekdayHeader}>
         {WEEKDAY_LABELS.map((label, index) => {
           const weekdayColor = index === 0 ? 'danger' : index === 6 ? 'primary' : 'textSecondary';
           return (
-            <View key={label} style={styles.cell}>
-              <ThemedText type="caption2" themeColor={weekdayColor}>
-                {label}
-              </ThemedText>
-            </View>
+            <ThemedText
+              key={label}
+              type="caption2"
+              themeColor={weekdayColor}
+              maxFontSizeMultiplier={CELL_TEXT_MAX_FONT_SCALE}
+              style={styles.weekdayLabel}
+            >
+              {label}
+            </ThemedText>
           );
         })}
       </View>
       <View
         style={[
           styles.gridCard,
+          fillAvailableHeight && styles.fill,
           { backgroundColor: theme.backgroundElement, borderColor: theme.border },
         ]}
       >
-        <View style={styles.grid}>
-          {days.map((day) => {
-            const dateKey = format(day, 'yyyy-MM-dd');
-            const inCurrentMonth = isSameMonth(day, month);
-
-            if (!inCurrentMonth) {
-              return (
-                <View
-                  key={dateKey}
-                  style={[
-                    styles.cell,
-                    styles.dayCell,
-                    styles.adjacentDayCell,
-                    { borderColor: theme.border },
-                  ]}
-                >
-                  <ThemedText
-                    type="small"
-                    themeColor="textSecondary"
-                    style={styles.adjacentDayText}
-                  >
-                    {format(day, 'd')}
-                  </ThemedText>
-                </View>
-              );
-            }
-
-            const dayEvents = eventsByDate[dateKey];
-            const dayLabel = dayEvents && dayEvents.length > 0 ? toDayLabel(dayEvents) : undefined;
-            const dayTone =
-              dayEvents && dayEvents.length > 0 ? resolveDayTone(workplaces, dayEvents) : 'blue';
-            const dayBadge = IconBadgeTones[colorScheme][dayTone];
-            const selected = dateKey === selectedDate;
-            const today = isToday(day);
-            const weekday = getDay(day);
-            const isSaturday = weekday === 6;
-            // 移動祝日・秋分/春分は日付計算が複雑なため holiday_jp に判定を委譲する。
-            const isSundayOrHoliday = weekday === 0 || holiday_jp.isHoliday(day);
-
-            return (
-              <Pressable
-                key={dateKey}
-                style={[
-                  styles.cell,
-                  styles.dayCell,
-                  { borderColor: theme.border },
-                  { backgroundColor: selected ? theme.backgroundSelected : 'transparent' },
-                  today &&
-                    !selected && {
-                      borderColor: theme.primary,
-                      borderWidth: 2,
-                      backgroundColor: blueBadge.background,
-                    },
-                ]}
-                onPress={() => onSelectDate(dateKey)}
-              >
-                <View style={styles.dateRow}>
-                  <ThemedText
-                    themeColor={
-                      today
-                        ? 'primary'
-                        : isSundayOrHoliday
-                          ? 'danger'
-                          : isSaturday
-                            ? 'primary'
-                            : 'text'
-                    }
-                    style={styles.dateNumber}
-                  >
-                    {format(day, 'd')}
-                  </ThemedText>
-                  {dayLabel?.shiftTypeLabel && (
-                    <ThemedText
-                      style={[
-                        styles.shiftTypeLabel,
-                        { backgroundColor: dayBadge.icon, color: theme.onPrimary },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {dayLabel.shiftTypeLabel}
-                    </ThemedText>
-                  )}
-                </View>
-                {dayLabel && (
-                  <View style={[styles.timeBlock, { backgroundColor: dayBadge.background }]}>
-                    {dayLabel.isAllDay ? (
-                      <ThemedText
-                        style={[styles.timeLabel, { color: dayBadge.icon }]}
-                        numberOfLines={1}
-                      >
-                        {ALL_DAY_LABEL}
-                        {dayLabel.suffix}
-                      </ThemedText>
-                    ) : (
-                      <>
-                        <ThemedText style={[styles.timeLabel, { color: dayBadge.icon }]}>
-                          {dayLabel.startTime}
-                        </ThemedText>
-                        <ThemedText style={[styles.timeLabel, { color: dayBadge.icon }]}>
-                          {dayLabel.endTime}
-                          {dayLabel.suffix}
-                        </ThemedText>
-                      </>
-                    )}
-                  </View>
-                )}
-              </Pressable>
-            );
-          })}
+        {/* 角のマスの地の色（今日・選択中）がカードの角丸からはみ出さないよう、内側で切り取る */}
+        <View style={[styles.gridClip, fillAvailableHeight && styles.fill]}>
+          {weeks.map((week, rowIndex) => (
+            <View
+              key={format(week[0], 'yyyy-MM-dd')}
+              style={[
+                styles.weekRow,
+                fillAvailableHeight ? styles.fillWeekRow : styles.fixedWeekRow,
+                rowIndex > 0 && [styles.rowDivider, { borderTopColor: theme.border }],
+              ]}
+            >
+              {week.map(renderDay)}
+            </View>
+          ))}
         </View>
       </View>
     </View>
@@ -237,80 +302,97 @@ export function MonthGrid({ month, eventsByDate, selectedDate, onSelectDate }: M
 }
 
 const styles = StyleSheet.create({
-  week: {
-    flexDirection: 'row',
+  fill: {
+    flexGrow: 1,
   },
-  grid: {
+  weekdayHeader: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    // マスの列と揃えるため、表のカードの枠線＋内側余白のぶんだけ内側に寄せる。
+    paddingHorizontal: GRID_CARD_BORDER_WIDTH + Spacing.half,
+    paddingBottom: Spacing.half,
+  },
+  weekdayLabel: {
+    flex: 1,
+    textAlign: 'center',
   },
   gridCard: {
     borderRadius: Radius.medium,
-    borderWidth: 1,
-    padding: 6,
+    borderWidth: GRID_CARD_BORDER_WIDTH,
+    padding: Spacing.half,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
   },
-  cell: {
-    width: `${100 / 7}%`,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: Spacing.half,
-    paddingVertical: Spacing.half,
+  gridClip: {
+    borderRadius: Radius.smallLarge,
+    overflow: 'hidden',
+  },
+  weekRow: {
+    flexDirection: 'row',
+  },
+  fixedWeekRow: {
+    minHeight: FIXED_WEEK_ROW_MIN_HEIGHT,
+  },
+  fillWeekRow: {
+    // flexBasis は auto のまま伸ばすので、中身（「+1」のある日など）より低くはならない。
+    flexGrow: 1,
+    minHeight: FILL_WEEK_ROW_MIN_HEIGHT,
+  },
+  // iPhone標準カレンダーのように、マス同士は細い線だけで区切る（1日ずつの枠は付けない）。
+  rowDivider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  columnDivider: {
+    borderLeftWidth: StyleSheet.hairlineWidth,
   },
   dayCell: {
-    minHeight: 74,
-    alignItems: 'flex-start',
-    justifyContent: 'flex-start',
-    borderRadius: Radius.smallLarge,
-    borderWidth: 1,
+    flex: 1,
+    minWidth: 0,
     overflow: 'hidden',
     gap: Spacing.half,
-    paddingHorizontal: Spacing.one,
-    paddingVertical: Spacing.one,
-  },
-  adjacentDayCell: {
-    opacity: 0.3,
-  },
-  adjacentDayText: {
-    width: '100%',
-    fontSize: 12,
-    fontWeight: '600',
+    padding: Spacing.half,
   },
   dateRow: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
     gap: Spacing.half,
-    width: '100%',
+    height: 16,
+  },
+  dateBadge: {
+    // 今日の青い丸が2桁の数字でも窮屈にならないよう18にし、上下の-1で行の高さ（16）は変えない。
+    width: 18,
+    height: 18,
+    marginVertical: -1,
+    borderRadius: Radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   dateNumber: {
-    flexShrink: 0,
-    minWidth: 16,
     fontSize: 12,
+    lineHeight: 16,
     fontWeight: '700',
   },
-  shiftTypeLabel: {
-    flexShrink: 1,
-    minWidth: 0,
-    fontSize: 9,
-    fontWeight: '700',
-    paddingHorizontal: Spacing.one,
-    paddingVertical: 1,
-    borderRadius: 4,
-    overflow: 'hidden',
+  adjacentDateNumber: {
+    opacity: 0.3,
+  },
+  shiftTypeName: {
+    flexShrink: 0,
   },
   timeBlock: {
     width: '100%',
     borderRadius: 4,
-    paddingVertical: 2,
+    paddingVertical: 1,
   },
   timeLabel: {
-    fontSize: 9,
-    lineHeight: 11,
+    fontSize: 11,
+    lineHeight: 12,
     textAlign: 'center',
     fontWeight: '600',
+  },
+  extraCount: {
+    width: '100%',
+    textAlign: 'center',
   },
 });

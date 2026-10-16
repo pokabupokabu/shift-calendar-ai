@@ -25,6 +25,10 @@ export const Colors = {
     purple: '#5E35B1',
     border: '#E5E5EA',
     disabled: '#C7C7CC',
+    // カレンダータブの「カレンダーを見に行く」専用（共通ルールの例外。docs/design-system.md 6章）。
+    // 画面の主役はタブバーの青いスキャンボタンなので、青い主ボタンにせず控えめなベージュにする。
+    beigeButton: '#F3EBDD',
+    onBeigeButton: '#3C3836',
   },
   dark: {
     text: '#ffffff',
@@ -41,6 +45,9 @@ export const Colors = {
     purple: '#9061F9',
     border: '#38383A',
     disabled: '#5C5C5E',
+    // ライトのベージュに対応する、温かみのある濃いグレー（2026-10-16 ユーザー確認済み）。
+    beigeButton: '#3A3530',
+    onBeigeButton: '#F3EBDD',
   },
 } as const;
 

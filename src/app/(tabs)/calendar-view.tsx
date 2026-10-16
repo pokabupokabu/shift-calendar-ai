@@ -37,6 +37,28 @@ import type { CalendarEventRecord, CalendarProviderId } from '@/models';
 
 type ViewMode = 'month' | 'list';
 
+/**
+ * PROの月表示で、いちばん下（「カレンダーを見に行く」の下）に空ける高さ。
+ * タブバーの青いスキャンボタンはタブバーの上端から約31pt上にはみ出しているので、
+ * ボタンの文字がそこに隠れないだけの高さにする。
+ *
+ * PROの高さの決め方: ScrollView の中身を flexGrow で「見えている高さ」いっぱいにし、
+ * 曜日の見出し・表の枠・ボタン・この余白を除いた残りを、MonthGrid が週の行に均等に配る
+ * （レイアウト時に実際の高さで決まるので、機種ごとの固定値は持たない）。
+ * iPhone SE（375×667・ステータスバー20・タブバー56）での見積もり:
+ *   見えている高さ = 667 − 20 − 56 − 上下の余白48 − 見出し34 − 切り替え32 − 月送り32 − すき間16×3 = 397
+ *   6週の月 = 曜日15 ＋ 表の枠6 ＋ 行48×6（＋区切り線）≈290.5 ＋ すき間8 ＋ ボタン44 ＋ 余白32 ≈ 395.5
+ * なので、行が最低の高さ（MonthGrid の FILL_WEEK_ROW_MIN_HEIGHT）のままスクロールせずに収まる。
+ */
+const PRO_MONTH_BOTTOM_CLEARANCE = Spacing.five;
+
+const VIEW_MODE_OPTIONS: { mode: ViewMode; label: string }[] = [
+  { mode: 'month', label: '月' },
+  { mode: 'list', label: 'リスト' },
+];
+/** 切り替えの見た目の高さは32pt。上下に6ptずつ広げて、押せる高さを44ptにする。 */
+const VIEW_TOGGLE_HIT_SLOP = { top: 6, bottom: 6, left: 0, right: 0 };
+
 const CALENDAR_PROVIDER_LABEL: Record<CalendarProviderId, string> = {
   apple: 'Apple カレンダー',
   google: 'Google カレンダー',
@@ -68,6 +90,7 @@ export default function CalendarViewTab() {
   );
   const updateCalendarEvent = useAppStore((state) => state.updateCalendarEvent);
   const removeCalendarEvent = useAppStore((state) => state.removeCalendarEvent);
+  const isPro = useAppStore((state) => state.user?.settings.isPro ?? false);
 
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [selectedDate, setSelectedDate] = useState<string | undefined>(undefined);
@@ -116,6 +139,8 @@ export default function CalendarViewTab() {
   );
 
   const selectedEvents = selectedDate ? (eventsByDate[selectedDate] ?? []) : [];
+  // PROは広告が無いぶん、空いた高さまで日付マスを伸ばす（MonthGrid の fillAvailableHeight）。
+  const fillMonthGrid = isPro && viewMode === 'month';
 
   const resetDialogEditState = () => {
     setEditingEventId(undefined);
@@ -156,97 +181,102 @@ export default function CalendarViewTab() {
   };
 
   return (
-    <Screen>
-      <ThemedText type="subtitle">カレンダー</ThemedText>
+    <Screen style={styles.screen}>
+      <View style={styles.topSection}>
+        <ThemedText type="title1">カレンダー</ThemedText>
 
-      <View style={styles.statAndToggleRow}>
-        <View style={[styles.statPill, { backgroundColor: blueBadge.background }]}>
-          <ThemedText style={[styles.statPillLabel, { color: blueBadge.icon }]}>
-            今月: {workedDaysCount}日勤務
-          </ThemedText>
+        <View style={styles.statAndToggleRow}>
+          <View style={[styles.statPill, { backgroundColor: blueBadge.background }]}>
+            <ThemedText style={[styles.statPillLabel, { color: blueBadge.icon }]}>
+              今月: {workedDaysCount}日勤務
+            </ThemedText>
+          </View>
+
+          <View
+            style={[
+              styles.viewToggle,
+              { backgroundColor: theme.background, borderColor: theme.border },
+            ]}
+          >
+            {VIEW_MODE_OPTIONS.map((option) => {
+              const active = viewMode === option.mode;
+              return (
+                <Pressable
+                  key={option.mode}
+                  onPress={() => setViewMode(option.mode)}
+                  hitSlop={VIEW_TOGGLE_HIT_SLOP}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  style={[
+                    styles.viewToggleOption,
+                    active && [
+                      styles.viewToggleOptionActive,
+                      { backgroundColor: theme.backgroundElement },
+                    ],
+                  ]}
+                >
+                  <ThemedText
+                    type="footnote"
+                    style={[
+                      styles.viewToggleLabel,
+                      { color: active ? theme.text : theme.textSecondary },
+                    ]}
+                  >
+                    {option.label}
+                  </ThemedText>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
 
-        <View style={[styles.viewToggle, { backgroundColor: theme.background }]}>
+        <View style={styles.header}>
           <Pressable
-            onPress={() => setViewMode('month')}
-            style={[
-              styles.viewToggleOption,
-              viewMode === 'month' && [
-                styles.viewToggleOptionActive,
-                { backgroundColor: theme.backgroundElement },
-              ],
+            onPress={goToPrevMonth}
+            hitSlop={Spacing.two}
+            style={({ pressed }) => [
+              styles.navButton,
+              pressed && { backgroundColor: blueBadge.background },
             ]}
           >
-            <ThemedText
-              style={[
-                styles.viewToggleLabel,
-                { color: viewMode === 'month' ? theme.text : theme.disabled },
-              ]}
-            >
-              月
-            </ThemedText>
+            <ChevronLeft size={IconSize.medium} color={theme.primary} />
           </Pressable>
+          <ThemedText style={styles.monthLabel}>{label}</ThemedText>
           <Pressable
-            onPress={() => setViewMode('list')}
-            style={[
-              styles.viewToggleOption,
-              viewMode === 'list' && [
-                styles.viewToggleOptionActive,
-                { backgroundColor: theme.backgroundElement },
-              ],
+            onPress={goToNextMonth}
+            hitSlop={Spacing.two}
+            style={({ pressed }) => [
+              styles.navButton,
+              pressed && { backgroundColor: blueBadge.background },
             ]}
           >
-            <ThemedText
-              style={[
-                styles.viewToggleLabel,
-                { color: viewMode === 'list' ? theme.text : theme.disabled },
-              ]}
-            >
-              リスト
-            </ThemedText>
+            <ChevronRight size={IconSize.medium} color={theme.primary} />
           </Pressable>
         </View>
       </View>
 
-      <View style={styles.header}>
-        <Pressable
-          onPress={goToPrevMonth}
-          hitSlop={Spacing.two}
-          style={({ pressed }) => [
-            styles.navButton,
-            pressed && { backgroundColor: blueBadge.background },
-          ]}
-        >
-          <ChevronLeft size={IconSize.medium} color={theme.primary} />
-        </Pressable>
-        <ThemedText style={styles.monthLabel}>{label}</ThemedText>
-        <Pressable
-          onPress={goToNextMonth}
-          hitSlop={Spacing.two}
-          style={({ pressed }) => [
-            styles.navButton,
-            pressed && { backgroundColor: blueBadge.background },
-          ]}
-        >
-          <ChevronRight size={IconSize.medium} color={theme.primary} />
-        </Pressable>
-      </View>
-
-      <ScrollView contentContainerStyle={styles.listContent}>
+      <ScrollView
+        contentContainerStyle={[styles.listContent, fillMonthGrid && styles.listContentFill]}
+      >
         {viewMode === 'month' ? (
-          <MonthGrid
-            month={month}
-            eventsByDate={eventsByDate}
-            selectedDate={selectedDate}
-            onSelectDate={handleSelectDate}
-          />
+          <View style={[styles.monthGridInset, fillMonthGrid && styles.fill]}>
+            <MonthGrid
+              month={month}
+              eventsByDate={eventsByDate}
+              selectedDate={selectedDate}
+              onSelectDate={handleSelectDate}
+              fillAvailableHeight={fillMonthGrid}
+            />
+          </View>
         ) : (
-          <MonthList
-            month={month}
-            eventsByDate={eventsByDate}
-            selectedDate={selectedDate}
-            onSelectDate={handleSelectDate}
-          />
+          <View style={styles.sideInset}>
+            <MonthList
+              month={month}
+              eventsByDate={eventsByDate}
+              selectedDate={selectedDate}
+              onSelectDate={handleSelectDate}
+            />
+          </View>
         )}
 
         <Pressable
@@ -254,15 +284,21 @@ export default function CalendarViewTab() {
           disabled={isOpeningCalendar}
           style={({ pressed }) => [
             styles.goToCalendarButton,
-            { backgroundColor: theme.text, opacity: pressed || isOpeningCalendar ? 0.85 : 1 },
+            styles.sideInset,
+            {
+              backgroundColor: theme.beigeButton,
+              opacity: pressed || isOpeningCalendar ? 0.85 : 1,
+            },
           ]}
         >
-          <ThemedText style={[styles.goToCalendarLabel, { color: theme.background }]}>
+          <ThemedText type="headline" style={{ color: theme.onBeigeButton }}>
             カレンダーを見に行く
           </ThemedText>
-          <ChevronRight size={IconSize.small} color={theme.background} />
+          <ChevronRight size={IconSize.small} color={theme.onBeigeButton} />
         </Pressable>
-        <AdPlaceholder slot="calendar-view" style={styles.ad} />
+        <View style={styles.sideInset}>
+          <AdPlaceholder slot="calendar-view" style={styles.ad} />
+        </View>
       </ScrollView>
 
       <Dialog visible={selectedDate !== undefined} onClose={handleCloseDialog}>
@@ -614,12 +650,16 @@ const styles = StyleSheet.create({
   viewToggle: {
     flexDirection: 'row',
     borderRadius: Radius.small,
-    padding: 2,
+    borderWidth: 1,
+    padding: Spacing.half,
   },
   viewToggleOption: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 6,
+    minWidth: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one,
+    borderRadius: Radius.small - Spacing.half,
   },
   viewToggleOptionActive: {
     shadowColor: '#000',
@@ -629,8 +669,6 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   viewToggleLabel: {
-    fontSize: 12,
-    lineHeight: 16,
     fontWeight: '600',
   },
   header: {
@@ -654,19 +692,38 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     paddingBottom: BottomTabInset,
   },
+  // PROの月表示: 中身を ScrollView の見えている高さいっぱいにし、空いたぶんを表（MonthGrid）に渡す。
+  listContentFill: {
+    flexGrow: 1,
+    paddingBottom: PRO_MONTH_BOTTOM_CLEARANCE,
+  },
+  fill: {
+    flexGrow: 1,
+  },
+  // スクロール領域は画面の幅いっぱいに置き（自分の範囲で中身を切り取るため）、左右の余白は中身の側で付ける。
+  // 見出し・ボタン・広告・リストは24pt、月表示の表だけマスの幅を確保するため8pt。
+  screen: {
+    paddingHorizontal: 0,
+  },
+  topSection: {
+    paddingHorizontal: Spacing.four,
+    gap: Spacing.three,
+  },
+  sideInset: {
+    marginHorizontal: Spacing.four,
+  },
+  monthGridInset: {
+    marginHorizontal: Spacing.two,
+  },
   goToCalendarButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.one,
-    paddingVertical: Spacing.three,
+    minHeight: 44,
+    paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.four,
-    borderRadius: Radius.medium,
-  },
-  goToCalendarLabel: {
-    fontSize: 16,
-    lineHeight: 20,
-    fontWeight: '700',
+    borderRadius: Radius.pill,
   },
   ad: {
     marginTop: Spacing.three,
