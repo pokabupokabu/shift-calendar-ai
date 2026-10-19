@@ -23,6 +23,10 @@ export const Colors = {
     danger: '#FF3B30',
     orange: '#FF9500',
     purple: '#5E35B1',
+    // PRO（docs/design-system.md 2章。2026-10-17 ユーザー決定）。明るい金は白地で文字が読めないため、
+    // 札は「金の地（gold）＋濃い茶色の文字（onGold）」の組で使う。注意のオレンジと紛れない黄色寄りの金。
+    gold: '#FFD60A',
+    onGold: '#5C3D00',
     border: '#E5E5EA',
     disabled: '#C7C7CC',
     // カレンダータブの「カレンダーを見に行く」専用（共通ルールの例外。docs/design-system.md 6章）。
@@ -43,6 +47,9 @@ export const Colors = {
     danger: '#FF453A',
     orange: '#FF9F0A',
     purple: '#9061F9',
+    // ダークでも金の地はそのまま（iOSのダークの systemYellow と同じ値）。文字は少し濃くして読みやすさを保つ。
+    gold: '#FFD60A',
+    onGold: '#4A3100',
     border: '#38383A',
     disabled: '#5C5C5E',
     // ライトのベージュに対応する、温かみのある濃いグレー（2026-10-16 ユーザー確認済み）。
@@ -63,6 +70,8 @@ export const IconBadgeTones = {
     purple: { background: '#EDE7F6', icon: '#5E35B1' },
     red: { background: '#FDE8E8', icon: '#FF3B30' },
     neutral: { background: '#F2F2F7', icon: '#8E8E93' },
+    // PRO（鍵など）。地は淡い金、絵は白地でも読める濃いめの金。
+    gold: { background: '#FFF8E1', icon: '#B48200' },
   },
   dark: {
     blue: { background: '#173049', icon: '#0A84FF' },
@@ -71,6 +80,7 @@ export const IconBadgeTones = {
     purple: { background: '#2C2140', icon: '#9061F9' },
     red: { background: '#3A1D1D', icon: '#FF453A' },
     neutral: { background: '#1C1C1E', icon: '#98989F' },
+    gold: { background: '#3A3014', icon: '#FFD60A' },
   },
 } as const;
 

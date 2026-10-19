@@ -39,8 +39,8 @@ export const CALENDAR_PROVIDER_LABEL: Record<CalendarProviderId, string> = {
 /** 編集・削除がアプリ内の記録だけを変え、実カレンダーには反映しないことの注意書き（ユーザー決定の文言）。 */
 const APP_ONLY_NOTE = 'アプリ内の記録だけ変わります。カレンダーの予定はそのままです';
 
-/** 詳細の各行の左に置く、丸い淡い地のアイコンの大きさ。 */
-const ROW_ICON_BADGE_SIZE = 32;
+/** 詳細の各行の左に置く、丸い淡い地のアイコンの大きさ。給与タブの小窓でも使う。 */
+export const ROW_ICON_BADGE_SIZE = 32;
 /** 削除の確認のゴミ箱の絵の、丸い淡い地の大きさ。 */
 const DELETE_ICON_BADGE_SIZE = 56;
 /** 「編集する」「シフトを削除」など、指で押しやすい最小の高さ。 */
@@ -340,7 +340,8 @@ export function ShiftDetailCard({
   );
 }
 
-function DetailRow({
+/** 小窓の詳細の1行（左に丸い淡い青の地のアイコン＋灰色のラベル、右に値）。給与タブの小窓でも使う。 */
+export function DetailRow({
   Icon,
   label,
   children,
