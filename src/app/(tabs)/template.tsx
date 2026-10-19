@@ -123,6 +123,7 @@ export default function TemplateTab() {
   const purpleBadge = useIconBadgeColors('purple');
   const redBadge = useIconBadgeColors('red');
   const neutralBadge = useIconBadgeColors('neutral');
+  const goldBadge = useIconBadgeColors('gold');
   const badgeColorsByTone: Record<IconBadgeTone, { background: string; icon: string }> = {
     blue: blueBadge,
     green: greenBadge,
@@ -130,6 +131,7 @@ export default function TemplateTab() {
     purple: purpleBadge,
     red: redBadge,
     neutral: neutralBadge,
+    gold: goldBadge,
   };
   const user = useAppStore((state) => state.user);
   const setShiftName = useAppStore((state) => state.setShiftName);
