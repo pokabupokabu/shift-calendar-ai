@@ -76,7 +76,6 @@ interface AppState {
 
   setShiftName: (shiftName: string) => void;
   setShiftTableHasNoNames: (value: boolean) => void;
-  setDisplayName: (displayName: string) => void;
   setHasSeenTutorial: () => void;
   /** 分岐画面での選択を記録する。一度決まったら（used/forfeited）上書きしない。 */
   chooseTutorialFreeScan: (accept: boolean) => void;
@@ -158,11 +157,6 @@ export const useAppStore = create<AppState>()(
             },
           };
         }),
-
-      setDisplayName: (displayName) =>
-        set((state) => ({
-          user: state.user ? { ...state.user, displayName } : null,
-        })),
 
       updateSettings: (settings) =>
         set((state) => ({

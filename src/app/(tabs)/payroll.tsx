@@ -27,6 +27,7 @@ import { AdPlaceholder } from '@/components/ad-placeholder';
 import { DetailRow, ROW_ICON_BADGE_SIZE } from '@/components/calendar/shift-detail-card';
 import { Card } from '@/components/card';
 import { Dialog } from '@/components/dialog';
+import { TabTitleRow } from '@/components/header-status';
 import { IconBadge } from '@/components/icon-badge';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
@@ -313,7 +314,7 @@ export default function PayrollTab() {
   return (
     <Screen>
       <View style={styles.topSection}>
-        <ThemedText type="title1">給与</ThemedText>
+        <TabTitleRow title="給与" />
 
         <View style={styles.header}>
           <Pressable

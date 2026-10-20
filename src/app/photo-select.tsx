@@ -206,9 +206,8 @@ export default function PhotoSelectScreen() {
   const [watchingAd, setWatchingAd] = useState(false);
   const setSessionImages = useShiftSessionStore((state) => state.setImages);
   const setScanWorkplaceId = useShiftSessionStore((state) => state.setScanWorkplaceId);
-  const displayName = useAppStore(
-    (state) => state.user?.displayName || state.user?.shiftName || '',
-  );
+  // 表示名はやめたので、確認の一文には登録者キーワード（シフト表の中での自分の名前）を使う。
+  const shiftName = useAppStore((state) => state.user?.shiftName ?? '');
   const isPro = useAppStore((state) => state.user?.settings.isPro ?? false);
   const scanUsage = useAppStore((state) => state.scanUsage);
   const recordBonusScan = useAppStore((state) => state.recordBonusScan);
@@ -395,8 +394,8 @@ export default function PhotoSelectScreen() {
           このシフト表を解析しますか？
         </ThemedText>
         <ThemedText type="body" style={styles.dialogText}>
-          {displayName
-            ? `${displayName}さんのシフト表として読み取ります。`
+          {shiftName
+            ? `${shiftName}さんのシフト表として読み取ります。`
             : 'ご自身のシフト表として読み取ります。'}
         </ThemedText>
 

@@ -19,6 +19,7 @@ import { AdPlaceholder } from '@/components/ad-placeholder';
 import { Card } from '@/components/card';
 import { Dialog } from '@/components/dialog';
 import { HakobuMascot } from '@/components/hakobu-mascot';
+import { TabTitleRow } from '@/components/header-status';
 import { IconBadge } from '@/components/icon-badge';
 import { SecondaryButton } from '@/components/secondary-button';
 import { Screen } from '@/components/screen';
@@ -295,7 +296,7 @@ export default function TemplateTab() {
 
   return (
     <Screen>
-      <ThemedText type="title1">マイカスタム</ThemedText>
+      <TabTitleRow title="マイカスタム" />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* 横長のバナー（320×50）。PROでは自動で消える。勤務先のタブとは押し間違えないよう24pt空ける */}

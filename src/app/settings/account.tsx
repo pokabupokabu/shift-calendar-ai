@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
-import { Star, Tag, TriangleAlert, Trash2, User } from 'lucide-react-native';
+import { Star, Tag, TriangleAlert, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 
@@ -32,18 +32,14 @@ async function performReset() {
   router.replace('/tutorial');
 }
 
-/** アカウント設定画面: 表示名の編集・プラン確認・プロモーションコード・データ初期化。 */
+/** アカウント設定画面: プラン確認・扶養の壁・プロモーションコード・データ初期化。 */
 export default function AccountSettingsScreen() {
   const theme = useTheme();
-  const blueBadge = useIconBadgeColors('blue');
   const orangeBadge = useIconBadgeColors('orange');
   const purpleBadge = useIconBadgeColors('purple');
   const neutralBadge = useIconBadgeColors('neutral');
   const redBadge = useIconBadgeColors('red');
 
-  const displayName = useAppStore((s) => s.user?.displayName ?? s.user?.shiftName ?? '');
-  const setDisplayName = useAppStore((s) => s.setDisplayName);
-  const [name, setName] = useState(displayName);
   const isPro = useAppStore((s) => s.user?.settings.isPro ?? false);
   const dependencyAlertEnabled = useAppStore(
     (s) => s.user?.settings.dependencyAlertEnabled ?? true,
@@ -74,11 +70,6 @@ export default function AccountSettingsScreen() {
     updateSettings({ birthYear: parsed });
   };
 
-  const handleSave = () => {
-    setDisplayName(name.trim());
-    Alert.alert('保存しました');
-  };
-
   // 本物の課金機能が実装されるまでの開発用プレースホルダーです。
   const handleApplyPromoCode = () => {
     const normalized = promoCode.trim().toUpperCase();
@@ -106,23 +97,6 @@ export default function AccountSettingsScreen() {
       <ThemedText type="subtitle">アカウント設定</ThemedText>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Card style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <IconBadge tone="blue">
-              <User size={SECTION_ICON_SIZE} color={blueBadge.icon} />
-            </IconBadge>
-            <ThemedText type="headline">表示名</ThemedText>
-          </View>
-          <TextInput
-            value={name}
-            onChangeText={setName}
-            placeholder="表示名を入力"
-            placeholderTextColor={theme.textSecondary}
-            style={[styles.input, { color: theme.text, backgroundColor: theme.background }]}
-          />
-          <PrimaryButton label="保存" onPress={handleSave} disabled={name.trim().length === 0} />
-        </Card>
-
         <Card style={styles.section}>
           <View style={styles.sectionHeader}>
             <IconBadge tone="orange">

@@ -22,8 +22,6 @@ export interface UserSettings {
 export interface User {
   /** The name the user goes by in their own shift table, used to find their row (section 7). */
   shiftName: string;
-  /** Optional display name for in-app UI, defaults to shiftName. */
-  displayName?: string;
   /**
    * True when the user's shift table lists no names at all — a personal or
    * single-person table (printed per-person sheets, a month calendar, etc.).
