@@ -23,6 +23,12 @@ export interface CalendarProvider {
   authenticate(): Promise<void>;
 
   requestCalendarPermission(): Promise<boolean>;
+  /**
+   * Reads whether the app can write to this calendar right now, WITHOUT showing any prompt
+   * (the read-only counterpart of requestCalendarPermission). Used to show "連携済み" honestly.
+   * Resolves false (never throws) where the permission cannot be read, e.g. on web.
+   */
+  hasCalendarPermission(): Promise<boolean>;
 
   /** Creates the event on the user's default calendar and records it for future overwrite detection. */
   createEvent(input: CreateCalendarEventInput): Promise<CalendarEventRecord>;

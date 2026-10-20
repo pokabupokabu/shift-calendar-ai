@@ -168,6 +168,11 @@ export class GoogleCalendarProvider implements CalendarProvider {
     return this.isAuthenticated();
   }
 
+  async hasCalendarPermission(): Promise<boolean> {
+    // Same as above: the OAuth scope is the permission, so having a stored token is enough.
+    return this.isAuthenticated();
+  }
+
   private async apiFetch(path: string, init: RequestInit): Promise<Response> {
     const accessToken = await this.getValidAccessToken();
     const response = await fetch(`${GOOGLE_CALENDAR_API_BASE}${path}`, {
@@ -187,7 +192,7 @@ export class GoogleCalendarProvider implements CalendarProvider {
               (errorBody as { error?: { message?: string } }).error?.message ?? response.statusText,
             )
           : response.statusText;
-      throw new Error(`Google Calendarとの通信に失敗しました（${response.status}）: ${message}`);
+      throw new Error(`Google カレンダーとの通信に失敗しました（${response.status}）: ${message}`);
     }
 
     return response;

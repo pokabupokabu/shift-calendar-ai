@@ -1,5 +1,5 @@
 import {
-  CheckCircle2,
+  Check,
   ChevronRight,
   Coffee,
   Coins,
@@ -56,6 +56,8 @@ import {
   type Workplace,
   type WorkplaceSettings,
 } from '@/models';
+import { getCalendarProvider } from '@/services/calendar';
+import { ensureCalendarAccess } from '@/services/calendar/ensureCalendarAccess';
 import { getConnectedProviders } from '@/services/calendar/getConnectedProviders';
 import { useAppStore } from '@/store/useAppStore';
 import { useTourStore } from '@/store/useTourStore';
@@ -151,8 +153,9 @@ export default function TemplateTab() {
   const activeWorkplace =
     workplaces.find((workplace) => workplace.id === user?.activeWorkplaceId) ?? workplaces[0];
   const settings = activeWorkplace?.settings ?? DEFAULT_WORKPLACE_SETTINGS;
-  // 連携の画面から戻ってきたときに状態を取り直すため、タブが表示されるたびに確認する
-  const [connectedProviderIds, setConnectedProviderIds] = useState<CalendarProviderId[]>(['apple']);
+  // カレンダー連携の画面から戻ってきたときに状態を取り直すため、タブが表示されるたびに確認する。
+  // Apple も実際の許可を確かめるので、確認が終わるまでは「未連携」扱いにしておく（D2の決定3）
+  const [connectedProviderIds, setConnectedProviderIds] = useState<CalendarProviderId[]>([]);
   useFocusEffect(
     useCallback(() => {
       let active = true;
@@ -164,9 +167,42 @@ export default function TemplateTab() {
       };
     }, []),
   );
+  const [connectingProviderId, setConnectingProviderId] = useState<CalendarProviderId | null>(null);
+  /**
+   * 未連携の行の「連携する」。画面を移らずその場でサインイン／許可を出し、連携できたら
+   * その勤務先の登録先にする（旧 calendar-connect の画面の動きを引き継ぐ。D2の決定2）。
+   */
+  const handleConnectProvider = async (id: CalendarProviderId) => {
+    if (!activeWorkplace || connectingProviderId) return;
+    const workplaceId = activeWorkplace.id;
+    setConnectingProviderId(id);
+    try {
+      if (await ensureCalendarAccess(getCalendarProvider(id))) {
+        updateWorkplaceSettings(workplaceId, { defaultCalendarProvider: id });
+      }
+    } finally {
+      setConnectingProviderId(null);
+      setConnectedProviderIds(await getConnectedProviders());
+    }
+  };
+  /**
+   * 登録先カレンダーの小窓で選んだとき。連携済みならそのまま登録先にする。未連携なら小窓を閉じてから
+   * その場で連携し、できたら登録先にする（Googleのサインイン画面・iPhoneの許可の確認が小窓と重ならないように）。
+   */
+  const handleChooseCalendarProvider = (id: CalendarProviderId) => {
+    setCalendarDialogOpen(false);
+    if (!connectedProviderIds.includes(id)) {
+      void handleConnectProvider(id);
+      return;
+    }
+    if (activeWorkplace) {
+      updateWorkplaceSettings(activeWorkplace.id, { defaultCalendarProvider: id });
+    }
+  };
   const shiftTypes = activeWorkplace?.shiftTypes ?? [];
 
   const [isNameDialogOpen, setNameDialogOpen] = useState(false);
+  const [isCalendarDialogOpen, setCalendarDialogOpen] = useState(false);
   const tourStep = useTourStore((state) => state.step);
   const goToTourStep = useTourStore((state) => state.goTo);
   useTourStepOnFocus(
@@ -336,66 +372,41 @@ export default function TemplateTab() {
               </Pressable>
             </TourTarget>
 
-            <View
-              style={[
-                styles.calendarSubHeader,
-                styles.blockBorder,
-                { borderTopColor: theme.border },
-              ]}
+            {/* 登録先カレンダー。登録者キーワードと同じ2行の作りで、「変更」でその場の小窓を開く（D2の追加の決定） */}
+            <Pressable
+              onPress={() => setCalendarDialogOpen(true)}
+              disabled={connectingProviderId !== null}
+              accessibilityRole="button"
+              accessibilityLabel={`登録先カレンダー、${CALENDAR_PROVIDER_LABEL[settings.defaultCalendarProvider]}、変更`}
+              style={[styles.infoRow, styles.blockBorder, { borderTopColor: theme.border }]}
             >
-              <ThemedText type="footnote" themeColor="textSecondary">
-                連携カレンダー
-              </ThemedText>
-            </View>
-            {CALENDAR_PROVIDER_IDS.map((id) => {
-              const isConnected = connectedProviderIds.includes(id);
-              const isDefault = settings.defaultCalendarProvider === id;
-              return (
-                <Pressable
-                  key={id}
-                  disabled={isDefault}
-                  onPress={() => {
-                    if (!isConnected) {
-                      router.push({
-                        pathname: '/settings/calendar-connect',
-                        params: { provider: id },
-                      });
-                      return;
-                    }
-                    if (activeWorkplace) {
-                      updateWorkplaceSettings(activeWorkplace.id, { defaultCalendarProvider: id });
-                    }
-                  }}
-                  style={[styles.infoRow, styles.blockBorder, { borderTopColor: theme.border }]}
-                >
-                  <CalendarProviderIcon provider={id} />
-                  <View style={styles.infoRowLabel}>
-                    <ThemedText type="body">{CALENDAR_PROVIDER_LABEL[id]}</ThemedText>
-                    <ThemedText type="caption1" themeColor="textSecondary">
-                      {isConnected ? '連携済み' : '未連携'}
-                    </ThemedText>
-                  </View>
-                  {isDefault ? (
-                    <View style={[styles.connectedTag, { backgroundColor: greenBadge.background }]}>
-                      <CheckCircle2 size={IconSize.small} color={theme.success} />
-                      <ThemedText type="caption2" themeColor="success">
-                        登録先
-                      </ThemedText>
-                    </View>
-                  ) : (
-                    <View style={styles.changeAffordance}>
-                      <ThemedText type="subheadline" themeColor="primary">
-                        {isConnected ? '登録先にする' : '連携する'}
-                      </ThemedText>
-                      {!isConnected && <ChevronRight size={IconSize.small} color={theme.primary} />}
-                    </View>
-                  )}
-                </Pressable>
-              );
-            })}
+              <CalendarProviderIcon provider={settings.defaultCalendarProvider} />
+              <View style={styles.infoRowLabel}>
+                <ThemedText type="footnote" themeColor="textSecondary">
+                  登録先カレンダー
+                </ThemedText>
+                <ThemedText type="headline">
+                  {CALENDAR_PROVIDER_LABEL[settings.defaultCalendarProvider]}
+                </ThemedText>
+              </View>
+              <View style={styles.changeAffordance}>
+                <ThemedText type="subheadline" themeColor="primary">
+                  {connectingProviderId ? '連携中…' : '変更'}
+                </ThemedText>
+                {!connectingProviderId && (
+                  <ChevronRight size={IconSize.small} color={theme.primary} />
+                )}
+              </View>
+            </Pressable>
 
             <Pressable
-              onPress={() => router.push('/settings/other-calendars')}
+              // カレンダー連携の画面を「ほかのカレンダーアプリと連携したい場合」の位置まで送って開く（D2の決定4）
+              onPress={() =>
+                router.push({
+                  pathname: '/settings/calendar-providers',
+                  params: { section: 'other' },
+                })
+              }
               style={[styles.infoRow, styles.blockBorder, { borderTopColor: theme.border }]}
             >
               <OtherCalendarsIcon />
@@ -639,6 +650,46 @@ export default function TemplateTab() {
             </ThemedText>
           )}
           <SecondaryButton label="閉じる" onPress={closeNameDialog} />
+        </DialogBody>
+      </Dialog>
+
+      <Dialog visible={isCalendarDialogOpen} onClose={() => setCalendarDialogOpen(false)}>
+        <DialogBody>
+          <DialogTitle>登録先カレンダー</DialogTitle>
+          <View style={[styles.choiceList, { borderColor: theme.border }]}>
+            {CALENDAR_PROVIDER_IDS.map((id, index) => {
+              const isDefault = settings.defaultCalendarProvider === id;
+              const isConnected = connectedProviderIds.includes(id);
+              return (
+                <Pressable
+                  key={id}
+                  onPress={() => handleChooseCalendarProvider(id)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isDefault }}
+                  accessibilityLabel={`${CALENDAR_PROVIDER_LABEL[id]}${isConnected ? '' : '、未連携'}`}
+                  style={({ pressed }) => [
+                    styles.choiceRow,
+                    { backgroundColor: theme.backgroundElement },
+                    index > 0 && [styles.choiceRowBorder, { borderTopColor: theme.border }],
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <CalendarProviderIcon provider={id} />
+                  <View style={styles.infoRowLabel}>
+                    <ThemedText type="body">{CALENDAR_PROVIDER_LABEL[id]}</ThemedText>
+                    {/* 未連携の方は、選ぶと連携が始まることが分かるように小さく添える */}
+                    {!isConnected && (
+                      <ThemedText type="caption1" themeColor="textSecondary">
+                        未連携・選ぶと連携します
+                      </ThemedText>
+                    )}
+                  </View>
+                  {isDefault && <Check size={IconSize.small + 4} color={theme.primary} />}
+                </Pressable>
+              );
+            })}
+          </View>
+          <SecondaryButton label="キャンセル" onPress={() => setCalendarDialogOpen(false)} />
         </DialogBody>
       </Dialog>
 
@@ -1015,10 +1066,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
   },
-  calendarSubHeader: {
-    paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.two,
-  },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1043,13 +1090,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.half,
   },
-  connectedTag: {
+  // 登録先カレンダーの小窓の選択肢（白い箱に2行。押せる高さは56pt）
+  choiceList: {
+    borderRadius: Radius.smallLarge,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
+  },
+  choiceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.one,
-    borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.half,
+    gap: Spacing.three,
+    minHeight: 56,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  choiceRowBorder: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  pressed: {
+    opacity: 0.6,
   },
   // 行そのものの余白は中の infoRow が持つ。給与形態などの行と左端を揃えるため、ここでは横の余白を付けない
   premiumBlock: {
