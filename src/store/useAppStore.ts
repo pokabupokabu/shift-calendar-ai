@@ -282,7 +282,7 @@ export const useAppStore = create<AppState>()(
     {
       name: 'shift-calendar-ai-store',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 17,
+      version: 18,
       migrate: (persisted, version) => {
         // Migration spans many historical shapes (pre-workplace, pre-isPro, etc.),
         // so this intentionally works on an untyped view rather than `AppState`.
@@ -450,6 +450,24 @@ export const useAppStore = create<AppState>()(
                 return shiftType;
               });
             }
+          }
+        }
+        if (version < 18) {
+          // 扶養の壁の年齢を「生まれ年」から「その年に19〜22歳か」の2択（答えた年つき）へ変更した
+          // （docs/ui-review/group-d.md の決定7）。生まれ年が入っていた人は、移行した時点の年について
+          // 今までと同じ式（その年の12月31日時点の年齢 = 年 - 生まれ年、19歳以上23歳未満）で判定して移す。
+          // 年が変わったら未設定に戻り、選び直してもらう。
+          // あわせて学生区分（isDaytimeStudent）も聞くのをやめたため消す（注意書きは学生かどうかによらず出す）。
+          const settings = state.user?.settings;
+          if (settings) {
+            const legacyBirthYear = settings.birthYear;
+            if (typeof legacyBirthYear === 'number' && Number.isFinite(legacyBirthYear)) {
+              const year = new Date().getFullYear();
+              const age = year - legacyBirthYear;
+              settings.ageBracket = { year, isAge19to22: age >= 19 && age < 23 };
+            }
+            delete settings.birthYear;
+            delete settings.isDaytimeStudent;
           }
         }
         return state;

@@ -41,7 +41,7 @@ import {
   Spacing,
   type IconBadgeTone,
 } from '@/constants/theme';
-import { resolveDependencyWalls } from '@/constants/dependencyWalls';
+import { ageBracketForYear, resolveDependencyWalls } from '@/constants/dependencyWalls';
 import { useIconBadgeColors } from '@/hooks/use-icon-badge-colors';
 import { useMonthNavigation } from '@/hooks/use-month-navigation';
 import { useResolvedColorScheme } from '@/hooks/use-resolved-color-scheme';
@@ -108,8 +108,7 @@ export default function PayrollTab() {
   const dependencyAlertEnabled = useAppStore(
     (state) => state.user?.settings.dependencyAlertEnabled ?? true,
   );
-  const dependencyBirthYear = useAppStore((state) => state.user?.settings.birthYear);
-  const dependencyIsDaytimeStudent = useAppStore((state) => state.user?.settings.isDaytimeStudent);
+  const dependencyAgeBracket = useAppStore((state) => state.user?.settings.ageBracket);
   const { month, goToPrevMonth, goToNextMonth, label } = useMonthNavigation();
   // 無料プランは当月のみ閲覧可能。ボタンは残しつつ（鍵マークを添える）、タップ時にペイウォールへ誘導する。
   const handlePrevMonth = () => (isPro ? goToPrevMonth() : router.push('/paywall'));
@@ -149,15 +148,15 @@ export default function PayrollTab() {
   );
 
   // 年収の壁は年齢（12/31時点）と年分で変わるため、設定値から組み立てる。
-  // 生まれ年が未設定のときは壁を出さず、設定を促す（一般的な130万円を出すと19〜22歳に誤った壁を見せるため）。
+  // 年齢区分は今年の答えだけを使い、去年の答えは未回答として扱う（docs/ui-review/group-d.md の決定7）。
+  // 未回答のときは壁を出さず、選ぶよう促す（一般的な130万円を出すと19〜22歳に誤った壁を見せるため）。
   const dependencyWallSet = useMemo(
     () =>
       resolveDependencyWalls({
         year: currentYear,
-        birthYear: dependencyBirthYear,
-        isDaytimeStudent: dependencyIsDaytimeStudent,
+        isAge19to22: ageBracketForYear(dependencyAgeBracket, currentYear),
       }),
-    [currentYear, dependencyBirthYear, dependencyIsDaytimeStudent],
+    [currentYear, dependencyAgeBracket],
   );
 
   // その月に勤務がある種別名。並び順はマイカスタムのシフト種別の並び（勤務先の順→種別の順）に揃え、
@@ -289,10 +288,9 @@ export default function PayrollTab() {
   const totalWorkedDays = new Set(dailyEarnings.map((entry) => entry.date)).size;
   const totalWorkedHours = dailyEarnings.reduce((sum, entry) => sum + entry.workedHours, 0);
 
-  // 「詳しい説明・年齢の設定」と「生まれ年を設定する」の行き先。
-  // TODO: 設定タブに「扶養の壁の詳しい説明・年齢の設定」の項目ができたら、そちらへ変える
-  // （docs/ui-review/group-a.md サブグループ③の決定13・14。今は生まれ年の設定があるアカウント画面へ）。
-  const openDependencySettings = () => router.push('/settings/account');
+  // 「詳しい説明・年齢の設定」と「年齢区分を選ぶ」の行き先。設定タブの「扶養の壁」と同じ画面
+  // （docs/ui-review/group-a.md サブグループ③の決定13・14、group-d.md の決定10）。
+  const openDependencySettings = () => router.push('/settings/dependency-wall');
 
   const yearlyTotalRow = (
     <View style={[styles.statsFooter, { borderTopColor: theme.border }]}>
@@ -424,11 +422,11 @@ export default function PayrollTab() {
             {dependencyWallSet.isGeneric ? (
               <>
                 <ThemedText type="subheadline" themeColor="textSecondary">
-                  生まれ年を設定すると、あなたに合った壁が表示されます
+                  今年の年齢区分（19〜22歳かどうか）を選ぶと、あなたに合った壁が表示されます
                 </ThemedText>
                 <PrimaryButton
                   variant="bluePill"
-                  label="生まれ年を設定する"
+                  label="今年の年齢区分を選ぶ"
                   onPress={openDependencySettings}
                 />
                 {yearlyTotalRow}

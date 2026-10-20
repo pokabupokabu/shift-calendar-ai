@@ -13,3 +13,16 @@ export async function restorePurchases(): Promise<{ success: boolean; error?: st
 export async function getProPriceString(): Promise<string | null> {
   return null;
 }
+
+/** Web にはオファーコードの入力画面が無い（App Store の機能のため）。 */
+export async function presentCodeRedemptionSheet(): Promise<{ success: boolean; error?: string }> {
+  return {
+    success: false,
+    error: 'この端末ではコードを入力できません。iPhoneのアプリでお試しください。',
+  };
+}
+
+/** Web では RevenueCat を使わないため、お客様IDは無い。 */
+export async function getCustomerId(): Promise<string | null> {
+  return null;
+}
