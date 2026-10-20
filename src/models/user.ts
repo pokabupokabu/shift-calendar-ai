@@ -1,5 +1,13 @@
 import type { Workplace } from './workplace';
 
+/** 扶養の壁の画面の「年齢（YYYY年12月31日時点）」の答え。 */
+export interface AgeBracketAnswer {
+  /** 何年について答えたか（西暦）。 */
+  year: number;
+  /** その年の12月31日時点で19歳以上23歳未満（19〜22歳）か。 */
+  isAge19to22: boolean;
+}
+
 export interface UserSettings {
   /** Manual override for light/dark mode. */
   themeOverride: 'light' | 'dark';
@@ -8,15 +16,13 @@ export interface UserSettings {
   /** Whether the 扶養の壁 alert card shows on the 給与 tab (PRO feature, user-dismissible). */
   dependencyAlertEnabled: boolean;
   /**
-   * 生まれ年（西暦4桁）。年収の壁は「その年の12月31日時点で19歳以上23歳未満か」で変わるため、
-   * 固定の年齢ではなく生まれ年を持ち、毎年自動で判定し直す。未設定なら年齢による出し分けをしない。
+   * 年齢区分の答え（「その年の12月31日時点で19〜22歳か」）と、それが何年の答えかの組。
+   * 年収の壁（社会保険の扶養）はこの区分で変わる。生まれ年を聞くのはやめ（version 18、
+   * docs/ui-review/group-d.md の決定7）、**答えた年と今年が違えば未設定として扱う**
+   * （22歳→23歳で壁が150万→130万に下がる人が、古い答えのまま壁を超えないようにするため）。
+   * 年を見て読み分けるのは `ageBracketForYear`（src/constants/dependencyWalls.ts）。
    */
-  birthYear?: number;
-  /**
-   * 昼間部の学生か。しきい値自体は変わらないが、勤務時間による社会保険加入
-   * （週20時間以上・従業員51人以上・学生でないこと）の注意書きの出し分けに使う。
-   */
-  isDaytimeStudent?: boolean;
+  ageBracket?: AgeBracketAnswer;
 }
 
 export interface User {

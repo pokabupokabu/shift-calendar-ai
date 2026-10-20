@@ -1,38 +1,45 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
-import { router, type Href } from 'expo-router';
+import { router, useFocusEffect, type Href } from 'expo-router';
 import {
   CalendarDays,
   ChevronRight,
   ClipboardList,
   FileText,
+  Gift,
   LifeBuoy,
   MessageCircle,
   Palette,
   ShieldCheck,
   Star,
+  Trash2,
   TriangleAlert,
-  UserCog,
   type LucideIcon,
 } from 'lucide-react-native';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AdPlaceholder } from '@/components/ad-placeholder';
 import { Card } from '@/components/card';
 import { TabTitleRow } from '@/components/header-status';
 import { IconBadge } from '@/components/icon-badge';
 import { Screen } from '@/components/screen';
+import { SegmentedControl } from '@/components/segmented-control';
 import { ThemedText } from '@/components/themed-text';
+import { ageBracketForYear } from '@/constants/dependencyWalls';
 import { BottomTabInset, Radius, Spacing, type IconBadgeTone } from '@/constants/theme';
 import { useIconBadgeColors } from '@/hooks/use-icon-badge-colors';
 import { useTheme } from '@/hooks/use-theme';
 import type { CalendarProviderId } from '@/models/calendarEvent';
+import { getConnectedProviders } from '@/services/calendar/getConnectedProviders';
 import { useAppStore } from '@/store/useAppStore';
+import { useShiftSessionStore } from '@/store/useShiftSessionStore';
 
 interface SettingsRow {
   icon: LucideIcon;
   tone: IconBadgeTone;
   label: string;
-  /** 登録先カレンダーの「Apple」のように、chevronの手前に添える今の設定（灰色の小さな文字）。 */
+  /** カレンダー連携の「Apple」のように、chevronの手前に添える今の設定（灰色の小さな文字）。 */
   trailingLabel?: string;
   /** タップ時の遷移先。全ての行が遷移先を持つ（未実装の行は置かない）。 */
   route: Href;
@@ -41,19 +48,41 @@ interface SettingsRow {
 const ROW_ICON_BADGE_SIZE = 28;
 const ROW_ICON_SIZE = 18;
 
-const ACCOUNT_ROWS: SettingsRow[] = [
-  { icon: UserCog, tone: 'blue', label: 'アカウント設定', route: '/settings/account' },
-];
-
-/** 登録先カレンダーの行の右に出す短い名前（「Apple カレンダー」だとiPhone SEで切れるため短くする）。 */
+/** カレンダー連携の行の右に出す短い名前（「Apple カレンダー」だとiPhone SEで切れるため短くする）。 */
 const CALENDAR_PROVIDER_SHORT_LABELS: Record<CalendarProviderId, string> = {
   apple: 'Apple',
   google: 'Google',
 };
 
+/** 連携済みのカレンダーを「Apple」「Google」「Apple・Google」、無ければ「未連携」にする。 */
+function connectedProvidersLabel(ids: CalendarProviderId[]): string {
+  if (ids.length === 0) return '未連携';
+  return ids.map((id) => CALENDAR_PROVIDER_SHORT_LABELS[id]).join('・');
+}
+
 /**
- * 「一般設定」の行。表示順は 登録先カレンダー → 扶養の壁 → 外観。
- * 右に添える今の設定は保存データから作るため、画面の中で組み立てる。
+ * 連携済みのカレンダー。連携の画面から戻ってきたときに取り直すため、タブが表示されるたびに確認する
+ * （マイカスタムタブと同じやり方）。確認が終わるまでは undefined で、右の文字を出さない（ちらつき防止）。
+ */
+function useConnectedProviders(): CalendarProviderId[] | undefined {
+  const [connectedIds, setConnectedIds] = useState<CalendarProviderId[]>();
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      void getConnectedProviders().then((ids) => {
+        if (active) setConnectedIds(ids);
+      });
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
+  return connectedIds;
+}
+
+/**
+ * 「一般設定」の行。表示順は カレンダー連携 → 扶養の壁 → 外観（docs/ui-review/group-d.md 構成③）。
+ * 右に添える今の設定は保存データや連携状態から作るため、画面の中で組み立てる。
  * 「外観」だけは実際のインライン切り替えUI (AppearanceRow) として別枠で描画する。
  *
  * 「通知設定」の行は削除した。アプリ独自通知は要件定義書24節のOUTに明記されており
@@ -61,21 +90,20 @@ const CALENDAR_PROVIDER_SHORT_LABELS: Record<CalendarProviderId, string> = {
  * 遷移先が無いまま置くと「準備中」のアラートが出て審査ガイドライン2.1に抵触するため。
  */
 function useGeneralRows(): SettingsRow[] {
-  const calendarProvider = useAppStore((state) => {
-    const user = state.user;
-    const activeWorkplace =
-      user?.workplaces.find((w) => w.id === user.activeWorkplaceId) ?? user?.workplaces[0];
-    return activeWorkplace?.settings.defaultCalendarProvider ?? 'apple';
-  });
-  const birthYear = useAppStore((state) => state.user?.settings.birthYear);
+  const connectedProviders = useConnectedProviders();
+  const ageBracket = useAppStore((state) => state.user?.settings.ageBracket);
+  // 年齢区分は今年の答えだけを使う（去年の答えは「未設定」に戻す。group-d.md の決定7）
+  const isAge19to22 = ageBracketForYear(ageBracket, new Date().getFullYear());
 
   return [
     {
       // 行どうしで色が重ならないよう、扶養の壁（オレンジ）と分けて薄い赤にする（2026-10-20 ユーザー決定）。
+      // 旧「登録先カレンダー」。登録先は勤務先ごとにマイカスタムで選ぶので、ここは連携の状態を出す（構成④）。
       icon: CalendarDays,
       tone: 'red',
-      label: '登録先カレンダー',
-      trailingLabel: CALENDAR_PROVIDER_SHORT_LABELS[calendarProvider],
+      label: 'カレンダー連携',
+      trailingLabel:
+        connectedProviders !== undefined ? connectedProvidersLabel(connectedProviders) : undefined,
       route: '/settings/calendar-providers',
     },
     {
@@ -83,12 +111,16 @@ function useGeneralRows(): SettingsRow[] {
       icon: TriangleAlert,
       tone: 'orange',
       label: '扶養の壁',
-      trailingLabel: birthYear !== undefined ? `生まれ年 ${birthYear}年` : '未設定',
-      // 扶養の壁の新しい画面（グループD）ができるまでは、生まれ年を入力できるアカウント設定へ。
-      route: '/settings/account',
+      trailingLabel: isAge19to22 === undefined ? '未設定' : isAge19to22 ? '19〜22歳' : 'それ以外',
+      route: '/settings/dependency-wall',
     },
   ];
 }
+
+/** 「特典」の行（構成②）。提出用の版でも出す。押すとAppleのオファーコードの入力などができる画面へ。 */
+const PERK_ROWS: SettingsRow[] = [
+  { icon: Gift, tone: 'blue', label: 'プロモーション特典', route: '/settings/promotion' },
+];
 
 // サポートと法的表記は、モックアップ通り1つの「サポート・その他」カードにまとめる。
 // ただし利用規約・プライバシーポリシー・特定商取引法に基づく表記は、日本の法令上それぞれ
@@ -174,13 +206,11 @@ function SettingsRowGroup({ rows, caption }: { rows: SettingsRow[]; caption?: st
   );
 }
 
-/** 「外観」の実インライン切り替え行。マイカスタムタブの wageTypeToggle と同じピル型セグメントコントロール。 */
+/** 「外観」の実インライン切り替え行。扶養の壁の画面の2択と同じ部品（SegmentedControl）の小さい版。 */
 function AppearanceRow({ withTopSeparator }: { withTopSeparator: boolean }) {
-  const theme = useTheme();
   const purpleBadge = useIconBadgeColors('purple');
-  const user = useAppStore((state) => state.user);
+  const themeOverride = useAppStore((state) => state.user?.settings.themeOverride ?? 'light');
   const updateSettings = useAppStore((state) => state.updateSettings);
-  const themeOverride = user?.settings.themeOverride ?? 'light';
 
   return (
     <View>
@@ -190,42 +220,66 @@ function AppearanceRow({ withTopSeparator }: { withTopSeparator: boolean }) {
           <Palette size={ROW_ICON_SIZE} color={purpleBadge.icon} />
         </IconBadge>
         <ThemedText style={styles.rowLabel}>外観</ThemedText>
-        <View style={[styles.themeToggle, { backgroundColor: theme.backgroundSelected }]}>
-          {THEME_OPTIONS.map((option) => {
-            const selected = themeOverride === option.value;
-            return (
-              <Pressable
-                key={option.value}
-                onPress={() => updateSettings({ themeOverride: option.value })}
-                style={[
-                  styles.themeChoice,
-                  selected && [
-                    styles.themeChoiceSelected,
-                    { backgroundColor: theme.backgroundElement },
-                  ],
-                ]}
-              >
-                <ThemedText
-                  style={[
-                    styles.themeChoiceLabel,
-                    {
-                      color: selected ? theme.text : theme.textSecondary,
-                      fontWeight: selected ? '600' : '500',
-                    },
-                  ]}
-                >
-                  {option.label}
-                </ThemedText>
-              </Pressable>
-            );
-          })}
-        </View>
+        <SegmentedControl
+          size="compact"
+          accessibilityLabel="外観"
+          options={THEME_OPTIONS}
+          value={themeOverride}
+          onChange={(value) => updateSettings({ themeOverride: value })}
+        />
       </View>
     </View>
   );
 }
 
-/** 設定タブ: 一般的なアプリ設定（アカウント・登録先カレンダー・扶養の壁・外観・規約など）。シフト登録の挙動自体は「マイカスタム」タブが担う。 */
+async function performReset() {
+  await AsyncStorage.clear();
+  useAppStore.getState().resetAll();
+  useShiftSessionStore.getState().reset();
+  router.dismissAll();
+  router.replace('/tutorial');
+}
+
+/**
+ * いちばん下の「データを初期化」の行（構成③・決定9）。赤い文字で、押すと確認の小窓を出す。
+ * 専用の画面は作らないので、右の「›」は付けない。
+ */
+function ResetDataRow() {
+  const theme = useTheme();
+  const redBadge = useIconBadgeColors('red');
+
+  const handlePress = () => {
+    Alert.alert('データを初期化しますか？', 'この操作は取り消せません。', [
+      { text: 'キャンセル', style: 'cancel' },
+      { text: '初期化する', style: 'destructive', onPress: performReset },
+    ]);
+  };
+
+  return (
+    <Card style={[styles.rowGroup, styles.cardShadow]}>
+      <Pressable
+        onPress={handlePress}
+        accessibilityRole="button"
+        accessibilityLabel="データを初期化"
+        style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}
+      >
+        <IconBadge tone="red" size={ROW_ICON_BADGE_SIZE}>
+          <Trash2 size={ROW_ICON_SIZE} color={redBadge.icon} />
+        </IconBadge>
+        <ThemedText style={[styles.rowLabel, { color: theme.danger }]} numberOfLines={1}>
+          データを初期化
+        </ThemedText>
+      </Pressable>
+    </Card>
+  );
+}
+
+/**
+ * 設定タブ: 一般的なアプリ設定（カレンダー連携・扶養の壁・外観・特典・規約・データの初期化）。
+ * シフト登録の挙動自体は「マイカスタム」タブが担う。
+ * 旧「アカウント設定」の画面は無くし、中身を扶養の壁・プロモーション特典の画面とこのタブへ分けた
+ * （docs/ui-review/group-d.md 構成①）。
+ */
 export default function SettingsTab() {
   const theme = useTheme();
   const goldBadge = useIconBadgeColors('gold');
@@ -283,8 +337,6 @@ export default function SettingsTab() {
           </Card>
         )}
 
-        <SettingsRowGroup caption="アカウント" rows={ACCOUNT_ROWS} />
-
         <View style={styles.group}>
           <ThemedText type="caption1" style={styles.caption} themeColor="textSecondary">
             一般設定
@@ -300,7 +352,11 @@ export default function SettingsTab() {
           </Card>
         </View>
 
+        <SettingsRowGroup caption="特典" rows={PERK_ROWS} />
+
         <SettingsRowGroup caption="サポート・その他" rows={SUPPORT_AND_LEGAL_ROWS} />
+
+        <ResetDataRow />
 
         <View style={styles.footer}>
           <ThemedText style={styles.footerLine1} themeColor="textSecondary">
@@ -402,26 +458,6 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two + 4,
-  },
-  themeToggle: {
-    flexDirection: 'row',
-    borderRadius: Radius.small,
-    padding: 2,
-  },
-  themeChoice: {
-    paddingHorizontal: 12,
-    paddingVertical: Spacing.one,
-    borderRadius: 6,
-  },
-  themeChoiceSelected: {
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-  },
-  themeChoiceLabel: {
-    fontSize: 12,
-    lineHeight: 16,
   },
   footer: {
     alignItems: 'center',

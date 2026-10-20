@@ -34,6 +34,8 @@
  *   令和8年分以後は合計所得62万円以下（令和8年分・令和9年分の給与収入換算で136万円以下）。
  */
 
+import type { AgeBracketAnswer } from '@/models/user';
+
 /** 壁の種類。 */
 export type DependencyWallKind = 'socialInsurance' | 'incomeTax';
 
@@ -68,18 +70,17 @@ export interface DependencyWall {
 export interface DependencyWallInput {
   /** 集計対象の暦年（西暦）。 */
   year: number;
-  /** 生まれ年（西暦）。未設定なら年齢による出し分けができない。 */
-  birthYear?: number;
-  /** 昼間部の学生か。しきい値には影響せず、社会保険の注意書きの出し分けだけに使う。 */
-  isDaytimeStudent?: boolean;
+  /**
+   * その年の12月31日時点で19〜22歳か。未回答（またはその年の答えが無い）なら undefined で、
+   * 年齢による出し分けができない。保存データからは `ageBracketForYear` で取り出す。
+   */
+  isAge19to22?: boolean;
 }
 
 export interface DependencyWallSet {
   walls: DependencyWall[];
-  /** 生まれ年が未設定で、年齢によらない一般的な目安にフォールバックしているか。 */
+  /** 年齢区分が未回答で、年齢によらない一般的な目安にフォールバックしているか。 */
   isGeneric: boolean;
-  /** その年の12月31日時点の年齢（生まれ年が未設定なら undefined）。 */
-  ageAtYearEnd?: number;
   /** 12月31日時点で19歳以上23歳未満か（＝被扶養者認定の年齢要件に当たるか）。 */
   isSpecificRelativeAge: boolean;
   /** カードの下に添える補足。断定を避けた定性的な表現のみ。 */
@@ -121,28 +122,29 @@ function wallLabel(threshold: number): string {
 }
 
 /**
- * その年の12月31日時点の年齢。
- *
- * 年齢計算ニ関スル法律では誕生日の前日に加齢するため、1月1日生まれの人だけは
- * この計算より1歳上になるが、UIは目安表示のため許容している。
+ * 保存している年齢区分の答えから、指定の年について「19〜22歳か」を取り出す。
+ * **答えた年と違う年なら未回答（undefined）として扱う**（年が変わったら選び直してもらう。
+ * docs/ui-review/group-d.md の決定7）。
  */
-function ageAtYearEnd(year: number, birthYear: number): number {
-  return year - birthYear;
+export function ageBracketForYear(
+  answer: AgeBracketAnswer | undefined,
+  year: number,
+): boolean | undefined {
+  if (!answer || answer.year !== year) return undefined;
+  return answer.isAge19to22;
 }
 
 /**
  * 条件から「年収の壁」の一覧を組み立てる。常に社会保険と所得税の2本を返す。
  *
- * 生まれ年が未設定のときは断定を避け、年齢によらない一般的な目安（社会保険130万円）を
+ * 年齢区分が未回答のときは断定を避け、年齢によらない一般的な目安（社会保険130万円）を
  * `isGeneric: true` で返す。呼び出し側はこのフラグを見て、設定を促す導線を出すこと。
  */
 export function resolveDependencyWalls({
   year,
-  birthYear,
-  isDaytimeStudent,
+  isAge19to22,
 }: DependencyWallInput): DependencyWallSet {
-  const age = birthYear !== undefined ? ageAtYearEnd(year, birthYear) : undefined;
-  const isSpecificRelativeAge = age !== undefined && age >= 19 && age < 23;
+  const isSpecificRelativeAge = isAge19to22 === true;
   const notes: string[] = [];
 
   const socialInsuranceLimit = isSpecificRelativeAge
@@ -175,22 +177,20 @@ export function resolveDependencyWalls({
     },
   ];
 
-  if (isDaytimeStudent === true) {
-    notes.push(
-      '昼間部の学生は、勤務時間による社会保険の加入（週20時間以上・従業員51人以上）の対象外とされています。',
-    );
-  } else if (isDaytimeStudent === false) {
-    notes.push(
-      '週20時間以上・従業員51人以上の勤務先では、年収に関わらず自分の社会保険に加入することがあります。',
-    );
-  }
+  // 学生区分は聞かない（docs/ui-review/group-d.md、2026-10-20 ユーザー決定）。
+  // 学生かどうかで変わる社会保険の加入の注意は、どちらの場合も分かるように2行とも出す。
+  notes.push(
+    '昼間部の学生は、勤務時間による社会保険の加入（週20時間以上・従業員51人以上）の対象外とされています。',
+  );
+  notes.push(
+    '週20時間以上・従業員51人以上の勤務先では、年収に関わらず自分の社会保険に加入することがあります。',
+  );
 
   notes.push('住民税は自治体によって基準が異なるため、この表には含めていません。');
 
   return {
     walls: walls.sort((a, b) => a.threshold - b.threshold),
-    isGeneric: birthYear === undefined,
-    ageAtYearEnd: age,
+    isGeneric: isAge19to22 === undefined,
     isSpecificRelativeAge,
     notes,
   };

@@ -76,3 +76,39 @@ export async function getProPriceString(): Promise<string | null> {
     return null;
   }
 }
+
+/**
+ * Appleのオファーコードの入力画面（App Storeの標準の画面）を開く。設定 →「プロモーション特典」から呼ぶ。
+ * 引き換えが済むと、initPurchases で登録した CustomerInfo の更新で isPro が自動で切り替わる。
+ * RevenueCat が未設定（APIキー無し）のときは SDK を呼ばずに案内を返す（未設定のまま呼ぶと落ちるため）。
+ */
+export async function presentCodeRedemptionSheet(): Promise<{ success: boolean; error?: string }> {
+  if (!configured) {
+    return {
+      success: false,
+      error: 'いまはコードを入力できません。時間をおいてもう一度お試しください。',
+    };
+  }
+  try {
+    await Purchases.presentCodeRedemptionSheet();
+    return { success: true };
+  } catch {
+    return {
+      success: false,
+      error: 'コードの入力画面を開けませんでした。時間をおいてもう一度お試しください。',
+    };
+  }
+}
+
+/**
+ * 「お客様ID」として見せる RevenueCat の App User ID。特典のお問い合わせのとき、RevenueCat の
+ * 管理画面から特定の人にPROを付ける目印になる。RevenueCat が未設定・取得に失敗したときは null。
+ */
+export async function getCustomerId(): Promise<string | null> {
+  if (!configured) return null;
+  try {
+    return await Purchases.getAppUserID();
+  } catch {
+    return null;
+  }
+}
