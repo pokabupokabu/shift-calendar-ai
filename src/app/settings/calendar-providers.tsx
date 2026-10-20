@@ -21,14 +21,17 @@ const PROVIDERS: { id: CalendarProviderId; label: string }[] = [
   { id: 'google', label: 'Google カレンダー' },
 ];
 
-/** 「ほかのアプリで見るには」の図の3つの絵。右端の絵はアプリを表す LayoutGrid に決めた（D2の確定）。 */
+/** 「ほかのカレンダーアプリと連携したい場合」の図の3つの絵。右端の絵はアプリを表す LayoutGrid に決めた（D2の確定）。 */
 const FLOW_NODES: { label: string; tone: IconBadgeTone; Icon: typeof CalendarDays }[] = [
   { label: 'シフToカレ', tone: 'blue', Icon: CalendarDays },
   { label: 'Google カレンダー', tone: 'blue', Icon: CalendarDays },
   { label: 'Jorte など', tone: 'neutral', Icon: LayoutGrid },
 ];
 
-const STEPS = ['上で Google カレンダーと連携', 'アプリ側で Google と同期をオン'] as const;
+const STEPS = [
+  'シフToカレと Google カレンダーを連携',
+  '連携したいアプリ側で Google と同期する',
+] as const;
 
 /** 図の丸の大きさ（Stitchの確定案の w-11）。 */
 const FLOW_BADGE_SIZE = 44;
@@ -119,7 +122,7 @@ export default function CalendarProvidersScreen() {
           }}
         >
           <ThemedText type="caption1" themeColor="textSecondary" style={styles.inset}>
-            ほかのアプリで見るには
+            ほかのカレンダーアプリと連携したい場合
           </ThemedText>
           <Card style={[styles.flowCard, styles.cardShadow]}>
             {FLOW_NODES.map((node, index) => (
@@ -131,6 +134,9 @@ export default function CalendarProvidersScreen() {
               <StepRow key={step} number={index + 1} label={step} withTopBorder={index > 0} />
             ))}
           </Card>
+          <ThemedText type="footnote" themeColor="textSecondary" style={styles.inset}>
+            詳しい操作は、お使いのカレンダーアプリのヘルプや設定画面をご確認ください。
+          </ThemedText>
         </View>
       </ScrollView>
     </Screen>
@@ -255,7 +261,18 @@ function StepRow({
           {number}
         </ThemedText>
       </View>
-      <ThemedText type="subheadline" style={styles.flexLabel}>
+      {/*
+        手順は幅375ptでも1行に収める（D2の追加の決定）。文字の幅を測ると、使える幅259ptに対して
+        15ptでは約265〜290pt・14ptでは約246〜268ptではみ出し、13pt（footnote）なら約228〜250ptで収まる。
+        それでも足りない文字サイズの設定では、iOSだけ少し縮める
+      */}
+      <ThemedText
+        type="footnote"
+        style={[styles.flexLabel, styles.stepLabel]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.85}
+      >
         {label}
       </ThemedText>
     </View>
@@ -338,6 +355,9 @@ const styles = StyleSheet.create({
     borderRadius: STEP_NUMBER_SIZE / 2,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  stepLabel: {
+    fontWeight: '500',
   },
   stepNumberText: {
     fontWeight: '600',
