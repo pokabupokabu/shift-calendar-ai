@@ -46,9 +46,7 @@ export default function RootLayout() {
           name="complete"
           options={{ title: '登録完了', headerBackVisible: false, gestureEnabled: false }}
         />
-        <Stack.Screen name="settings/calendar-providers" options={{ title: '対応カレンダー' }} />
-        <Stack.Screen name="settings/calendar-connect" options={{ title: 'カレンダー連携' }} />
-        <Stack.Screen name="settings/other-calendars" options={{ title: 'その他のカレンダー' }} />
+        <Stack.Screen name="settings/calendar-providers" options={{ title: 'カレンダー連携' }} />
         <Stack.Screen name="settings/dependency-wall" options={{ title: '扶養の壁' }} />
         <Stack.Screen name="settings/promotion" options={{ title: 'プロモーション特典' }} />
         <Stack.Screen name="tour-exit" options={{ headerShown: false, gestureEnabled: false }} />

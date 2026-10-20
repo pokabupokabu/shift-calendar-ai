@@ -2,7 +2,7 @@
 
 進め方は `group-a.md` と同じ（スキル `stitch-ui-review`）。修正前の画像は `.stitch-work/group-d/before/`（架空データ・幅375・2倍、2026-10-20）。
 
-修正案のページ: https://claude.ai/artifact/MjZmr9FVPujdiePpMhbyVC
+ページはサブグループごと（2026-10-20 ユーザーの希望。D1とD2が混ざって分かりにくいため）: D1 https://claude.ai/artifact/MjZmr9FVPujdiePpMhbyVC ／ D2 https://claude.ai/artifact/P2RuyXsqNude3jLHZvd7rr
 
 ## サブグループ（2026-10-20 ユーザー決定）
 
@@ -153,3 +153,76 @@ Stitchのプロジェクト: `https://stitch.withgoogle.com/projects/43543028931
 | 3   | Appleの「連携済み」                        | **iPhoneのカレンダーの許可を実際に確かめて**出す。許可が無ければ「未連携」、押すと許可を求める（今は許可が無くてもいつも連携済み＝`getConnectedProviders` がAppleを常に真にしている） |
 | 4   | マイカスタムの「その他カレンダーとの連携」 | 行は残し、押すと新しい「カレンダー連携」の画面の手順の位置を開く                                                                                                                      |
 | 5   | 表記ゆれ                                   | 画面の文言を「Google カレンダー」「Apple カレンダー」にそろえる（規約などの文書は変えない）                                                                                           |
+
+### D2 Stitchへの指示文
+
+添付する画像は4枚（`.stitch-work/group-d/d2/` の 1-対応カレンダー・2-カレンダー連携・3-その他のカレンダー・4-設定タブ）。全文は `.stitch-work/group-d/d2/prompt.txt`。
+
+```text
+Task: Merge three existing screens into ONE new pushed screen "カレンダー連携", using the 4 attached screenshots (1: current "対応カレンダー" list, 2: current in-between "Google カレンダーと連携" page, 3: current "その他のカレンダーで見る" guide, 4: the Settings tab that opens this screen from its "カレンダー連携" row - for style reference only, do not redesign it). Screens 1-3 are being replaced by the new screen; the in-between page (2) is removed. Output 3 screens, in this order:
+1. カレンダー連携, Apple connected / Google not connected, light mode, as ONE full-length scrolling page
+2. カレンダー連携, neither connected, light mode (top of the page is enough)
+3. カレンダー連携, same state as screen 1, dark mode, as ONE full-length scrolling page
+Design at 375pt width (iPhone SE / mini); it must also work at 393pt.
+
+Navigation bar: standard iOS bar with a back chevron "‹ 設定" on the left and the small centered title "カレンダー連携". Do NOT add a large title below the bar (the screen name must appear only once). The bar must follow light / dark mode.
+
+From top to bottom:
+- A short lead in Subheadline gray: "シフトを登録するカレンダーと連携します。"
+- One card with 2 rows, separated by a hairline:
+  1) "Apple カレンダー": a calendar icon in a soft GRAY circle; under the name a Caption1 gray status "連携済み" or "未連携".
+  2) "Google カレンダー": a calendar icon in a soft BLUE circle; same status line.
+  Right side of each row: if connected, a small green check with "連携済み" (not a button). If not connected, a blue text button "連携する" with "›". Tapping "連携する" starts the iOS permission prompt / Google sign-in directly (do not draw any dialog).
+- Below the card in Footnote gray: "許可は後からiPhoneの設定で変えられます。" and on the next line "登録先（どのカレンダーに入れるか）は、マイカスタムで勤務先ごとに選べます。"
+- Section label (Caption1, gray): "ほかのカレンダーアプリで見るには"
+- Body text in Subheadline gray (keep the wording): "シフToカレが直接登録できるのは Apple カレンダーと Google カレンダーの2つです。Jorte・Lifebear・Fantastical など、ほかのカレンダーアプリで見たい場合は、Google カレンダーを経由すると表示できる場合があります。"
+- One card with the 3 numbered steps from screenshot 3, unchanged wording, each with a small gray number circle: "マイカスタムで「Google カレンダー」と連携し、登録先にする" / "使っているカレンダーアプリの設定で「Googleカレンダーと同期する」をオンにする" / "シフトを登録すると、そのアプリにも表示される場合がある"
+- Below it in Footnote gray with a small info icon: "同期の方法や反映までの時間は、それぞれのカレンダーアプリによって異なります。"
+- No buttons at the bottom, no big illustration card, no prices, no other features.
+- Always write "Apple カレンダー" / "Google カレンダー" (never "Google Calendar").
+```
+
+### D2 Stitchのやり取りの記録
+
+Stitchのプロジェクト: `https://stitch.withgoogle.com/projects/1611427046835374762`（2026-10-20作成）。
+
+1回目の結果（3画面。画像は `.stitch-work/group-d/d2/v1-iphone/`、書き出しは `v1-export/{light,none,dark}/`）: 指示どおりで、SEでも切れる所は無い。
+
+1回目を見ての決定・指摘（2026-10-20）:
+
+- 「連携済み」が名前の下と右の2回出ていた → **右側だけにする**（名前の下の状態の文字はやめる）
+- ユーザーの指摘: **文字ばかりで見づらい。すっきりかつ見やすいUIに**。→ 3つの方向（A 最小／B タイル＋図／C 一覧＋図＋短い手順）をスマホ画面の見本にしてD2のページに載せた。手順の1つ目の文言の質問は、方向が決まってから
+- **方向はC（一覧＋図＋短い手順）に決定**（2026-10-20 ユーザー決定）。Stitchで2回目を出す
+
+2回目に送った指示（全文は `.stitch-work/group-d/d2/v2-task.txt`）:
+
+```text
+Revise the 3 screens you generated (1. Apple connected / Google not connected, light, full page; 2. neither connected, light; 3. same state as 1 in dark mode). Output 3 new screens in this same order. The current design has too much text and is hard to scan. Keep the navigation bar and the 2-row card, and apply ONLY these changes:
+1. Remove the lead sentence "シフトを登録するカレンダーと連携します。" and the footnote "許可は後からiPhoneの設定で変えられます。". Keep only one footnote under the card, in Footnote gray: "登録先はマイカスタムで勤務先ごとに選べます。"
+2. In the 2-row card, remove the small gray status text under each calendar name. Show the status only on the right side ("✓ 連携済み" in green, or "連携する ›" in blue).
+3. Replace the whole "ほかのカレンダーアプリで見るには" part (the long paragraph, the 3 long steps and the info note) with:
+   - Section label (Caption1, gray): "ほかのアプリで見るには"
+   - One card with a simple horizontal flow diagram of 3 nodes with small gray arrows between them: [blue calendar icon] "シフToカレ" → [blue calendar icon] "Google カレンダー" → [gray app icon] "Jorte など". Each icon in a soft tinted circle, its label in Caption1 gray under the icon.
+   - One card with 2 short numbered steps, each with a small blue number circle: "上で Google カレンダーと連携" and "アプリ側で Google と同期をオン".
+4. Nothing else on the page: no paragraph text, no extra notes, no buttons.
+Keep everything else exactly as it is now.
+```
+
+2回目の結果（画像は `.stitch-work/group-d/d2/v2-iphone/`、書き出しは `v2-export/{light,none,dark}/`）: 見本Cのとおり。SEでも切れる所は無い。実装で直す小さな点: 図の「Google カレンダー」が画面によって2行に折り返す → 1行に収める／図の右端の絵が画面ごとに違う → 1つに決める
+
+### D2の確定（2026-10-20 ユーザー決定）
+
+**Stitchの2回目の案（Cの方向）で確定**（書き出したHTMLは `.stitch-work/group-d/d2/v2-export/{light,none,dark}/`）。実装で直す小さな点: 図の「Google カレンダー」は1行に収める／図の右端の絵は1つに決める。
+
+### D2の実装の確認（2026-10-20）
+
+サブエージェントが worktree `.claude/worktrees/agent-ae805517b12c72010`（ブランチ `feat/ui-settings-d2`、`feat/ui-settings-d1` の上）で実装。8087番（`expo-web-d2`）で確認（画像は `.stitch-work/group-d/d2/impl/`）。ブラウザではカレンダーの許可を読めないため、Apple も Google も「連携する」で写る（「✓ 連携済み」は実機でしか見られない）。
+
+- Apple の判定は expo-calendar の `getCalendarPermissions()`（聞かずに読むだけ）。共通の型に `hasCalendarPermission()` を追加
+- 許可を断られたときの案内: 「カレンダーへのアクセスが許可されていません」「iPhoneの「設定」アプリ →「シフToカレ」→「カレンダー」から、あとで許可できます。」［閉じる］［設定を開く］（登録の確認画面でも同じ案内になる）
+- 設定の「カレンダー連携」の画面の「連携する」は登録先を変えない。マイカスタムの「連携する」は、連携できたらその勤務先の登録先にする（今までどおり）
+
+実装を見て決めたこと（2026-10-20 ユーザー決定）:
+
+- ダークモードで灰色の丸がカードと同じ色で見えない → **全画面共通の灰色の丸（`IconBadgeTones.dark.neutral`）を #2C2C2E に**
+- マイカスタムの連携カレンダーの欄も、**名前の下の状態の文字を無くし、右側だけ**にする（登録先＝緑の札／登録先にする／連携する ›）。「登録先なのに未連携」を名前の下で出す案は不要

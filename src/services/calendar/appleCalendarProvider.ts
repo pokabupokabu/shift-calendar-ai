@@ -58,6 +58,17 @@ export class AppleCalendarProvider implements CalendarProvider {
     return status === 'granted';
   }
 
+  async hasCalendarPermission(): Promise<boolean> {
+    // getCalendarPermissions only reads the current state; it never shows the iOS prompt.
+    // On web it always reports "undetermined", so Apple shows as not connected there.
+    try {
+      const { status } = await Calendar.getCalendarPermissions();
+      return status === 'granted';
+    } catch {
+      return false;
+    }
+  }
+
   async createEvent(input: CreateCalendarEventInput): Promise<CalendarEventRecord> {
     const calendar = Calendar.getDefaultCalendarSync();
     const { startDate, endDate } = resolveEventRange(input);

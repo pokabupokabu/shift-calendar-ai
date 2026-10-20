@@ -79,7 +79,8 @@ export const IconBadgeTones = {
     orange: { background: '#3A2A14', icon: '#FF9F0A' },
     purple: { background: '#2C2140', icon: '#9061F9' },
     red: { background: '#3A1D1D', icon: '#FF453A' },
-    neutral: { background: '#1C1C1E', icon: '#98989F' },
+    // カードの地（#1C1C1E）と同じだと丸が見えないため、一段明るくする（D2の確定）
+    neutral: { background: '#2C2C2E', icon: '#98989F' },
     gold: { background: '#3A3014', icon: '#FFD60A' },
   },
 } as const;

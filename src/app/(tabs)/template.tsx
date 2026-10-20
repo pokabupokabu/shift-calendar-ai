@@ -56,6 +56,8 @@ import {
   type Workplace,
   type WorkplaceSettings,
 } from '@/models';
+import { getCalendarProvider } from '@/services/calendar';
+import { ensureCalendarAccess } from '@/services/calendar/ensureCalendarAccess';
 import { getConnectedProviders } from '@/services/calendar/getConnectedProviders';
 import { useAppStore } from '@/store/useAppStore';
 import { useTourStore } from '@/store/useTourStore';
@@ -151,8 +153,9 @@ export default function TemplateTab() {
   const activeWorkplace =
     workplaces.find((workplace) => workplace.id === user?.activeWorkplaceId) ?? workplaces[0];
   const settings = activeWorkplace?.settings ?? DEFAULT_WORKPLACE_SETTINGS;
-  // 連携の画面から戻ってきたときに状態を取り直すため、タブが表示されるたびに確認する
-  const [connectedProviderIds, setConnectedProviderIds] = useState<CalendarProviderId[]>(['apple']);
+  // カレンダー連携の画面から戻ってきたときに状態を取り直すため、タブが表示されるたびに確認する。
+  // Apple も実際の許可を確かめるので、確認が終わるまでは「未連携」扱いにしておく（D2の決定3）
+  const [connectedProviderIds, setConnectedProviderIds] = useState<CalendarProviderId[]>([]);
   useFocusEffect(
     useCallback(() => {
       let active = true;
@@ -164,6 +167,24 @@ export default function TemplateTab() {
       };
     }, []),
   );
+  const [connectingProviderId, setConnectingProviderId] = useState<CalendarProviderId | null>(null);
+  /**
+   * 未連携の行の「連携する」。画面を移らずその場でサインイン／許可を出し、連携できたら
+   * その勤務先の登録先にする（旧 calendar-connect の画面の動きを引き継ぐ。D2の決定2）。
+   */
+  const handleConnectProvider = async (id: CalendarProviderId) => {
+    if (!activeWorkplace || connectingProviderId) return;
+    const workplaceId = activeWorkplace.id;
+    setConnectingProviderId(id);
+    try {
+      if (await ensureCalendarAccess(getCalendarProvider(id))) {
+        updateWorkplaceSettings(workplaceId, { defaultCalendarProvider: id });
+      }
+    } finally {
+      setConnectingProviderId(null);
+      setConnectedProviderIds(await getConnectedProviders());
+    }
+  };
   const shiftTypes = activeWorkplace?.shiftTypes ?? [];
 
   const [isNameDialogOpen, setNameDialogOpen] = useState(false);
@@ -350,16 +371,15 @@ export default function TemplateTab() {
             {CALENDAR_PROVIDER_IDS.map((id) => {
               const isConnected = connectedProviderIds.includes(id);
               const isDefault = settings.defaultCalendarProvider === id;
+              const isConnecting = connectingProviderId === id;
               return (
                 <Pressable
                   key={id}
-                  disabled={isDefault}
+                  // 登録先でも未連携なら（Appleの許可がまだ等）押して連携できるようにする
+                  disabled={(isDefault && isConnected) || isConnecting}
                   onPress={() => {
                     if (!isConnected) {
-                      router.push({
-                        pathname: '/settings/calendar-connect',
-                        params: { provider: id },
-                      });
+                      void handleConnectProvider(id);
                       return;
                     }
                     if (activeWorkplace) {
@@ -369,13 +389,11 @@ export default function TemplateTab() {
                   style={[styles.infoRow, styles.blockBorder, { borderTopColor: theme.border }]}
                 >
                   <CalendarProviderIcon provider={id} />
-                  <View style={styles.infoRowLabel}>
-                    <ThemedText type="body">{CALENDAR_PROVIDER_LABEL[id]}</ThemedText>
-                    <ThemedText type="caption1" themeColor="textSecondary">
-                      {isConnected ? '連携済み' : '未連携'}
-                    </ThemedText>
-                  </View>
-                  {isDefault ? (
+                  {/* 状態は右側だけで出す（名前の下の状態の文字は出さない。D2の確定） */}
+                  <ThemedText type="body" style={styles.infoRowLabel}>
+                    {CALENDAR_PROVIDER_LABEL[id]}
+                  </ThemedText>
+                  {isDefault && isConnected ? (
                     <View style={[styles.connectedTag, { backgroundColor: greenBadge.background }]}>
                       <CheckCircle2 size={IconSize.small} color={theme.success} />
                       <ThemedText type="caption2" themeColor="success">
@@ -385,7 +403,7 @@ export default function TemplateTab() {
                   ) : (
                     <View style={styles.changeAffordance}>
                       <ThemedText type="subheadline" themeColor="primary">
-                        {isConnected ? '登録先にする' : '連携する'}
+                        {isConnected ? '登録先にする' : isConnecting ? '連携中…' : '連携する'}
                       </ThemedText>
                       {!isConnected && <ChevronRight size={IconSize.small} color={theme.primary} />}
                     </View>
@@ -395,7 +413,13 @@ export default function TemplateTab() {
             })}
 
             <Pressable
-              onPress={() => router.push('/settings/other-calendars')}
+              // カレンダー連携の画面を「ほかのアプリで見るには」の位置まで送って開く（D2の決定4）
+              onPress={() =>
+                router.push({
+                  pathname: '/settings/calendar-providers',
+                  params: { section: 'other' },
+                })
+              }
               style={[styles.infoRow, styles.blockBorder, { borderTopColor: theme.border }]}
             >
               <OtherCalendarsIcon />
