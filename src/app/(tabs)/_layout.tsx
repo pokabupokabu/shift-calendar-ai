@@ -85,7 +85,10 @@ export default function TabsLayout() {
           // （href を渡すと Web ではリンクとして描かれ、押すとページごと読み込み直して案内が消えるので外す）
           tabBarButton: ({ ref: _ref, href: _href, ...props }) => (
             <TourTarget id="tab-mycustom" followsScreenFocus={false} style={styles.tabButtonTarget}>
-              <Pressable {...props} style={[props.style, styles.tabButtonTarget]} />
+              <Pressable
+                {...props}
+                style={[props.style, styles.tabButtonTarget, styles.wideLabelTab]}
+              />
             </TourTarget>
           ),
         }}
@@ -125,6 +128,12 @@ export default function TabsLayout() {
 const styles = StyleSheet.create({
   tabButtonTarget: {
     flex: 1,
+  },
+  // 「マイカスタム」（11pt×6文字＝約66pt）は、iPhone SE（幅375pt）だとタブ1つの幅が75ptしかなく、
+  // 標準のタブの左右の余白（各5pt）を引いた65ptに収まらず「…」で切れる。このタブだけ左右の余白を無くして
+  // 75ptを使えるようにする（文字の大きさ・ほかのタブの見た目は変えない）。
+  wideLabelTab: {
+    paddingHorizontal: 0,
   },
   tabBarLabel: {
     fontSize: 11,

@@ -488,6 +488,19 @@ Stitchのプロジェクト名は「Shift App Customization Settings」（2026-1
 
 実装はサブエージェントに依頼（worktreeで作業。ブランチは `feat/ui-payroll`（PR #26）の上に `feat/ui-template` を作る。コミットはまだしない）。Googleカレンダーの正式なアイコンの画像は入手方法と利用条件をユーザーと確認してから差し替えるので、実装では今の絵のまま置き場所だけ用意する。
 
+### ④の実装（2026-10-20）
+
+サブエージェントが worktree `.claude/worktrees/agent-a9891e02858398eae`（ブランチ `feat/ui-template`、`feat/ui-payroll` の上）で実装。lint・型・整形は通過。**まだコミットしていない**。8085番（`.claude/launch.json` の `expo-web-template`）で架空データを入れて表示を確認した（画像は `.stitch-work/group-a-4/impl/`）。無料・PRO（勤務先2つ・名前は6文字で「…」・「＋ 追加」）・追加した種別の編集（絵を選べる）・削除の確認・基本種別（未登録）の編集・ダークモードとも、確定した案どおり。保存データの version 17 の移行で、仮の時刻と同じ基本種別が未登録になることも確認した。
+
+- 8085番を最初に起動したとき、別の作業フォルダの古い画面のコードが混ざって読み込まれ、未登録の種別でアプリが止まった（Metroのキャッシュの混線）。`--clear` を付けて起動し直すと正しく表示された。**作業フォルダを `node_modules` のリンクで動かすときは `--clear` で起動する**
+- 基本種別の小窓の注意書き「基本の種別は、名前とアイコンを変えられません」がSEで「ん」だけ折り返したので、読点を外して1行に収めた（メインのスレッドで修正）
+
+ユーザーに確認して決めたこと（2026-10-20）:
+
+- 既に使っている人の基本の3つは、仮の時刻と同じなら未登録にする（**リリース前で既存の利用者がいないため、今の作りのままでよい**）
+- 未登録の種別は、AIの読み取りの手がかりに名前も渡さない（今の作りのまま）
+- 削除の確認の1行の説明文は「読み取りの手がかりからも外れます」
+
 ## サブグループ⑤ 設定
 
 修正案のページ: https://claude.ai/artifact/QX3zxeiDpxBVK94aqcmWYn
@@ -512,15 +525,116 @@ Stitchのプロジェクト名は「Shift App Customization Settings」（2026-1
 - 3の「見出しの右」は全タブ共通なので、①〜④の画面（実装済み・実装中）にも後から足す。全タブ共通の直し（`PrimaryButton` の青化など）と一緒に行うか、⑤の実装で一緒に行うかは実装の前に決める
 - 行を押した先の画面（アカウント設定、登録先カレンダー、新しい「扶養の壁」の画面、規約などの文書）の見た目は、**グループD**で同じ手順（修正案→質問→Stitch→実装）で見直す（2026-10-20 ユーザーと確認）
 
-### ④の実装（2026-10-20）
+### Stitchへの指示文（⑤）
 
-サブエージェントが worktree `.claude/worktrees/agent-a9891e02858398eae`（ブランチ `feat/ui-template`、`feat/ui-payroll` の上）で実装。lint・型・整形は通過。**まだコミットしていない**。8085番（`.claude/launch.json` の `expo-web-template`）で架空データを入れて表示を確認した（画像は `.stitch-work/group-a-4/impl/`）。無料・PRO（勤務先2つ・名前は6文字で「…」・「＋ 追加」）・追加した種別の編集（絵を選べる）・削除の確認・基本種別（未登録）の編集・ダークモードとも、確定した案どおり。保存データの version 17 の移行で、仮の時刻と同じ基本種別が未登録になることも確認した。
+`docs/design-system.md` の「7. Stitchへ毎回添える指示」の後ろに続けて貼る（つないだ全文は `.stitch-work/group-a-5/prompt.txt`）。添付する画像は4枚（無料・上、無料・下、PRO、ダーク）。出してもらう画面は3枚（無料の全体、PROの全体、無料のダークモード）。
 
-- 8085番を最初に起動したとき、別の作業フォルダの古い画面のコードが混ざって読み込まれ、未登録の種別でアプリが止まった（Metroのキャッシュの混線）。`--clear` を付けて起動し直すと正しく表示された。**作業フォルダを `node_modules` のリンクで動かすときは `--clear` で起動する**
-- 基本種別の小窓の注意書き「基本の種別は、名前とアイコンを変えられません」がSEで「ん」だけ折り返したので、読点を外して1行に収めた（メインのスレッドで修正）
+```text
+Task: Improve the Settings tab ("設定") from the 4 attached screenshots. Output 3 screens, in this order:
+1. 設定, free plan, as ONE full-length scrolling page (screenshots 1 and 2 are the top and the bottom of the same page)
+2. 設定, PRO plan, as ONE full-length scrolling page (screenshot 3)
+3. 設定, free plan, dark mode, top of the page (screenshot 4)
+Design at 375pt width (iPhone SE / mini); it must also work at 393pt. Keep the overall structure. Apply ONLY the changes below.
 
-ユーザーに確認して決めたこと（2026-10-20）:
+Header (all screens):
+- Large title "設定" at the top left: Title1 (28/34 bold). It is too big now.
+- On the RIGHT side of the same title row, show two small NON-tappable status items: a plan status tag and a profile icon (a generic person icon in a soft gray circle, about 32pt). Plan status tag: free plan = a gray tag "無料" (light gray fill, gray text); PRO plan = a gold tag "PRO" (gold fill #FFD60A with dark brown text #5C3D00, corner radius 8). This header style will be shared by all tabs, so keep it compact and simple.
+- Remove the profile card with the user name ("佐藤 ひなた") completely. The app no longer shows a user name.
+- Keep the bottom tab bar exactly as it is.
 
-- 既に使っている人の基本の3つは、仮の時刻と同じなら未登録にする（**リリース前で既存の利用者がいないため、今の作りのままでよい**）
-- 未登録の種別は、AIの読み取りの手がかりに名前も渡さない（今の作りのまま）
-- 削除の確認の1行の説明文は「読み取りの手がかりからも外れます」
+Ad (free plan only, screens 1 and 3):
+- Remove the small "広告" box next to the title. Put a full-width standard banner ad placeholder (320x50, labeled "広告") directly below the title row, with at least 16pt of space below it. The PRO screen has no ad.
+
+PRO promotion card "シフToカレ PRO" (free plan only):
+- Keep the card text and "¥330 / 月" as they are.
+- The star icon at the top left of the card: gold instead of orange (soft gold-tinted circle with a gold star).
+- Replace the black "PROにアップグレード" button with the standard primary button: pill, filled #007AFF, white text. It must be clearly visible in dark mode too (screen 3).
+- The card background must be the normal card color (white in light mode, #1C1C1E in dark mode), not a custom gray.
+- Screen 2 (PRO plan): do NOT show this card at all (no "ご利用中です" button).
+
+"一般設定" card (all screens), rows in this order:
+1. "登録先カレンダー" (renamed from "カレンダー同期設定"; it must fit on ONE line). On the right, show the actual current destination in gray, e.g. "Apple カレンダー", then "›". Keep the current orange sync icon.
+2. NEW row "扶養の壁": the same orange warning-triangle icon as the dependency wall card in the Payroll tab, in a soft orange-tinted circle. On the right, show the current setting in gray, e.g. "生まれ年 2005年" (if not set, "未設定"), then "›".
+3. "外観" with the "ライト / ダーク" switch: keep it as it is.
+
+Other sections:
+- Keep "アカウント" (with "アカウント設定"), "サポート・その他" and the version text at the bottom exactly as they are.
+- Section labels outside the cards: Caption1 (12pt), gray.
+```
+
+- 「扶養の壁」の行の絵は、給与タブの扶養の壁カードと同じオレンジの三角（注意）にして、つながりが分かるようにした
+- 見出しの右の「アイコン＋プランの表示」は全タブ共通になるので、⑤の案で形を決め、①〜④にも同じものを足す
+
+### PRの状況（2026-10-20）
+
+- #25（②を `main` へ）マージ済み
+- #26（③給与）は向き先 `feat/ui-calendar-main` のままマージされ、③は `main` に未反映 → **#28（`feat/ui-calendar-main` → `main`）で③を `main` へ**
+- #27（④マイカスタム、ブランチ `feat/ui-template`）は向き先を `main` に変更済み。**#28 → #27 の順にマージ**
+
+### Stitchのやり取りの記録（⑤）
+
+Stitchのプロジェクト: `https://stitch.withgoogle.com/projects/5608018983632471059`（2026-10-20作成）。
+
+| 版  | 送った内容                          | 結果                      |
+| --- | ----------------------------------- | ------------------------- |
+| 1   | 上の指示文＋画像4枚                 | 下の「1回目の結果」を参照 |
+| 2   | 1回目を見ての直し3点（v2-task.txt） | 下の「2回目の結果」を参照 |
+
+1回目の結果（3画面。iPhone SE・16の画面サイズで確認。画像は `.stitch-work/group-a-5/v1-iphone/`）:
+
+- できた: 見出し28pt、見出しの右の「無料（灰色）／PRO（金）」の札とプロフィールのアイコン、プロフィールのカード（表示名）の削除、見出しの下の横長の広告、宣伝カードの金の星と青いボタン（ダークモードでも見える）、PROでは宣伝カードなし、「登録先カレンダー」、新しい「扶養の壁」の行（右に「生まれ年 2005年」）、外観はそのまま
+- 直す点: 「登録先カレンダー」の右の「Apple カレンダー」がiPhone SEでも16でも「…」で切れた → **右は「Apple」「Google」だけにする**（2026-10-20 ユーザー決定）
+- 気にしなくてよい: Stitchのタブバーは今のアプリと違う絵・「マイカスタム」が折り返している（実装は今のタブバーのまま）
+
+確認用のページ（3画面をiPhone SE・16で並べたもの）: https://claude.ai/artifact/7KgD8Que32aodQd8Cj8hWo
+
+**1回目を見ての決定（2026-10-20 ユーザー決定）**
+
+- 見出しの右は**アイコンを左、プランの札を右**に並べる
+- アイコン: **無料は青い丸に若葉の絵**、**PROは金の丸に星**（もとのプロフィールのカードの星）。人の絵はやめる
+- 「登録先カレンダー」の**絵をカレンダーの絵**にする（右は「Apple」「Google」だけ）
+- **タブバーの「マイカスタム」が2行に折り返さないこと**（Stitchの案では折り返していた。Stitchには直させず、実装で必ず確かめる）
+
+2回目に送る指示（全文は `.stitch-work/group-a-5/v2-task.txt`）:
+
+```text
+Revise the 3 Settings screens you generated (1. free plan full page, 2. PRO plan full page, 3. free plan dark mode). Output 3 new screens in this same order. Keep everything else exactly as it is now and apply ONLY these changes:
+
+1. Header, right side of the title row: swap the order. Put the profile icon FIRST (left) and the plan status tag SECOND (right, at the very right edge).
+2. Header profile icon (about 32pt circle, NOT tappable): free plan = a soft BLUE circle (#E8F2FF) with a blue (#007AFF) young-leaf / sprout icon; PRO plan = a gold circle with a filled star (the same star mark as the PRO card, gold tint). Do not use the generic person icon anymore. Keep the plan status tags as they are ("無料" gray tag / "PRO" gold tag).
+3. "登録先カレンダー" row: change its icon to a calendar icon (keep the soft orange-tinted circle). On the right, show ONLY "Apple" (or "Google"), not "Apple カレンダー", so nothing is truncated on a 375pt screen.
+
+Do not add anything else.
+```
+
+2回目の結果（画像は `.stitch-work/group-a-5/v2-iphone/`、確認用のページ: https://claude.ai/artifact/U8LsBf2zQjWdU97YxLuR9n）:
+
+- できた: アイコンが左・札が右、PROは金の丸に星、「登録先カレンダー」はカレンダーの絵で右は「Apple」だけ（SEでも切れない）
+- 無料の若葉の絵は、ダークモードでは正しい若葉（Font Awesome の seedling）だったが、ライトではStitchが自前の線画で描いたため別の形に見えた。実装ではアイコンの部品（lucide の `Sprout` など）を使うので問題にならない
+
+### ⑤の確定（2026-10-20 ユーザー決定）
+
+**Stitchの2回目の案で確定**（書き出したHTMLは `.stitch-work/group-a-5/v2-export/`、iPhoneサイズの画像は `v2-iphone/`）。**実装は次のセッションに持ち越し**（コンテキストの上限のため）。
+
+実装で行うこと（サブエージェント・worktree、ブランチは `feat/ui-template`（PR #27）の上に作る）:
+
+- ⑤の決定事項の表1〜8と、1回目を見ての決定（アイコン左・札右、無料は青い丸に若葉（lucide `Sprout` 等）・PROは金の丸に星、登録先はカレンダーの絵で右は「Apple」「Google」だけ）
+- **見出しの右の「アイコン＋プランの札」を全タブ（カレンダー・給与・マイカスタム・設定）に入れる**（共通部品にする。押せない表示）
+- **タブバーの「マイカスタム」が2行に折り返さないこと**を確かめる
+- 表示名（`User.displayName`）をやめる（設定のプロフィールのカード・アカウント設定の名前の欄・`photo-select.tsx` の一文は登録者キーワードで）
+- 「扶養の壁」の行の行き先は、新しい画面ができるまで `/settings/account`
+
+### ⑤の実装（2026-10-20）
+
+サブエージェントが worktree `.claude/worktrees/agent-a7b801193d7f6fb95`（ブランチ `feat/ui-settings`、PR #27 のマージ後の `main` 4d449b3 から作成）で実装。lint・型・整形は通過。8086番（`.claude/launch.json` の `expo-web-settings`、`--clear` 付き）で架空データを入れて表示を確認した（画像は `.stitch-work/group-a-5/impl/` と `impl-page/img/`、確認用のページ: https://claude.ai/artifact/FoCkLXXMrPAttFixt37dAi ）。
+
+- 新しい共通部品 `src/components/header-status.tsx`（`HeaderStatus`・`TabTitleRow`）。4タブの見出しをこれに置き換えた（見出しの行の高さは変えていない）
+- 設定タブ: 見出し28pt、横長の広告、プロフィールのカードと表示名の編集を削除、宣伝カードは無料の人だけ、「登録先カレンダー」（右に「Apple」「Google」）、「扶養の壁」の行（右に「生まれ年 2006年」／「未設定」、行き先は仮に `/settings/account`）、セクション名は12pt
+- 表示名をやめた: アカウント設定の名前の欄を削除、写真選択の一文は登録者キーワード、`User.displayName` と `setDisplayName` を削除（保存データの version は17のまま）
+- タブバーの「マイカスタム」: 文字は常に1行だが、幅375ptだと「…」で切れるおそれがあったので、このタブだけ左右の余白を0にした
+
+案と変えたところをユーザーに確認して決めたこと（2026-10-20）:
+
+1. 「PROにアップグレード」は**案どおり価格の右**。主ボタン（17pt）だとiPhone SEで切れるため、このボタンだけ文字15pt・左右の余白16pt・高さ44ptの小さめのピル型にした（`PrimaryButton` は変えていない）
+2. 行のアイコンは色付きの絵のまま。ただし**行どうしで色を重ねない**ため、「登録先カレンダー」を薄い赤（`red`）にした（扶養の壁はオレンジ、アカウントは青、外観は紫、サポート・その他は灰色）
+3. PROの星は濃いめの金（`IconBadge` の `gold` の絵の色）のまま

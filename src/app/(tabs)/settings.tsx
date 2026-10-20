@@ -1,39 +1,38 @@
 import Constants from 'expo-constants';
 import { router, type Href } from 'expo-router';
 import {
+  CalendarDays,
   ChevronRight,
   ClipboardList,
   FileText,
   LifeBuoy,
   MessageCircle,
   Palette,
-  RefreshCw,
   ShieldCheck,
   Star,
-  User,
+  TriangleAlert,
   UserCog,
   type LucideIcon,
 } from 'lucide-react-native';
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AdPlaceholder } from '@/components/ad-placeholder';
 import { Card } from '@/components/card';
-import { Dialog } from '@/components/dialog';
+import { TabTitleRow } from '@/components/header-status';
 import { IconBadge } from '@/components/icon-badge';
-import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { BottomTabInset, Radius, Spacing, type IconBadgeTone } from '@/constants/theme';
-import { useResolvedColorScheme } from '@/hooks/use-resolved-color-scheme';
+import { useIconBadgeColors } from '@/hooks/use-icon-badge-colors';
 import { useTheme } from '@/hooks/use-theme';
+import type { CalendarProviderId } from '@/models/calendarEvent';
 import { useAppStore } from '@/store/useAppStore';
 
 interface SettingsRow {
   icon: LucideIcon;
   tone: IconBadgeTone;
   label: string;
-  /** カレンダー同期設定の「iOSカレンダー」のように、chevronの手前に添える小さな補足テキスト。 */
+  /** 登録先カレンダーの「Apple」のように、chevronの手前に添える今の設定（灰色の小さな文字）。 */
   trailingLabel?: string;
   /** タップ時の遷移先。全ての行が遷移先を持つ（未実装の行は置かない）。 */
   route: Href;
@@ -46,21 +45,50 @@ const ACCOUNT_ROWS: SettingsRow[] = [
   { icon: UserCog, tone: 'blue', label: 'アカウント設定', route: '/settings/account' },
 ];
 
-// 「外観」だけは実際のインライン切り替えUI (AppearanceRow) として別枠で描画するため、
-// このセクション用の配列には含めない。表示順は カレンダー同期設定 → 外観。
-//
-// 「通知設定」の行は削除した。アプリ独自通知は要件定義書24節のOUTに明記されており
-// （23節「アプリ独自のシフト通知はMVPでは作らない。カレンダーイベント側の通知機能を利用する」）、
-// 遷移先が無いまま置くと「準備中」のアラートが出て審査ガイドライン2.1に抵触するため。
-const GENERAL_ROWS: SettingsRow[] = [
-  {
-    icon: RefreshCw,
-    tone: 'orange',
-    label: 'カレンダー同期設定',
-    trailingLabel: 'iOSカレンダー',
-    route: '/settings/calendar-providers',
-  },
-];
+/** 登録先カレンダーの行の右に出す短い名前（「Apple カレンダー」だとiPhone SEで切れるため短くする）。 */
+const CALENDAR_PROVIDER_SHORT_LABELS: Record<CalendarProviderId, string> = {
+  apple: 'Apple',
+  google: 'Google',
+};
+
+/**
+ * 「一般設定」の行。表示順は 登録先カレンダー → 扶養の壁 → 外観。
+ * 右に添える今の設定は保存データから作るため、画面の中で組み立てる。
+ * 「外観」だけは実際のインライン切り替えUI (AppearanceRow) として別枠で描画する。
+ *
+ * 「通知設定」の行は削除した。アプリ独自通知は要件定義書24節のOUTに明記されており
+ * （23節「アプリ独自のシフト通知はMVPでは作らない。カレンダーイベント側の通知機能を利用する」）、
+ * 遷移先が無いまま置くと「準備中」のアラートが出て審査ガイドライン2.1に抵触するため。
+ */
+function useGeneralRows(): SettingsRow[] {
+  const calendarProvider = useAppStore((state) => {
+    const user = state.user;
+    const activeWorkplace =
+      user?.workplaces.find((w) => w.id === user.activeWorkplaceId) ?? user?.workplaces[0];
+    return activeWorkplace?.settings.defaultCalendarProvider ?? 'apple';
+  });
+  const birthYear = useAppStore((state) => state.user?.settings.birthYear);
+
+  return [
+    {
+      // 行どうしで色が重ならないよう、扶養の壁（オレンジ）と分けて薄い赤にする（2026-10-20 ユーザー決定）。
+      icon: CalendarDays,
+      tone: 'red',
+      label: '登録先カレンダー',
+      trailingLabel: CALENDAR_PROVIDER_SHORT_LABELS[calendarProvider],
+      route: '/settings/calendar-providers',
+    },
+    {
+      // 給与タブの扶養の壁カードと同じオレンジの三角（つながりが分かるように）。
+      icon: TriangleAlert,
+      tone: 'orange',
+      label: '扶養の壁',
+      trailingLabel: birthYear !== undefined ? `生まれ年 ${birthYear}年` : '未設定',
+      // 扶養の壁の新しい画面（グループD）ができるまでは、生まれ年を入力できるアカウント設定へ。
+      route: '/settings/account',
+    },
+  ];
+}
 
 // サポートと法的表記は、モックアップ通り1つの「サポート・その他」カードにまとめる。
 // ただし利用規約・プライバシーポリシー・特定商取引法に基づく表記は、日本の法令上それぞれ
@@ -93,16 +121,24 @@ const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 /** ボーダー区切り付きの1行分。`SettingsRowGroup`と`一般設定`セクション内の混在リストの両方から使う。 */
 function NavRow({ row }: { row: SettingsRow }) {
   const theme = useTheme();
+  const badge = useIconBadgeColors(row.tone);
 
   return (
-    <Pressable onPress={() => router.push(row.route)} style={styles.row}>
+    <Pressable
+      onPress={() => router.push(row.route)}
+      accessibilityRole="button"
+      accessibilityLabel={row.trailingLabel ? `${row.label}、${row.trailingLabel}` : row.label}
+      style={styles.row}
+    >
       <IconBadge tone={row.tone} size={ROW_ICON_BADGE_SIZE}>
-        <row.icon size={ROW_ICON_SIZE} color={theme.text} />
+        <row.icon size={ROW_ICON_SIZE} color={badge.icon} />
       </IconBadge>
-      <ThemedText style={styles.rowLabel}>{row.label}</ThemedText>
+      <ThemedText style={styles.rowLabel} numberOfLines={1}>
+        {row.label}
+      </ThemedText>
       <View style={styles.rowRight}>
         {row.trailingLabel && (
-          <ThemedText style={styles.trailingLabel} themeColor="textSecondary">
+          <ThemedText style={styles.trailingLabel} themeColor="textSecondary" numberOfLines={1}>
             {row.trailingLabel}
           </ThemedText>
         )}
@@ -122,7 +158,7 @@ function SettingsRowGroup({ rows, caption }: { rows: SettingsRow[]; caption?: st
   return (
     <View style={styles.group}>
       {caption && (
-        <ThemedText style={styles.caption} themeColor="textSecondary">
+        <ThemedText type="caption1" style={styles.caption} themeColor="textSecondary">
           {caption}
         </ThemedText>
       )}
@@ -141,6 +177,7 @@ function SettingsRowGroup({ rows, caption }: { rows: SettingsRow[]; caption?: st
 /** 「外観」の実インライン切り替え行。マイカスタムタブの wageTypeToggle と同じピル型セグメントコントロール。 */
 function AppearanceRow({ withTopSeparator }: { withTopSeparator: boolean }) {
   const theme = useTheme();
+  const purpleBadge = useIconBadgeColors('purple');
   const user = useAppStore((state) => state.user);
   const updateSettings = useAppStore((state) => state.updateSettings);
   const themeOverride = user?.settings.themeOverride ?? 'light';
@@ -150,7 +187,7 @@ function AppearanceRow({ withTopSeparator }: { withTopSeparator: boolean }) {
       {withTopSeparator && <RowSeparator />}
       <View style={styles.appearanceRow}>
         <IconBadge tone="purple" size={ROW_ICON_BADGE_SIZE}>
-          <Palette size={ROW_ICON_SIZE} color={theme.text} />
+          <Palette size={ROW_ICON_SIZE} color={purpleBadge.icon} />
         </IconBadge>
         <ThemedText style={styles.rowLabel}>外観</ThemedText>
         <View style={[styles.themeToggle, { backgroundColor: theme.backgroundSelected }]}>
@@ -188,118 +225,78 @@ function AppearanceRow({ withTopSeparator }: { withTopSeparator: boolean }) {
   );
 }
 
-/** 設定タブ: 一般的なアプリ設定（アカウント・通知・外観・規約など）。シフト登録の挙動自体は「マイカスタム」タブが担う。 */
+/** 設定タブ: 一般的なアプリ設定（アカウント・登録先カレンダー・扶養の壁・外観・規約など）。シフト登録の挙動自体は「マイカスタム」タブが担う。 */
 export default function SettingsTab() {
   const theme = useTheme();
-  const resolvedScheme = useResolvedColorScheme();
-  const proCardBackground = resolvedScheme === 'dark' ? theme.backgroundElement : '#F5F5F7';
-  const profileName = useAppStore(
-    (state) => state.user?.displayName || state.user?.shiftName || '匿名ユーザー',
-  );
+  const goldBadge = useIconBadgeColors('gold');
   const isPro = useAppStore((state) => state.user?.settings.isPro ?? false);
-  const setDisplayName = useAppStore((state) => state.setDisplayName);
-  const [isNameDialogOpen, setNameDialogOpen] = useState(false);
-  const [nameDraft, setNameDraft] = useState(profileName);
-
-  const handleOpenNameDialog = () => {
-    setNameDraft(profileName);
-    setNameDialogOpen(true);
-  };
-
-  const handleSaveName = () => {
-    setDisplayName(nameDraft.trim());
-    setNameDialogOpen(false);
-  };
+  const generalRows = useGeneralRows();
 
   return (
     <Screen>
-      <View style={styles.headerRow}>
-        <ThemedText type="subtitle">設定</ThemedText>
-        <AdPlaceholder slot="settings" size="inline" />
-      </View>
+      <TabTitleRow title="設定" />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Card
-          onPress={handleOpenNameDialog}
-          style={[
-            styles.profileCard,
-            { backgroundColor: theme.backgroundElement },
-            styles.cardShadow,
-          ]}
-        >
-          <View style={styles.profileRow}>
-            <View
-              style={[
-                styles.avatar,
-                { backgroundColor: isPro ? theme.orange : theme.backgroundSelected },
-              ]}
-            >
-              {isPro ? (
-                <Star size={32} color="#FFFFFF" fill="#FFFFFF" />
-              ) : (
-                <User size={36} color={theme.textSecondary} />
-              )}
-            </View>
-            <View style={styles.profileNameColumn}>
-              <ThemedText type="headline" style={styles.profileName}>
-                {profileName}
-              </ThemedText>
-              {isPro && (
-                <View style={[styles.proPill, { backgroundColor: theme.orange }]}>
-                  <ThemedText style={styles.proPillLabel}>PRO</ThemedText>
-                </View>
-              )}
-            </View>
-            <ChevronRight size={20} color={theme.disabled} />
-          </View>
-        </Card>
+        {/* 横長のバナー（320×50）。PROでは自動で消える。下のカードとは scrollContent の gap（16pt）で離す */}
+        <AdPlaceholder slot="settings" />
 
-        <Card style={[styles.proCard, { backgroundColor: proCardBackground }, styles.cardShadow]}>
-          <View style={styles.proHeading}>
-            <View style={[styles.proBadge, { backgroundColor: theme.orange }]}>
-              <Star size={14} color="#FFFFFF" fill="#FFFFFF" />
+        {/* PROの宣伝は無料の人だけ。PROの人は見出しの右の金の「PRO」で分かるので、カードごと出さない */}
+        {!isPro && (
+          <Card style={[styles.proCard, styles.cardShadow]}>
+            <View style={styles.proHeading}>
+              <IconBadge tone="gold" size={ROW_ICON_BADGE_SIZE}>
+                <Star size={14} color={goldBadge.icon} fill={goldBadge.icon} />
+              </IconBadge>
+              <ThemedText type="headline">シフToカレ PRO</ThemedText>
             </View>
-            <ThemedText style={styles.proTitle}>シフToカレ PRO</ThemedText>
-          </View>
-          <ThemedText type="footnote" themeColor="textSecondary">
-            読み取り回数が15回に増え、扶養の壁アラート・過去月の給与・掛け持ち・広告非表示が使えます。
-          </ThemedText>
-          <View style={styles.proPriceRow}>
-            <View style={styles.proPrice}>
-              <ThemedText style={styles.proPriceAmount}>¥330</ThemedText>
-              <ThemedText style={[styles.proPriceUnit, { color: theme.textSecondary }]}>
-                / 月
-              </ThemedText>
-            </View>
-            {isPro ? (
-              <View style={[styles.proButton, { backgroundColor: theme.disabled }]}>
-                <ThemedText style={styles.proButtonLabel}>ご利用中です</ThemedText>
+            <ThemedText type="footnote" themeColor="textSecondary">
+              読み取り回数が15回に増え、扶養の壁アラート・過去月の給与・掛け持ち・広告非表示が使えます。
+            </ThemedText>
+            {/* 価格の右にボタン（Stitchの案どおり。2026-10-20 ユーザー決定）。横いっぱいの主ボタン（17pt）では
+                iPhone SEで文字が切れるため、このボタンだけ文字15pt・左右の余白16ptの小さめのピル型にする */}
+            <View style={styles.proPriceRow}>
+              <View style={styles.proPrice}>
+                <ThemedText type="title3" style={styles.proPriceAmount}>
+                  ¥330
+                </ThemedText>
+                <ThemedText type="footnote" themeColor="textSecondary">
+                  / 月
+                </ThemedText>
               </View>
-            ) : (
               <Pressable
+                accessibilityRole="button"
                 onPress={() => router.push('/paywall')}
-                style={[styles.proButton, { backgroundColor: '#1C1C1E' }, styles.cardShadow]}
+                style={({ pressed }) => [
+                  styles.proButton,
+                  { backgroundColor: theme.primary, opacity: pressed ? 0.7 : 1 },
+                ]}
               >
-                <ThemedText style={styles.proButtonLabel}>PROにアップグレード</ThemedText>
+                <ThemedText
+                  type="subheadline"
+                  numberOfLines={1}
+                  style={[styles.proButtonLabel, { color: theme.onPrimary }]}
+                >
+                  PROにアップグレード
+                </ThemedText>
               </Pressable>
-            )}
-          </View>
-        </Card>
+            </View>
+          </Card>
+        )}
 
         <SettingsRowGroup caption="アカウント" rows={ACCOUNT_ROWS} />
 
         <View style={styles.group}>
-          <ThemedText style={styles.caption} themeColor="textSecondary">
+          <ThemedText type="caption1" style={styles.caption} themeColor="textSecondary">
             一般設定
           </ThemedText>
           <Card style={[styles.rowGroup, styles.cardShadow]}>
-            {GENERAL_ROWS.map((row, index) => (
+            {generalRows.map((row, index) => (
               <View key={row.label}>
                 {index > 0 && <RowSeparator />}
                 <NavRow row={row} />
               </View>
             ))}
-            <AppearanceRow withTopSeparator={GENERAL_ROWS.length > 0} />
+            <AppearanceRow withTopSeparator={generalRows.length > 0} />
           </Card>
         </View>
 
@@ -314,36 +311,11 @@ export default function SettingsTab() {
           </ThemedText>
         </View>
       </ScrollView>
-
-      <Dialog visible={isNameDialogOpen} onClose={() => setNameDialogOpen(false)}>
-        <ThemedText type="smallBold">表示名を編集</ThemedText>
-        <TextInput
-          value={nameDraft}
-          onChangeText={setNameDraft}
-          placeholder="表示名を入力"
-          placeholderTextColor={theme.textSecondary}
-          style={[
-            styles.nameInput,
-            { color: theme.text, backgroundColor: theme.backgroundElement },
-          ]}
-          autoFocus
-        />
-        <PrimaryButton
-          label="保存"
-          onPress={handleSaveName}
-          disabled={nameDraft.trim().length === 0}
-        />
-      </Dialog>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
   scrollContent: {
     gap: Spacing.three,
     paddingBottom: BottomTabInset,
@@ -354,76 +326,30 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 3,
   },
-  profileCard: {
-    borderRadius: Radius.medium,
-    padding: Spacing.three,
-  },
-  profileRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: Radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  profileNameColumn: {
-    flex: 1,
-    minWidth: 0,
-    gap: Spacing.one,
-  },
-  profileName: {
-    minWidth: 0,
-  },
-  proPill: {
-    alignSelf: 'flex-start',
-    borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 2,
-  },
-  proPillLabel: {
-    fontSize: 11,
-    lineHeight: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  nameInput: {
-    borderRadius: Spacing.three,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
-    fontSize: 16,
-  },
   proCard: {
-    borderRadius: Radius.medium,
-    padding: Spacing.three,
-    gap: 10,
+    gap: Spacing.two + Spacing.half,
   },
   proHeading: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  proBadge: {
-    width: 20,
-    height: 20,
-    borderRadius: Radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  proTitle: {
-    fontSize: 16,
-    lineHeight: 21,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-  },
   proPriceRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: Spacing.one,
+    gap: Spacing.three,
+  },
+  proButton: {
+    flexShrink: 1,
+    minHeight: 44,
+    paddingHorizontal: Spacing.three,
+    borderRadius: Radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  proButtonLabel: {
+    fontWeight: '600',
   },
   proPrice: {
     flexDirection: 'row',
@@ -431,33 +357,13 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   proPriceAmount: {
-    fontSize: 20,
-    lineHeight: 25,
     fontWeight: '700',
-  },
-  proPriceUnit: {
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  proButton: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    borderRadius: Radius.pill,
-  },
-  proButtonLabel: {
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
   },
   group: {
     gap: 6,
   },
   caption: {
     paddingHorizontal: Spacing.one,
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: '500',
   },
   rowGroup: {
     padding: 0,

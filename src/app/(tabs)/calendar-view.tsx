@@ -13,6 +13,7 @@ import {
   type TimeField,
 } from '@/components/calendar/shift-detail-card';
 import { Dialog } from '@/components/dialog';
+import { TabTitleRow } from '@/components/header-status';
 import { Screen } from '@/components/screen';
 import { SecondaryButton } from '@/components/secondary-button';
 import { ThemedText } from '@/components/themed-text';
@@ -159,7 +160,7 @@ export default function CalendarViewTab() {
   return (
     <Screen style={styles.screen}>
       <View style={styles.topSection}>
-        <ThemedText type="title1">カレンダー</ThemedText>
+        <TabTitleRow title="カレンダー" />
 
         <View style={styles.statAndToggleRow}>
           <View style={[styles.statPill, { backgroundColor: blueBadge.background }]}>
