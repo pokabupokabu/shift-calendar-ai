@@ -38,13 +38,16 @@ UI全体の見直しで、すべての画面が守る共通ルール。Google St
 | `success`            | `#34C759` | `#30D158` | 完了・連携済み・オン               |
 | `danger`             | `#FF3B30` | `#FF453A` | 削除・エラー・**要確認**           |
 | `orange`             | `#FF9500` | `#FF9F0A` | 注意（警告ほど強くない）           |
-| `purple`             | `#5E35B1` | `#9061F9` | 深夜・PRO                          |
+| `purple`             | `#5E35B1` | `#9061F9` | 深夜                               |
+| `gold`（新設予定）   | 未定      | 未定      | PRO                                |
 | `border`             | `#E5E5EA` | `#38383A` | 区切り線・枠                       |
 | `disabled`           | `#C7C7CC` | `#5C5C5E` | 押せない状態                       |
 
 **アイコンの丸い背景（`IconBadge`）**: `blue` / `green` / `orange` / `purple` / `red` / `neutral` の6種類。淡い背景＋濃いアイコンの組み合わせで、行の先頭に置く。
 
-**意味の決まった色**: 青＝操作できる、緑＝できた、赤＝消える・間違い・要確認、オレンジ＝注意、紫＝深夜・PRO。**飾りのために色を増やさない。**
+**意味の決まった色**: 青＝操作できる、緑＝できた、赤＝消える・間違い・要確認、オレンジ＝注意、紫＝深夜、金＝PRO。**飾りのために色を増やさない。**
+
+✅ **決定（2026-10-16）: PROの色は紫から金に変える**（プレミアムな印象にしたいため。ユーザー決定）。明るい金は白地で文字が読みにくいので、札は「金の地＋濃い茶色の文字」、文字だけのときは濃いめの金にする。注意のオレンジと紛れない黄色寄りの金を、Stitchの案で比べて値を決める。設定タブ・課金画面のPROも同じ金にそろえる。**ゆくゆくは、はこブーの帽子もPROでは金（またはシルバー）にしたい**（未着手）。
 
 ## 3. 文字
 
@@ -61,6 +64,8 @@ iPhone標準の段階だけを使う（`ThemedText` の `type`）。
 | `footnote`    | 13 / 18     | 400  | 注釈・小さな説明                   |
 | `caption1`    | 12 / 16     | 500  | セクションの見出しラベル・バッジ   |
 | `caption2`    | 11 / 13     | 600  | とても小さなバッジ                 |
+
+✅ **決定（2026-10-16）**: 大きな金額（給与タブの合計見込みなど）は、大見出しと同じ28pt（`title1` の大きさ）にしてよい。「1画面に1つまで」は見出しとしての数で、金額は数えない。
 
 ✅ **決定（2026-10-15）**: 昔の段階（`title` 48 / `subtitle` 32 / `default` / `small` / `smallBold` / `link`）は**廃止**する。まだ約35か所で使われているので、見直しの中で上の段階へ置き換え、使われなくなったら `theme.ts` から削除する。
 
@@ -129,7 +134,7 @@ Product: "シフToカレ" - reads a photo of a shared shift schedule with AI and
 Users: Japanese university students with part-time jobs. They glance at the app one-handed between classes or on a train. Prioritize speed and low cognitive load over visual richness. Native iOS utility feel. Friendly but trustworthy.
 
 Design system (must follow):
-- Colors: Apple iOS system colors only. Page background #F2F2F7, cards #FFFFFF, primary #007AFF, success #34C759, danger #FF3B30, orange #FF9500, purple #5E35B1, secondary text #8E8E93, separators #E5E5EA. Must also work in dark mode.
+- Colors: Apple iOS system colors only. Page background #F2F2F7, cards #FFFFFF, primary #007AFF, success #34C759, danger #FF3B30, orange #FF9500, purple #5E35B1 (late night only), PRO = gold (gold fill with dark brown text; never orange or purple), secondary text #8E8E93, separators #E5E5EA. Must also work in dark mode.
 - Typography: iOS text styles only (Title1 28/34 bold, Title2 22/28 bold, Title3 20/25, Headline 17/22 semibold, Body 17/22, Subheadline 15/20, Footnote 13/18, Caption1 12/16, Caption2 11/13).
 - Spacing: 4 / 8 / 16 / 24 / 32. Screen side padding 24. Minimum tap target 44pt.
 - Corner radius: badges 8, inset elements 12, cards and bottom sheets 16, dialogs 24, buttons fully rounded (pill).

@@ -13,6 +13,7 @@ import {
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Card } from '@/components/card';
+import { TimeFieldButton } from '@/components/calendar/time-field-button';
 import { TimePickerPanel } from '@/components/calendar/time-picker-panel';
 import { IconBadge } from '@/components/icon-badge';
 import { SecondaryButton } from '@/components/secondary-button';
@@ -39,8 +40,8 @@ export const CALENDAR_PROVIDER_LABEL: Record<CalendarProviderId, string> = {
 /** 編集・削除がアプリ内の記録だけを変え、実カレンダーには反映しないことの注意書き（ユーザー決定の文言）。 */
 const APP_ONLY_NOTE = 'アプリ内の記録だけ変わります。カレンダーの予定はそのままです';
 
-/** 詳細の各行の左に置く、丸い淡い地のアイコンの大きさ。 */
-const ROW_ICON_BADGE_SIZE = 32;
+/** 詳細の各行の左に置く、丸い淡い地のアイコンの大きさ。給与タブの小窓でも使う。 */
+export const ROW_ICON_BADGE_SIZE = 32;
 /** 削除の確認のゴミ箱の絵の、丸い淡い地の大きさ。 */
 const DELETE_ICON_BADGE_SIZE = 56;
 /** 「編集する」「シフトを削除」など、指で押しやすい最小の高さ。 */
@@ -340,7 +341,8 @@ export function ShiftDetailCard({
   );
 }
 
-function DetailRow({
+/** 小窓の詳細の1行（左に丸い淡い青の地のアイコン＋灰色のラベル、右に値）。給与タブの小窓でも使う。 */
+export function DetailRow({
   Icon,
   label,
   children,
@@ -361,46 +363,6 @@ function DetailRow({
         </ThemedText>
       </View>
       {children}
-    </View>
-  );
-}
-
-function TimeFieldButton({
-  label,
-  value,
-  active,
-  onPress,
-}: {
-  label: string;
-  value: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  const theme = useTheme();
-  return (
-    <View style={styles.timeField}>
-      <ThemedText type="footnote" themeColor={active ? 'primary' : 'textSecondary'}>
-        {label}
-      </ThemedText>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ expanded: active }}
-        onPress={onPress}
-        style={[
-          styles.timeFieldBox,
-          {
-            backgroundColor: theme.background,
-            borderColor: active ? theme.primary : theme.border,
-          },
-        ]}
-      >
-        <ThemedText
-          type="title3"
-          themeColor={active ? 'primary' : value ? 'text' : 'textSecondary'}
-        >
-          {value || '--:--'}
-        </ThemedText>
-      </Pressable>
     </View>
   );
 }
@@ -472,18 +434,6 @@ const styles = StyleSheet.create({
   timeRow: {
     flexDirection: 'row',
     gap: Spacing.three,
-  },
-  timeField: {
-    flex: 1,
-    gap: Spacing.one,
-  },
-  timeFieldBox: {
-    minHeight: MIN_TAP_HEIGHT,
-    paddingVertical: Spacing.two,
-    borderRadius: Radius.smallLarge,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   centeredText: {
     textAlign: 'center',

@@ -38,9 +38,12 @@
 export type DependencyWallKind = 'socialInsurance' | 'incomeTax';
 
 /**
- * 壁の深刻度。表示の強さを変えるために使う。
- * - cliff: 超えた瞬間に実損が出る。警告色で出す
- * - info:  超えた分にだけ段階的にかかる。手取りは減らないので警告色にしない
+ * 壁の深刻度（壁の性質の区別）。
+ * - cliff: 超えた瞬間に実損が出る
+ * - info:  超えた分にだけ段階的にかかる。手取りは減らない
+ *
+ * 給与タブの棒の色は、2026-10-18のユーザー決定で深刻度によらず「壁までの割合」だけで決める
+ * （50%未満＝青、75%未満＝オレンジ、それ以上＝赤）。この区別は説明文などのために残している。
  */
 export type DependencyWallSeverity = 'cliff' | 'info';
 
@@ -53,8 +56,13 @@ export interface DependencyWall {
   threshold: number;
   /** 壁の呼び名、例: 「150万円の壁」。 */
   label: string;
-  /** 壁の内容を一言で説明する注記。条件は働き方や勤務先で変わるため、あくまで目安として示す。 */
+  /**
+   * 壁の内容を説明する注記（条件まで含めた長い文）。条件は働き方や勤務先で変わるため、あくまで目安として示す。
+   * 給与タブのカードからは外した（2026-10-16 ユーザー決定）。設定タブに作る「扶養の壁の詳しい説明」で使う予定。
+   */
   description: string;
+  /** 給与タブのカードで棒の下に1行で添える、短い一言（iPhone SE の幅でも1行に収まる長さ）。 */
+  shortDescription: string;
 }
 
 export interface DependencyWallInput {
@@ -152,6 +160,9 @@ export function resolveDependencyWalls({
       description: isSpecificRelativeAge
         ? '超えると親の社会保険の扶養から外れ、自分で保険料を払う目安（19〜22歳は150万円未満が条件）'
         : '超えると扶養している人（親など）の社会保険の扶養から外れ、自分で保険料を払う目安（130万円未満が条件）',
+      shortDescription: isSpecificRelativeAge
+        ? '超えると親の社会保険の扶養から外れます'
+        : '超えると親などの社会保険の扶養から外れます',
     },
     {
       id: 'incomeTax',
@@ -160,6 +171,7 @@ export function resolveDependencyWalls({
       threshold: incomeTaxFree,
       label: wallLabel(incomeTaxFree),
       description: '自分に所得税がかかり始める目安。超えた分にだけかかります',
+      shortDescription: '超えた分にだけ所得税がかかります',
     },
   ];
 

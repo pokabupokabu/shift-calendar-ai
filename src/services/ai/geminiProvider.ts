@@ -1,5 +1,5 @@
 import { env } from '@/config/env';
-import type { ShiftAnalysisResult } from '@/models';
+import { isShiftTypeRegistered, type ShiftAnalysisResult } from '@/models';
 import { hasUsableTimeRange } from '@/utils/shiftTime';
 
 import { AnalysisNotPerformedError, type AIProvider, type AnalyzeShiftImagesInput } from './types';
@@ -97,9 +97,12 @@ function buildMatchingTask(input: AnalyzeShiftImagesInput): string {
 }
 
 function buildPrompt(input: AnalyzeShiftImagesInput): string {
+  // 時刻が未登録のシフト種別は対応表に載せない（名前だけ渡すと「名前と一致したら対応表の時間を使う」
+  // 指示と噛み合わず、AIが時刻を補ってしまうおそれがあるため）。
+  const registeredShiftTypes = input.knownShiftTypes.filter(isShiftTypeRegistered);
   const knownShiftTypesText =
-    input.knownShiftTypes.length > 0
-      ? input.knownShiftTypes
+    registeredShiftTypes.length > 0
+      ? registeredShiftTypes
           .map((type) => `- ${type.name}: ${type.startTime}〜${type.endTime}`)
           .join('\n')
       : '(まだ登録なし)';
