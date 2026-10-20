@@ -45,7 +45,7 @@ import { useIconBadgeColors } from '@/hooks/use-icon-badge-colors';
 import { useMonthNavigation } from '@/hooks/use-month-navigation';
 import { useResolvedColorScheme } from '@/hooks/use-resolved-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
-import type { ShiftType, Workplace } from '@/models';
+import { isShiftTypeRegistered, type RegisteredShiftType, type Workplace } from '@/models';
 import {
   computeDailyEarnings,
   computeMonthlyPayroll,
@@ -192,10 +192,12 @@ export default function PayrollTab() {
   // シフト種別マスタの時間帯（テンプレート毎の想定給与に「早番 (9:00〜18:00)」の形で添えるための参照のみ、
   // 集計ロジックには影響しない）。勤務先をまたいで同名のシフト種別が混ざらないよう、
   // 勤務先ID+シフト種別名の複合キーで管理する。
+  // 時刻が未登録の種別は載せない（時間帯の表示も「1日あたり」も出さない）。
   const shiftTypeTimesByKey = useMemo(() => {
-    const map = new Map<string, ShiftType>();
+    const map = new Map<string, RegisteredShiftType>();
     for (const workplace of workplaces) {
       for (const shiftType of workplace.shiftTypes) {
+        if (!isShiftTypeRegistered(shiftType)) continue;
         map.set(shiftTypeKey(workplace.id, shiftType.name), shiftType);
       }
     }

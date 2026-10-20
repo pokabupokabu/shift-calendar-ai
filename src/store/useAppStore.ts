@@ -19,12 +19,26 @@ import {
   type ScanUsage,
 } from '@/utils/scanQuota';
 
-/** Seed values from requirements section 8, editable by the user afterwards. */
+/**
+ * 新しい勤務先に最初から並べる基本の3種別。時刻は本人が入れるまで持たない（「未登録」）。
+ * 以前は仮の時刻（下の `LEGACY_PLACEHOLDER_TIMES`）が最初から入っていたが、本人の勤務と違う時刻が
+ * AIの読み取りの手がかりや給与の見込みに使われてしまうため、version 17 でやめた。
+ */
 const DEFAULT_SHIFT_TYPES: ShiftType[] = [
-  { id: 'early', name: '早番', startTime: '09:00', endTime: '18:00' },
-  { id: 'late', name: '遅番', startTime: '13:00', endTime: '22:00' },
-  { id: 'night', name: '夜勤', startTime: '22:00', endTime: '07:00' },
+  { id: 'early', name: '早番' },
+  { id: 'late', name: '遅番' },
+  { id: 'night', name: '夜勤' },
 ];
+
+/**
+ * version 16 までに基本の3種別へ最初から入れていた仮の時刻。version 17 の移行で、
+ * これと全く同じ時刻のままの種別は「未登録」に戻す（本人が同じ時刻を入れた場合と見分けられないための割り切り）。
+ */
+const LEGACY_PLACEHOLDER_TIMES: Record<string, { startTime: string; endTime: string }> = {
+  early: { startTime: '09:00', endTime: '18:00' },
+  late: { startTime: '13:00', endTime: '22:00' },
+  night: { startTime: '22:00', endTime: '07:00' },
+};
 
 function createWorkplace(id: string, name: string): Workplace {
   return {
@@ -274,7 +288,7 @@ export const useAppStore = create<AppState>()(
     {
       name: 'shift-calendar-ai-store',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 16,
+      version: 17,
       migrate: (persisted, version) => {
         // Migration spans many historical shapes (pre-workplace, pre-isPro, etc.),
         // so this intentionally works on an untyped view rather than `AppState`.
@@ -422,6 +436,27 @@ export const useAppStore = create<AppState>()(
         if (version < 16) {
           // チュートリアルのお試し枠を追加。すでにチュートリアルを終えた人には出さない。
           state.tutorialFreeScan = state.hasSeenTutorial ? 'forfeited' : 'unoffered';
+        }
+        if (version < 17) {
+          // 基本の3種別の仮の時刻をやめ、時刻の無い「未登録」を持てるようにした。
+          // 仮の時刻と全く同じ値のままの基本種別は、本人が入れた時刻ではないとみなして未登録に戻す。
+          if (Array.isArray(state.user?.workplaces)) {
+            for (const workplace of state.user.workplaces) {
+              if (!Array.isArray(workplace?.shiftTypes)) continue;
+              workplace.shiftTypes = workplace.shiftTypes.map((shiftType: ShiftType) => {
+                const placeholder = LEGACY_PLACEHOLDER_TIMES[shiftType.id];
+                if (
+                  placeholder &&
+                  shiftType.startTime === placeholder.startTime &&
+                  shiftType.endTime === placeholder.endTime
+                ) {
+                  const { startTime: _startTime, endTime: _endTime, ...rest } = shiftType;
+                  return rest;
+                }
+                return shiftType;
+              });
+            }
+          }
         }
         return state;
       },

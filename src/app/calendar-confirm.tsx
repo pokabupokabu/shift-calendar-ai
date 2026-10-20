@@ -13,7 +13,7 @@ import { IconSize, Radius, Spacing, type ThemeColor } from '@/constants/theme';
 import { useIconBadgeColors } from '@/hooks/use-icon-badge-colors';
 import { useTheme } from '@/hooks/use-theme';
 import { useTourStepOnFocus } from '@/hooks/use-tour-step';
-import type { Shift, ShiftRegistrationStatus } from '@/models';
+import { isShiftTypeRegistered, type Shift, type ShiftRegistrationStatus } from '@/models';
 import { getCalendarProvider } from '@/services/calendar';
 import { ensureCalendarAccess } from '@/services/calendar/ensureCalendarAccess';
 import { useAppStore } from '@/store/useAppStore';
@@ -343,12 +343,17 @@ export default function CalendarConfirmScreen() {
                   <Pressable
                     key={shiftType.id}
                     onPress={() =>
-                      setDraft((current) => ({
-                        ...current,
-                        shiftType: shiftType.name,
-                        startTime: shiftType.startTime,
-                        endTime: shiftType.endTime,
-                      }))
+                      // 時刻が未登録の種別は名前だけ入れ、時刻の欄は今の入力のまま残す
+                      setDraft((current) =>
+                        isShiftTypeRegistered(shiftType)
+                          ? {
+                              ...current,
+                              shiftType: shiftType.name,
+                              startTime: shiftType.startTime,
+                              endTime: shiftType.endTime,
+                            }
+                          : { ...current, shiftType: shiftType.name },
+                      )
                     }
                     style={[
                       styles.templateChip,

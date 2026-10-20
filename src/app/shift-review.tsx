@@ -10,6 +10,7 @@ import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { IconSize, Radius, Spacing } from '@/constants/theme';
 import { useIconBadgeColors } from '@/hooks/use-icon-badge-colors';
+import { isShiftTypeRegistered } from '@/models';
 import { useTheme } from '@/hooks/use-theme';
 import { useAppStore } from '@/store/useAppStore';
 import { useShiftSessionStore } from '@/store/useShiftSessionStore';
@@ -202,8 +203,11 @@ export default function ShiftReviewScreen() {
                 key={template.id}
                 onPress={() => {
                   setShiftType(template.name);
-                  setStartTime(template.startTime);
-                  setEndTime(template.endTime);
+                  // 時刻が未登録の種別は名前だけ変え、今入っている時刻はそのまま残す
+                  if (isShiftTypeRegistered(template)) {
+                    setStartTime(template.startTime);
+                    setEndTime(template.endTime);
+                  }
                   setPickerOpen(false);
                 }}
                 style={[
@@ -216,7 +220,9 @@ export default function ShiftReviewScreen() {
               >
                 <ThemedText type="body">{template.name}</ThemedText>
                 <ThemedText type="caption1" themeColor="textSecondary">
-                  {template.startTime}〜{template.endTime}
+                  {isShiftTypeRegistered(template)
+                    ? `${template.startTime}〜${template.endTime}`
+                    : '時刻は未登録'}
                 </ThemedText>
               </Pressable>
             ))}

@@ -13,6 +13,7 @@ import {
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Card } from '@/components/card';
+import { TimeFieldButton } from '@/components/calendar/time-field-button';
 import { TimePickerPanel } from '@/components/calendar/time-picker-panel';
 import { IconBadge } from '@/components/icon-badge';
 import { SecondaryButton } from '@/components/secondary-button';
@@ -366,46 +367,6 @@ export function DetailRow({
   );
 }
 
-function TimeFieldButton({
-  label,
-  value,
-  active,
-  onPress,
-}: {
-  label: string;
-  value: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  const theme = useTheme();
-  return (
-    <View style={styles.timeField}>
-      <ThemedText type="footnote" themeColor={active ? 'primary' : 'textSecondary'}>
-        {label}
-      </ThemedText>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ expanded: active }}
-        onPress={onPress}
-        style={[
-          styles.timeFieldBox,
-          {
-            backgroundColor: theme.background,
-            borderColor: active ? theme.primary : theme.border,
-          },
-        ]}
-      >
-        <ThemedText
-          type="title3"
-          themeColor={active ? 'primary' : value ? 'text' : 'textSecondary'}
-        >
-          {value || '--:--'}
-        </ThemedText>
-      </Pressable>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   card: {
     gap: Spacing.three,
@@ -473,18 +434,6 @@ const styles = StyleSheet.create({
   timeRow: {
     flexDirection: 'row',
     gap: Spacing.three,
-  },
-  timeField: {
-    flex: 1,
-    gap: Spacing.one,
-  },
-  timeFieldBox: {
-    minHeight: MIN_TAP_HEIGHT,
-    paddingVertical: Spacing.two,
-    borderRadius: Radius.smallLarge,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   centeredText: {
     textAlign: 'center',
