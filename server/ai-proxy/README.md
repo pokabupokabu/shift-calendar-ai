@@ -1,4 +1,6 @@
-# gemini-shift-proxy
+# shiftokare-ai-proxy
+
+> 2026-10-23 に、フォルダを `server/gemini-proxy/` から `server/ai-proxy/` へ、Worker の名前を `gemini-shift-proxy` から `shiftokare-ai-proxy` へ変えた。Worker の名前が変わると URL も変わり、シークレットも Worker ごとなので、新しい Worker には `ANTHROPIC_API_KEY`・`APP_SHARED_SECRET`・`RATE_LIMIT_SALT` を入れ直す（KV の名前空間はそのまま使い回す）。Gemini の道を使う戻し用は、消すまで古い `gemini-shift-proxy` 側を使う。
 
 shift-calendar-ai がAIのAPIキーをクライアントに埋め込まずに済むようにするための、Cloudflare Workers製の薄い透過プロキシ。実体は `src/index.ts` の1ファイルのみ。
 
@@ -14,7 +16,7 @@ shift-calendar-ai がAIのAPIキーをクライアントに埋め込まずに済
 ## デプロイ手順（初回のみ、ここから先はユーザー自身のCloudflareアカウントで実行）
 
 ```bash
-cd server/gemini-proxy
+cd server/ai-proxy
 npm install
 ```
 
@@ -70,7 +72,7 @@ npx wrangler secret put RATE_LIMIT_SALT
 npm run deploy
 ```
 
-成功すると `https://gemini-shift-proxy.<あなたのサブドメイン>.workers.dev` のようなURLが出力される。このURLをアプリ側の `.env` の `EXPO_PUBLIC_AI_PROXY_URL` に設定する（末尾に`/`は付けない）。
+成功すると `https://shiftokare-ai-proxy.<あなたのサブドメイン>.workers.dev` のようなURLが出力される。このURLをアプリ側の `.env` の `EXPO_PUBLIC_AI_PROXY_URL` に設定する（末尾に`/`は付けない）。
 
 ## ローカルでの動作確認
 

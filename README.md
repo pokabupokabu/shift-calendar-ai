@@ -40,7 +40,7 @@ apps/shift-calendar-ai/
     utils/
 ```
 
-Expoアプリとは別に、リポジトリ直下に`server/gemini-proxy/`（Cloudflare Workers、Gemini APIキーを
+Expoアプリとは別に、リポジトリ直下に`server/ai-proxy/`（Cloudflare Workers、Gemini APIキーを
 クライアントから隠す薄いプロキシ。8節リスク1参照）がある。
 
 ## 2. 使用技術・依存関係
@@ -157,11 +157,11 @@ interface AIProvider {
    バックエンドを挟むかどうかは未確定。`EXPO_PUBLIC_*`環境変数はJSバンドルに平文で埋め込まれるため、
    このままGemini API keyを`EXPO_PUBLIC_GEMINI_API_KEY`に入れて配信すると、アプリを解凍した第三者が
    キーを読み取れる（無制限に使われる／課金される恐れ）。~~
-   → 解消済み。(a) 薄いプロキシを挟む方針に決定し、`server/gemini-proxy/`にCloudflare Workers製の
+   → 解消済み。(a) 薄いプロキシを挟む方針に決定し、`server/ai-proxy/`にCloudflare Workers製の
    透過プロキシを実装した。実際のGemini APIキーはそのWorkerのシークレットとしてのみ保持され、
    クライアントはWorkerのURL(`EXPO_PUBLIC_AI_PROXY_URL`)と、乱用防止用の共有シークレット
    (`EXPO_PUBLIC_AI_PROXY_SECRET`、IPベースの簡易レート制限と組み合わせ)だけを持つ。
-   デプロイ手順は`server/gemini-proxy/README.md`参照（Cloudflareアカウントでの`wrangler login`等、
+   デプロイ手順は`server/ai-proxy/README.md`参照（Cloudflareアカウントでの`wrangler login`等、
    ユーザー自身の操作が必要）。
 2. ~~**Google Calendar OAuthのクライアントID**：コード側（`GoogleCalendarProvider`、Phase 5）は実装済みだが、
    `expo-auth-session`でのiOS向けOAuthクライアントIDが未発行のため、実際には動かせない。~~
