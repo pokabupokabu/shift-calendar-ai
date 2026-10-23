@@ -15,6 +15,8 @@ import {
 import {
   DEFAULT_SCAN_USAGE,
   grantBonusScan,
+  MAX_ADVANCED_SCANS,
+  nextAdvancedScanUsage,
   nextScanUsage,
   type ScanUsage,
 } from '@/utils/scanQuota';
@@ -71,7 +73,10 @@ interface AppState {
    * - forfeited: 「やらない」を選んだ（「今だけ」なので二度と出さない）
    */
   tutorialFreeScan: TutorialFreeScanState;
-  /** Free-plan monthly AI scan count (section: 画像シフト読み取り枠 PRO limit), unused for PRO users. */
+  /**
+   * AI解析の回数（ふつうの解析と、PROの「高度なスキャン」の両方）。15日で回復する時計を共有する。
+   * 数え方は src/utils/scanQuota.ts。
+   */
   scanUsage: ScanUsage;
 
   setShiftName: (shiftName: string) => void;
@@ -94,7 +99,10 @@ interface AppState {
   updateCalendarEvent: (id: string, patch: Partial<CalendarEventRecord>) => void;
   removeCalendarEvent: (id: string) => void;
   findCalendarEventForDate: (date: string) => CalendarEventRecord | undefined;
+  /** ふつうの解析を1回使った。 */
   recordScanUsage: () => void;
+  /** 高度なスキャンを1回使った（ふつうの回数は減らさない）。 */
+  recordAdvancedScanUsage: () => void;
   recordBonusScan: () => void;
   resetAll: () => void;
 }
@@ -268,6 +276,9 @@ export const useAppStore = create<AppState>()(
 
       recordScanUsage: () => set((state) => ({ scanUsage: nextScanUsage(state.scanUsage) })),
 
+      recordAdvancedScanUsage: () =>
+        set((state) => ({ scanUsage: nextAdvancedScanUsage(state.scanUsage) })),
+
       recordBonusScan: () => set((state) => ({ scanUsage: grantBonusScan(state.scanUsage) })),
 
       resetAll: () =>
@@ -282,7 +293,7 @@ export const useAppStore = create<AppState>()(
     {
       name: 'shift-calendar-ai-store',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 18,
+      version: 19,
       migrate: (persisted, version) => {
         // Migration spans many historical shapes (pre-workplace, pre-isPro, etc.),
         // so this intentionally works on an untyped view rather than `AppState`.
@@ -468,6 +479,15 @@ export const useAppStore = create<AppState>()(
             }
             delete settings.birthYear;
             delete settings.isDaytimeStudent;
+          }
+        }
+        if (version < 19) {
+          // PROの「高度なスキャン」の残り回数を追加した。満タン（5回）から始める。
+          // 時計（cycleStartedAt）やふつうの回数はそのまま引き継ぐ。
+          if (state.scanUsage && typeof state.scanUsage === 'object') {
+            state.scanUsage.advancedRemaining ??= MAX_ADVANCED_SCANS;
+          } else {
+            state.scanUsage = { ...DEFAULT_SCAN_USAGE };
           }
         }
         return state;

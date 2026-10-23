@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 
+import { AdvancedRescanRow } from '@/components/advanced-rescan-row';
 import { Card } from '@/components/card';
 import { HakobuMascot } from '@/components/hakobu-mascot';
 import { IconBadge } from '@/components/icon-badge';
@@ -37,6 +38,8 @@ export default function UserMatchSelectScreen() {
   const images = useShiftSessionStore((state) => state.images);
   const analysisResult = useShiftSessionStore((state) => state.analysisResult);
   const setAnalysisResult = useShiftSessionStore((state) => state.setAnalysisResult);
+  // 再照合は最初の解析と同じ精度で読む（回数は今までどおり数えない）。
+  const scanTier = useShiftSessionStore((state) => state.scanTier);
   const shiftName = useAppStore((state) => state.user?.shiftName ?? '');
   const user = useAppStore((state) => state.user);
   // 解析と同じ勤務先のシフト種別をヒントとして渡す（photo-select で選んだ勤務先）。
@@ -72,7 +75,7 @@ export default function UserMatchSelectScreen() {
     setResolving(true);
     setError(null);
     try {
-      const result = await getAiProvider({ isPro: !!user?.settings.isPro }).analyzeShiftImages({
+      const result = await getAiProvider({ tier: scanTier }).analyzeShiftImages({
         images,
         shiftName,
         knownShiftTypes,
@@ -243,6 +246,8 @@ export default function UserMatchSelectScreen() {
             </ThemedText>
           </Card>
         )}
+
+        {!resolving && <AdvancedRescanRow discardNote="今の読み取り結果は消えます。" />}
 
         {resolving && <ActivityIndicator color={theme.primary} style={styles.spinner} />}
         {error && (

@@ -11,15 +11,32 @@ import type { ShiftImage } from '@/services/ai';
 const MAX_DIMENSION = 2000;
 const JPEG_QUALITY = 0.85;
 
-/** Downscales an image only if it exceeds MAX_DIMENSION on its longer edge; otherwise passes it through as-is. */
+/**
+ * そのままAIへ送ってよい形式。これ以外（iPhoneのHEICなど）は、大きさに関係なくJPEGに変換する
+ * （Anthropic の画像の受け付けはJPEG・PNG・GIF・WebPだけで、HEICは400で弾かれるため）。
+ */
+const PASSTHROUGH_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+
+/**
+ * Downscales an image only if it exceeds MAX_DIMENSION on its longer edge; otherwise passes it
+ * through as-is (unless its format is one the AI cannot read, in which case it is re-encoded as JPEG).
+ */
 export async function resizeShiftImage(asset: ImagePickerAsset): Promise<ShiftImage> {
   const longestEdge = Math.max(asset.width, asset.height);
-  if (longestEdge === 0 || longestEdge <= MAX_DIMENSION) {
-    return { uri: asset.uri, base64: asset.base64 ?? '', mimeType: asset.mimeType ?? 'image/jpeg' };
+  const mimeType = asset.mimeType ?? 'image/jpeg';
+  const fitsAlready = longestEdge === 0 || longestEdge <= MAX_DIMENSION;
+  if (fitsAlready && PASSTHROUGH_MIME_TYPES.has(mimeType)) {
+    return { uri: asset.uri, base64: asset.base64 ?? '', mimeType };
   }
 
-  const resize = asset.width >= asset.height ? { width: MAX_DIMENSION } : { height: MAX_DIMENSION };
-  const result = await manipulateAsync(asset.uri, [{ resize }], {
+  const actions = fitsAlready
+    ? []
+    : [
+        asset.width >= asset.height
+          ? { resize: { width: MAX_DIMENSION } }
+          : { resize: { height: MAX_DIMENSION } },
+      ];
+  const result = await manipulateAsync(asset.uri, actions, {
     base64: true,
     compress: JPEG_QUALITY,
     format: SaveFormat.JPEG,
