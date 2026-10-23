@@ -1,8 +1,15 @@
 # gemini-shift-proxy
 
-shift-calendar-ai がGemini APIキーをクライアントに埋め込まずに済むようにするための、Cloudflare Workers製の薄い透過プロキシ。実体は `src/index.ts` の1ファイルのみ。
+shift-calendar-ai がAIのAPIキーをクライアントに埋め込まずに済むようにするための、Cloudflare Workers製の薄い透過プロキシ。実体は `src/index.ts` の1ファイルのみ。
 
-アプリ側は `https://generativelanguage.googleapis.com/...` の代わりにこのWorkerのURLを呼び、実際のGemini APIキーはこのWorkerのシークレットとしてのみ保持される。
+アプリ側はAIの会社のURLの代わりにこのWorkerのURLを呼び、実際のAPIキーはこのWorkerのシークレットとしてのみ保持される。
+
+| 道（パス）                                    | 中継先                                                    | 状態                                           |
+| --------------------------------------------- | --------------------------------------------------------- | ---------------------------------------------- |
+| `POST /v1/messages`                           | Anthropic（`https://api.anthropic.com/v1/messages`）      | **今の本命**。モデルは本文の `model` で指定    |
+| `POST /v1beta/models/<model>:generateContent` | Gemini（`https://generativelanguage.googleapis.com/...`） | 戻し用。Anthropic への切り替えが済んだら閉じる |
+
+合言葉（`x-app-secret`）・回数制限（両方の道で同じ数え方を共有）・本文の大きさ・画像の枚数の決まりは、どちらの道も同じ。
 
 ## デプロイ手順（初回のみ、ここから先はユーザー自身のCloudflareアカウントで実行）
 
@@ -34,6 +41,12 @@ npx wrangler secret put GEMINI_API_KEY
 ```
 
 → Google AI StudioまたはGoogle Cloud ConsoleでGeminiのAPIキーを発行し、それを貼り付ける（今まで`.env`の`EXPO_PUBLIC_GEMINI_API_KEY`に入っていたものと同じ値でよい）。
+
+```bash
+npx wrangler secret put ANTHROPIC_API_KEY
+```
+
+→ Anthropic Console（https://platform.claude.com/ ）で発行したAPIキーを貼り付ける。**アプリ側（`.env` の `EXPO_PUBLIC_*`）には絶対に入れない。** 未設定のまま `/v1/messages` を呼ぶと 503 を返す。
 
 ```bash
 npx wrangler secret put APP_SHARED_SECRET
@@ -71,6 +84,7 @@ npm run dev
 
 - APIキーや合言葉を変えたい場合は `npx wrangler secret put <NAME>` を再実行すれば即座に上書きされる。
 - レート制限の閾値は `src/index.ts` の `RATE_LIMIT_PER_HOUR`（1時間あたり）と `RATE_LIMIT_PER_MINUTE`（連打対策の1分あたり）を編集して再デプロイする。
-- **中継してよいモデルは `ALLOWED_MODELS` で固定している。** モデル名はクライアントが送ってくるため、ここで絞らないと合言葉を抜いた相手が任意の高価なモデルを指定できてしまう。アプリ側で使うモデルを変えるときは `src/config/env.ts` の既定値とこの集合の**両方**を更新してデプロイすること。片方だけ変えると404で全滅する。
+- **中継してよいモデルは固定している。** Anthropic の道は `ANTHROPIC_ALLOWED_MODELS`（`claude-haiku-5-5` / `claude-sonnet-5-5`）、Gemini の道は `ALLOWED_MODELS`。モデル名はクライアントが送ってくるため、ここで絞らないと合言葉を抜いた相手が任意の高価なモデルを指定できてしまう。アプリ側で使うモデルを変えるときは `src/config/env.ts` の既定値とこの集合の**両方**を更新してデプロイすること。片方だけ変えると404で全滅する。
+- **Anthropic の道では、本文を読んでから次を確かめる。** JSONとして読めない・`model` が文字列でない・`messages` の形が違う → 400。許可していないモデル → 404。`max_tokens` が `ANTHROPIC_MAX_OUTPUT_TOKENS`（16,000）を超える → 400（1回の呼び出しを桁違いに高くされないため）。画像ブロックが5枚以上 → 413。Anthropic へ送るヘッダーはWorkerが組み立てた3つ（`x-api-key`・`anthropic-version: 2023-06-01`・`content-type`）だけで、アプリから来たヘッダーは1つも渡さない。
 - **1リクエストの画像は `MAX_IMAGES_PER_REQUEST`（4枚）まで、本文全体は `MAX_REQUEST_BYTES`（12MB）まで。** アプリ側（`src/app/photo-select.tsx` の `MAX_IMAGES`）でも同じ枚数で制限しているので、変更するときは両方直す。
 - **レート制限のキーには生のIPアドレスを保存していない。** `RATE_LIMIT_SALT` を混ぜた SHA-256 のハッシュ（先頭32文字）を KV のキーにしており、保存されるのは `rl:<ハッシュ>:<時刻>` の形。同じIPなら必ず同じハッシュになるためレート制限の精度は変わらず、KV を覗いても元のIPは復元できない。プライバシーポリシーの「個人を特定できる形では保存しない」という記述はこの実装が根拠になっている。

@@ -6,15 +6,20 @@
  */
 export const env = {
   ai: {
-    provider: process.env.EXPO_PUBLIC_AI_PROVIDER ?? 'gemini',
-    // Cloudflare Workers proxy in front of Gemini (server/gemini-proxy) — the
-    // real Gemini API key lives only in that Worker's secrets, never here.
+    // 'anthropic'（既定）か 'gemini'。Gemini は実機で Anthropic が動くのを確かめるまでの戻し用で、
+    // リリース前にコードごと消す（docs/ai-model-comparison-2026-10.md「実装の進め方」）。
+    provider: process.env.EXPO_PUBLIC_AI_PROVIDER ?? 'anthropic',
+    // 中継サーバー（server/gemini-proxy の Cloudflare Worker）。本物の Anthropic / Gemini の
+    // APIキーはその Worker のシークレットにだけあり、ここ（アプリ）には入らない。
     proxyUrl: process.env.EXPO_PUBLIC_AI_PROXY_URL ?? '',
     proxySecret: process.env.EXPO_PUBLIC_AI_PROXY_SECRET ?? '',
-    // 無料とPROでモデルを出し分ける。実シフト表での実測にもとづく既定値。
-    // 無料の 3.1-flash-lite は、同じLite系でも世代が新しい 3.5-flash-lite とは結果が正反対で、
-    // 実サンプルでは5回とも完答した（3.5 は的中9〜11/18・誤検出6〜8で、働いていない日まで拾う）。
-    // Gemini のモデル名は頻繁に変わるため、コード変更なしで差し替えられるようにしておく。
+    // ふだんの解析（無料・PRO共通）と「高度なスキャン」（PROだけ・回数は別枠）で使うモデル。
+    // 実シフト表での測定にもとづく既定値（docs/ai-model-comparison-2026-10.md）。
+    // ここを変えるときは server/gemini-proxy の ANTHROPIC_ALLOWED_MODELS も必ず一緒に直す（片方だけだと404）。
+    modelStandard: process.env.EXPO_PUBLIC_AI_MODEL_STANDARD ?? 'claude-haiku-5-5',
+    modelAdvanced: process.env.EXPO_PUBLIC_AI_MODEL_ADVANCED ?? 'claude-sonnet-5-5',
+    // provider が 'gemini' のときだけ使う（ふだん→_FREE、高度なスキャン→_PRO）。
+    // 3.1-flash-lite と 3.5-flash-lite は名前が似ているが別物で、3.5 は精度が悪い。バージョン番号まで書くこと。
     // ここを変えるときは server/gemini-proxy の ALLOWED_MODELS も必ず一緒に直す（片方だけだと404）。
     geminiModelFree: process.env.EXPO_PUBLIC_GEMINI_MODEL_FREE ?? 'gemini-3.1-flash-lite',
     geminiModelPro: process.env.EXPO_PUBLIC_GEMINI_MODEL_PRO ?? 'gemini-3.8-flash',

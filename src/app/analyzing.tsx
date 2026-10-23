@@ -3,6 +3,7 @@ import { Check, CircleAlert, Loader2, Lock } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Animated, Easing, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { AdvancedRescanRow } from '@/components/advanced-rescan-row';
 import { Card } from '@/components/card';
 import { HakobuMascot } from '@/components/hakobu-mascot';
 import { IconBadge } from '@/components/icon-badge';
@@ -17,8 +18,11 @@ import { useAppStore } from '@/store/useAppStore';
 import { useShiftSessionStore } from '@/store/useShiftSessionStore';
 import { useTourStore } from '@/store/useTourStore';
 import { deferNavigation } from '@/utils/deferNavigation';
+import { remainingAdvancedScans } from '@/utils/scanQuota';
 
 const ESTIMATED_ANALYSIS_DURATION_MS = 7000;
+/** 高度なスキャンは精度の高いモデルで読むぶん時間がかかる（測定では13〜15秒ほど）。 */
+const ESTIMATED_ADVANCED_ANALYSIS_DURATION_MS = 15000;
 const ESTIMATED_PROGRESS_CEILING = 90;
 
 // px-space-lg(24) + icon w-6(24) + mr-space-md(16) rounded down to the mockup's flat "ml-14" (56px) indent.
@@ -135,10 +139,13 @@ export default function AnalyzingScreen() {
   const setAnalysisResult = useShiftSessionStore((state) => state.setAnalysisResult);
   const setAnalysisError = useShiftSessionStore((state) => state.setAnalysisError);
   const analysisError = useShiftSessionStore((state) => state.analysisError);
+  const analysisRunId = useShiftSessionStore((state) => state.analysisRunId);
+  const scanTier = useShiftSessionStore((state) => state.scanTier);
   const shiftName = useAppStore((state) => state.user?.shiftName ?? '');
   const shiftTableHasNoNames = useAppStore((state) => state.user?.shiftTableHasNoNames ?? false);
   const user = useAppStore((state) => state.user);
   const recordScanUsage = useAppStore((state) => state.recordScanUsage);
+  const recordAdvancedScanUsage = useAppStore((state) => state.recordAdvancedScanUsage);
   const markTutorialFreeScanUsed = useAppStore((state) => state.markTutorialFreeScanUsed);
   // 写真選択画面で選んだ勤務先（未指定なら従来通りactiveWorkplaceにフォールバック）。
   const activeWorkplace =
@@ -158,26 +165,42 @@ export default function AnalyzingScreen() {
     let cancelled = false;
 
     async function run() {
-      // 解析を始めた時点のお試し状態で判断する（途中で変わっても数え方がぶれないように）
-      const isTutorialFreeScan = useAppStore.getState().tutorialFreeScan === 'available';
+      // 解析を始めた時点のお試し状態・精度で判断する（途中で変わっても数え方がぶれないように）
+      const appState = useAppStore.getState();
+      const isTutorialFreeScan = appState.tutorialFreeScan === 'available';
+      const tier = useShiftSessionStore.getState().scanTier;
+      // 高度なスキャンはPROだけ・お試しでは使わない。選ぶ画面で弾いているが、念のためここでも確かめる
+      // （ふつうの解析に黙って切り替えると、ふつうの回数を本人の知らないうちに使ってしまうため、止める）。
+      if (tier === 'advanced') {
+        const isPro = appState.user?.settings.isPro ?? false;
+        if (isTutorialFreeScan || remainingAdvancedScans(appState.scanUsage, isPro) <= 0) {
+          setAnalysisError('高度なスキャンの残りがありません。');
+          return;
+        }
+      }
+      const isAdvanced = tier === 'advanced';
+      // 解析した結果の数え方。AIが実際に解析したときだけ数える（通信エラー等では消費しない）。
+      // 高度なスキャンは高度なスキャンの回数だけを使い、ふつうの回数は減らさない。
+      const recordUsage = isAdvanced ? recordAdvancedScanUsage : recordScanUsage;
       progressAnim.setValue(0);
       Animated.timing(progressAnim, {
         toValue: ESTIMATED_PROGRESS_CEILING,
-        duration: ESTIMATED_ANALYSIS_DURATION_MS,
+        duration: isAdvanced
+          ? ESTIMATED_ADVANCED_ANALYSIS_DURATION_MS
+          : ESTIMATED_ANALYSIS_DURATION_MS,
         easing: Easing.out(Easing.quad),
         useNativeDriver: false,
       }).start();
       try {
-        const result = await getAiProvider({ isPro: !!user?.settings.isPro }).analyzeShiftImages({
+        const result = await getAiProvider({ tier }).analyzeShiftImages({
           images,
           shiftName,
           shiftTableHasNoNames,
           knownShiftTypes,
         });
-        // 解析回数はAIが実際に解析したときだけ数える（通信エラー等では消費しない）。
         // チュートリアルのお試し中は回数に数えず、成功した時点でお試しを使い終えたことにする。
         if (isTutorialFreeScan) markTutorialFreeScanUsed();
-        else recordScanUsage();
+        else recordUsage();
         if (cancelled) return;
         Animated.timing(progressAnim, {
           toValue: 100,
@@ -194,7 +217,7 @@ export default function AnalyzingScreen() {
       } catch (error) {
         // AIが応答したうえで読み取れなかった場合は、解析は行われたので回数に数える
         // お試し中の失敗は数えない（成功するまで何度でも試せる）
-        if (!isTutorialFreeScan && !(error instanceof AnalysisNotPerformedError)) recordScanUsage();
+        if (!isTutorialFreeScan && !(error instanceof AnalysisNotPerformedError)) recordUsage();
         if (cancelled) return;
         setAnalysisError(
           error instanceof Error ? error.message : 'シフト表をうまく読み取れませんでした',
@@ -206,9 +229,9 @@ export default function AnalyzingScreen() {
     return () => {
       cancelled = true;
     };
-    // Re-run only when explicitly retried via key state below, not on every render.
+    // Re-run only when the images change or a re-read is requested (analysisRunId), not on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [images]);
+  }, [images, analysisRunId]);
 
   const handleAbort = () => router.replace('/photo-select');
 
@@ -242,6 +265,9 @@ export default function AnalyzingScreen() {
           label={isTouring ? 'もう一度試す' : '別の画像を選び直す'}
           onPress={handleAbort}
         />
+        <View style={styles.rescanRow}>
+          <AdvancedRescanRow navigateToAnalyzing={false} />
+        </View>
         {isTouring && (
           <Pressable onPress={handleGiveUpTour} hitSlop={Spacing.two}>
             <ThemedText type="headline" themeColor="textSecondary">
@@ -278,7 +304,9 @@ export default function AnalyzingScreen() {
               シフト表を解析中...
             </ThemedText>
             <ThemedText type="subheadline" themeColor="textSecondary" style={styles.centerText}>
-              文字や日付、時間帯を自動で読み取っています。通常数秒で完了します。
+              {scanTier === 'advanced'
+                ? '高度なスキャンで、文字や日付、時間帯を丁寧に読み取っています。20秒ほどかかることがあります。'
+                : '文字や日付、時間帯を自動で読み取っています。通常数秒で完了します。'}
             </ThemedText>
           </View>
         </View>
@@ -338,6 +366,9 @@ const styles = StyleSheet.create({
   },
   centerText: {
     textAlign: 'center',
+  },
+  rescanRow: {
+    alignSelf: 'stretch',
   },
   header: {
     position: 'relative',

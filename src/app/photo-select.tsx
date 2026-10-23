@@ -9,28 +9,31 @@ import {
   Lightbulb,
   Lock,
   ScanLine,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Alert, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { Dialog } from '@/components/dialog';
 import { IconBadge } from '@/components/icon-badge';
-import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { TourTarget } from '@/components/tour/tour-target';
 import { IconSize, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import type { ShiftImage } from '@/services/ai';
+import type { AiTier, ShiftImage } from '@/services/ai';
 import { useAppStore } from '@/store/useAppStore';
 import { useShiftSessionStore } from '@/store/useShiftSessionStore';
 import { useTourStore } from '@/store/useTourStore';
 import { resizeShiftImage } from '@/utils/resizeShiftImage';
 import { showRewardedAd } from '@/utils/rewardedAd';
 import {
+  advancedRecoveryAmount,
   canEarnBonusScan,
+  daysUntilNextRecovery,
+  MAX_ADVANCED_SCANS,
   nextRecoveryAt,
+  remainingAdvancedScans,
   remainingScans as computeRemainingScans,
   scanLimitFor,
 } from '@/utils/scanQuota';
@@ -49,8 +52,6 @@ const MOCK_COLORS = {
   heading: '#111827',
   body: '#4B5563',
   muted: '#6B7280',
-  darkButton: '#1F2937',
-  darkButtonPressed: '#000000',
   blue: '#0066FF',
   borderInput: '#D1D5DB',
   borderCard: '#E5E7EB',
@@ -86,7 +87,7 @@ const PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
   quality: 0.8,
 };
 
-type ButtonVariant = 'dark' | 'outline' | 'primary' | 'disabled';
+type ButtonVariant = 'outline' | 'primary' | 'disabled';
 
 interface ActionButtonProps {
   icon: LucideIcon;
@@ -96,12 +97,11 @@ interface ActionButtonProps {
   disabled?: boolean;
 }
 
-/** シフト表選択画面専用の主要アクションボタン。モックアップの3種の見た目 (dark/outline/disabled) を再現。 */
+/** シフト表選択画面専用の主要アクションボタン。副ボタン（outline）・主ボタン（primary）・押せない状態（disabled）の3種。 */
 function ActionButton({ icon: Icon, label, onPress, variant, disabled }: ActionButtonProps) {
   const theme = useTheme();
 
   const palette = {
-    dark: { bg: MOCK_COLORS.darkButton, pressedBg: MOCK_COLORS.darkButtonPressed, fg: '#FFFFFF' },
     outline: {
       bg: theme.backgroundElement,
       pressedBg: MOCK_COLORS.outlinePressed,
@@ -160,13 +160,39 @@ function PhotoPreview({ images }: { images: ShiftImage[] }) {
     );
   }
 
+  return <SelectedPhotos images={images} />;
+}
+
+/** 選んだ写真の表示領域で、1列に並べる基本の枚数。この枚数のときの写真の大きさで領域の高さが決まる。 */
+const THUMBNAILS_PER_ROW = 3;
+const THUMBNAIL_GAP = 8;
+
+/**
+ * 選んだ写真を1列に並べる。領域の高さは「3枚が1列に収まる大きさ」で固定し、
+ * 4枚選んだときは領域の大きさを変えずに写真を小さくして1列に収める。
+ */
+function SelectedPhotos({ images }: { images: ShiftImage[] }) {
+  const [rowWidth, setRowWidth] = useState(0);
+  const slotSize =
+    rowWidth > 0 ? (rowWidth - THUMBNAIL_GAP * (THUMBNAILS_PER_ROW - 1)) / THUMBNAILS_PER_ROW : 0;
+  const perRow = Math.max(THUMBNAILS_PER_ROW, images.length);
+  const thumbnailSize = rowWidth > 0 ? (rowWidth - THUMBNAIL_GAP * (perRow - 1)) / perRow : 0;
+
   return (
-    <View style={[styles.previewBox, styles.previewBoxFilled]}>
+    <View style={styles.selectedBox}>
       <ThemedText style={styles.previewCount}>{images.length}枚選択中</ThemedText>
-      <View style={styles.thumbnailRow}>
-        {images.map((image) => (
-          <Image key={image.uri} source={{ uri: image.uri }} style={styles.thumbnail} />
-        ))}
+      <View
+        style={[styles.thumbnailRow, { height: slotSize }]}
+        onLayout={(event) => setRowWidth(event.nativeEvent.layout.width)}
+      >
+        {thumbnailSize > 0 &&
+          images.map((image) => (
+            <Image
+              key={image.uri}
+              source={{ uri: image.uri }}
+              style={[styles.thumbnail, { width: thumbnailSize, height: thumbnailSize }]}
+            />
+          ))}
       </View>
     </View>
   );
@@ -199,22 +225,59 @@ function TipsSection() {
   );
 }
 
+/**
+ * PROの操作のボタン（docs/design-system.md 2章: PROは「金の地＋濃い茶色の文字」）。ピル型で、
+ * 幅・高さ・アイコンと文字の並びは上の「スキャンする」（ActionButton）にそろえる。
+ * 今は「高度なスキャンする」だけで使う。ほかの画面でも使うようになったら共通部品にする。
+ */
+function GoldPillButton({
+  label,
+  onPress,
+  disabled,
+}: {
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+}) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [
+        styles.goldPillButton,
+        { backgroundColor: theme.gold, opacity: disabled ? 0.4 : pressed ? 0.7 : 1 },
+      ]}
+    >
+      <Sparkles size={20} color={theme.onGold} strokeWidth={2} />
+      <ThemedText numberOfLines={1} style={[styles.actionButtonLabel, { color: theme.onGold }]}>
+        {label}
+      </ThemedText>
+    </Pressable>
+  );
+}
+
 /** 写真選択画面 (requirements section 5): camera, library, or multiple screenshots at once. */
 export default function PhotoSelectScreen() {
   const [images, setImages] = useState<ShiftImage[]>([]);
-  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [watchingAd, setWatchingAd] = useState(false);
   const setSessionImages = useShiftSessionStore((state) => state.setImages);
   const setScanWorkplaceId = useShiftSessionStore((state) => state.setScanWorkplaceId);
-  // 表示名はやめたので、確認の一文には登録者キーワード（シフト表の中での自分の名前）を使う。
+  const setScanTier = useShiftSessionStore((state) => state.setScanTier);
+  // 表示名はやめたので、「スキャンする」の上の一文には登録者キーワード（シフト表の中での自分の名前）を使う。
   const shiftName = useAppStore((state) => state.user?.shiftName ?? '');
   const isPro = useAppStore((state) => state.user?.settings.isPro ?? false);
   const scanUsage = useAppStore((state) => state.scanUsage);
   const recordBonusScan = useAppStore((state) => state.recordBonusScan);
   const remainingScans = computeRemainingScans(scanUsage, isPro);
   const scanLimit = scanLimitFor(isPro);
-  // チュートリアルのお試し中は、回数が残っていなくても1回解析できる（広告も出さない）
+  // チュートリアルのお試し中は、回数が残っていなくても1回スキャンできる（広告も出さない）
   const isTutorialFreeScan = useAppStore((state) => state.tutorialFreeScan === 'available');
+  // 高度なスキャン（PROだけ・回数はふつうの解析と別枠）。お試しの解析では使わない。
+  const advancedRemaining = remainingAdvancedScans(scanUsage, isPro);
+  // ふつうの回数を使い切ったときは、「スキャンする」が広告・PROの案内を出す（高度なスキャンが残っていても同じ）
   const quotaExceeded = remainingScans <= 0 && !isTutorialFreeScan;
   const canWatchAdForBonus = quotaExceeded && canEarnBonusScan(scanUsage, isPro);
   // 「いつ戻るか」が分からないと、使い切ったユーザーが待てばいいのか課金すべきか判断できない。
@@ -222,6 +285,16 @@ export default function PhotoSelectScreen() {
   const recoveryLabel = recoveryAt
     ? `${recoveryAt.getMonth() + 1}月${recoveryAt.getDate()}日`
     : null;
+  // 残り回数の文（ユーザー指定の形）。回復の予定が無い（時計が止まっている・戻る回数が0）ときは（）を出さない。
+  const recoveryDays = daysUntilNextRecovery(scanUsage);
+  const recoveryNote = (amount: number) =>
+    recoveryDays !== null && amount > 0 ? `（あと${recoveryDays}日で+${amount}回分回復）` : '';
+  const scanQuotaLine = `スキャン：残り${remainingScans} / ${scanLimit}回可能${recoveryNote(
+    Math.max(0, scanLimit - remainingScans),
+  )}`;
+  const advancedQuotaLine = `高度なスキャン：残り${advancedRemaining} / ${MAX_ADVANCED_SCANS}回可能${recoveryNote(
+    advancedRecoveryAmount(advancedRemaining),
+  )}`;
   const workplaces = useAppStore((state) => state.user?.workplaces) ?? [];
   const activeWorkplaceId = useAppStore((state) => state.user?.activeWorkplaceId ?? '');
   const [selectedWorkplaceId, setSelectedWorkplaceId] = useState('');
@@ -254,20 +327,23 @@ export default function PhotoSelectScreen() {
     setImages(await toShiftImages(result));
   };
 
-  // 案内中: 写真を選ぶ前は「撮る/選ぶ」、選んだあとは「解析する」を指す
+  // 案内中: 写真を選ぶ前は「撮る/選ぶ」、選んだあとは「スキャンする」を指す
   const tourStep = useTourStore((state) => state.step);
   const goToTourStep = useTourStore((state) => state.goTo);
   const isTouring = tourStep !== null;
   const hasImages = images.length > 0;
+  // 高度なスキャンする（PROだけ）。お試し・案内付き操作の最中は出さない（お試しは高度なスキャンを使わないため）
+  const showAdvancedButton = isPro && !isTutorialFreeScan && !isTouring;
   useEffect(() => {
     if (tourStep === 'tabScan' || tourStep === 'pickPhoto' || tourStep === 'analyze') {
       goToTourStep(hasImages ? 'analyze' : 'pickPhoto');
     }
   }, [goToTourStep, hasImages, tourStep]);
 
-  const handleNext = () => {
+  const handleNext = (tier: AiTier) => {
     setSessionImages(images);
     setScanWorkplaceId(effectiveWorkplaceId);
+    setScanTier(tier);
     router.push('/analyzing');
   };
 
@@ -279,20 +355,25 @@ export default function PhotoSelectScreen() {
     setWatchingAd(false);
     if (result.success) {
       recordBonusScan();
-      setConfirmDialogOpen(true);
+      // 広告で足した1回で、そのままスキャンを始める
+      handleNext('standard');
     } else if (result.error) {
       Alert.alert('広告を表示できませんでした', result.error);
     }
   };
 
-  const handlePressAnalyze = () => {
+  // PROはふつうの回数を使い切ったら次の回復を待つしかない（広告の追加も課金も無い）。
+  // 課金画面へ送らず、ボタンを押せない状態にする（残り回数の文で戻る日が分かる）。
+  const proQuotaExceeded = isPro && quotaExceeded;
+
+  const handlePressScan = () => {
     if (quotaExceeded) {
       if (canWatchAdForBonus) {
         Alert.alert(
-          '解析できる回数を使い切りました',
+          'スキャンできる回数を使い切りました',
           recoveryLabel
-            ? `広告を見るとあと1回解析できます。${recoveryLabel}には回数が戻ります。`
-            : '広告を見るとあと1回解析できます。',
+            ? `広告を見るとあと1回スキャンできます。${recoveryLabel}には回数が戻ります。`
+            : '広告を見るとあと1回スキャンできます。',
           [
             { text: 'キャンセル', style: 'cancel' },
             { text: 'PROを見る', onPress: () => router.push('/paywall') },
@@ -304,12 +385,8 @@ export default function PhotoSelectScreen() {
       router.push('/paywall');
       return;
     }
-    // 案内中は確認ダイアログを挟まず、そのまま解析へ進む（案内の吹き出しで説明済みのため）
-    if (isTouring) {
-      handleNext();
-      return;
-    }
-    setConfirmDialogOpen(true);
+    // 確認の小窓は挟まず、押したらすぐ読み取りを始める
+    handleNext('standard');
   };
 
   return (
@@ -329,29 +406,72 @@ export default function PhotoSelectScreen() {
         <PhotoPreview images={images} />
 
         <View style={styles.buttonRow}>
+          {/* 写真のボタンは副ボタン（白地＋枠＋青文字）で横に並べ、画面の主役は「スキャンする」だけにする */}
           <TourTarget id="photo-buttons" style={styles.tourButtonGroup}>
-            <ActionButton
-              icon={Camera}
-              label="写真を撮る"
-              onPress={pickFromCamera}
-              variant="dark"
-            />
-            <ActionButton
-              icon={ImageIcon}
-              label="ライブラリから選ぶ"
-              onPress={pickFromLibrary}
-              variant="outline"
-            />
+            <View style={styles.photoButtonCell}>
+              <ActionButton
+                icon={Camera}
+                label="写真を撮る"
+                onPress={pickFromCamera}
+                variant="outline"
+              />
+            </View>
+            <View style={styles.photoButtonCell}>
+              <ActionButton
+                icon={ImageIcon}
+                label="ライブラリ"
+                onPress={pickFromLibrary}
+                variant="outline"
+              />
+            </View>
           </TourTarget>
+          {isPro && workplaces.length > 1 && (
+            <View style={styles.workplacePicker}>
+              <ThemedText style={styles.workplacePickerLabel}>読み取る勤務先</ThemedText>
+              {workplaces.map((workplace) => (
+                <Pressable
+                  key={workplace.id}
+                  onPress={() => setSelectedWorkplaceId(workplace.id)}
+                  style={styles.workplaceRow}
+                >
+                  <ThemedText style={{ color: MOCK_COLORS.heading }}>{workplace.name}</ThemedText>
+                  {workplace.id === effectiveWorkplaceId && (
+                    <Check size={IconSize.small} color={MOCK_COLORS.blue} />
+                  )}
+                </Pressable>
+              ))}
+            </View>
+          )}
+          <ThemedText type="footnote" themeColor="textSecondary" style={styles.centerText}>
+            {shiftName
+              ? `${shiftName}さんのシフト表として読み取ります。`
+              : 'ご自身のシフト表として読み取ります。'}
+          </ThemedText>
           <TourTarget id="analyze-button">
             <ActionButton
               icon={ScanLine}
-              label={watchingAd ? '広告を読み込み中…' : '解析する'}
-              onPress={handlePressAnalyze}
-              disabled={!canAnalyze || watchingAd}
-              variant={canAnalyze && !watchingAd ? 'primary' : 'disabled'}
+              label={watchingAd ? '広告を読み込み中…' : 'スキャンする'}
+              onPress={handlePressScan}
+              disabled={!canAnalyze || watchingAd || proQuotaExceeded}
+              variant={canAnalyze && !watchingAd && !proQuotaExceeded ? 'primary' : 'disabled'}
             />
           </TourTarget>
+          {showAdvancedButton && (
+            <View style={styles.advancedBlock}>
+              <GoldPillButton
+                label="高度なスキャンする"
+                disabled={!canAnalyze || watchingAd || advancedRemaining <= 0}
+                onPress={() => handleNext('advanced')}
+              />
+              {advancedRemaining <= 0 && (
+                <ThemedText type="footnote" themeColor="textSecondary" style={styles.centerText}>
+                  {recoveryLabel
+                    ? `使い切りました。${recoveryLabel}に${advancedRecoveryAmount(advancedRemaining)}回戻ります`
+                    : '使い切りました'}
+                </ThemedText>
+              )}
+            </View>
+          )}
         </View>
 
         <ThemedText
@@ -361,22 +481,20 @@ export default function PhotoSelectScreen() {
           ]}
         >
           {isTutorialFreeScan
-            ? 'お試し中: 今回の解析は回数に数えません'
-            : quotaExceeded
-              ? [
-                  '解析できる回数を使い切りました。',
-                  recoveryLabel ? `${recoveryLabel}に戻ります。` : '',
-                  canWatchAdForBonus ? '広告を見ると今すぐ1回追加できます。' : '',
-                  isPro ? '' : 'PROなら15回まで使えます。',
-                ]
-                  .filter(Boolean)
-                  .join('')
-              : [
-                  `解析: 残り${remainingScans}/${scanLimit}回`,
-                  recoveryLabel ? `（${recoveryLabel}に満タンへ戻ります）` : '',
-                ]
-                  .filter(Boolean)
-                  .join('')}
+            ? 'お試し中: 今回のスキャンは回数に数えません'
+            : [
+                scanQuotaLine,
+                isPro ? advancedQuotaLine : '',
+                // 使い切ったときの次の一手（広告の追加・PROの案内）は今までどおり別の行に出す
+                quotaExceeded
+                  ? [
+                      canWatchAdForBonus ? '広告を見ると今すぐ1回追加できます。' : '',
+                      isPro ? '' : 'PROなら15回まで使えます。',
+                    ].join('')
+                  : '',
+              ]
+                .filter(Boolean)
+                .join('\n')}
         </ThemedText>
 
         <TipsSection />
@@ -384,52 +502,10 @@ export default function PhotoSelectScreen() {
         <View style={styles.footerNote}>
           <Lock size={IconSize.small} color={MOCK_COLORS.muted} strokeWidth={2} />
           <ThemedText style={styles.footerNoteText}>
-            取り込んだシフト表画像は安全な通信でAIに送信され、解析にのみ使用されます。
+            取り込んだシフト表画像は安全な通信でAIに送信され、シフトの読み取りにのみ使用されます。
           </ThemedText>
         </View>
       </ScrollView>
-
-      <Dialog visible={confirmDialogOpen} onClose={() => setConfirmDialogOpen(false)}>
-        <ThemedText type="headline" style={styles.dialogTitle}>
-          このシフト表を解析しますか？
-        </ThemedText>
-        <ThemedText type="body" style={styles.dialogText}>
-          {shiftName
-            ? `${shiftName}さんのシフト表として読み取ります。`
-            : 'ご自身のシフト表として読み取ります。'}
-        </ThemedText>
-
-        {isPro && workplaces.length > 1 && (
-          <View style={styles.workplacePicker}>
-            <ThemedText style={styles.workplacePickerLabel}>読み取る勤務先</ThemedText>
-            {workplaces.map((workplace) => (
-              <Pressable
-                key={workplace.id}
-                onPress={() => setSelectedWorkplaceId(workplace.id)}
-                style={styles.workplaceRow}
-              >
-                <ThemedText style={{ color: MOCK_COLORS.heading }}>{workplace.name}</ThemedText>
-                {workplace.id === effectiveWorkplaceId && (
-                  <Check size={IconSize.small} color={MOCK_COLORS.blue} />
-                )}
-              </Pressable>
-            ))}
-          </View>
-        )}
-
-        <View style={styles.dialogActions}>
-          <Pressable onPress={() => setConfirmDialogOpen(false)} style={styles.dialogCancel}>
-            <ThemedText style={{ color: MOCK_COLORS.body }}>キャンセル</ThemedText>
-          </Pressable>
-          <PrimaryButton
-            label="解析する"
-            onPress={() => {
-              setConfirmDialogOpen(false);
-              handleNext();
-            }}
-          />
-        </View>
-      </Dialog>
     </Screen>
   );
 }
@@ -480,9 +556,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
   },
-  previewBoxFilled: {
-    alignItems: 'stretch',
-    justifyContent: 'flex-start',
+  selectedBox: {
+    borderRadius: Radius.medium,
+    borderWidth: 1,
+    borderColor: MOCK_COLORS.borderCard,
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
   cornerMark: {
     position: 'absolute',
@@ -544,20 +628,23 @@ const styles = StyleSheet.create({
   },
   thumbnailRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    alignItems: 'center',
+    gap: THUMBNAIL_GAP,
   },
   thumbnail: {
-    width: 80,
-    height: 80,
     borderRadius: 8,
+    backgroundColor: MOCK_COLORS.borderCard,
   },
   buttonRow: {
     gap: 12,
     marginBottom: 16,
   },
   tourButtonGroup: {
+    flexDirection: 'row',
     gap: 12,
+  },
+  photoButtonCell: {
+    flex: 1,
   },
   quotaNote: {
     fontSize: 12,
@@ -665,15 +752,22 @@ const styles = StyleSheet.create({
     color: MOCK_COLORS.body,
     marginTop: 2,
   },
-  dialogTitle: {
-    color: MOCK_COLORS.heading,
+  centerText: {
     textAlign: 'center',
   },
-  dialogText: {
-    color: MOCK_COLORS.body,
-    textAlign: 'center',
+  advancedBlock: {
+    gap: Spacing.one,
+  },
+  goldPillButton: {
+    height: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    borderRadius: Radius.smallLarge,
   },
   workplacePicker: {
+    backgroundColor: '#FFFFFF',
     borderRadius: Radius.small,
     borderWidth: 1,
     borderColor: MOCK_COLORS.borderCard,
@@ -695,14 +789,5 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: MOCK_COLORS.borderCard,
-  },
-  dialogActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    gap: Spacing.three,
-  },
-  dialogCancel: {
-    padding: Spacing.two,
   },
 });

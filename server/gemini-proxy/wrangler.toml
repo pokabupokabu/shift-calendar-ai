@@ -8,5 +8,5 @@ kv_namespaces = [
   { binding = "RATE_LIMIT_KV", id = "d3cf5f2acfe04d11909a4b0352b10624" }
 ]
 
-# Secrets (GEMINI_API_KEY, APP_SHARED_SECRET) are set via `wrangler secret put`,
+# Secrets (ANTHROPIC_API_KEY, GEMINI_API_KEY, APP_SHARED_SECRET, RATE_LIMIT_SALT) are set via `wrangler secret put`,
 # never written here — see README.md.

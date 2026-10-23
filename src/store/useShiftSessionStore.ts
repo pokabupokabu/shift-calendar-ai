@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 import type { Shift, ShiftAnalysisResult } from '@/models';
 
-import type { ShiftImage } from '@/services/ai';
+import type { AiTier, ShiftImage } from '@/services/ai';
 import { deleteShiftImageFiles } from '@/utils/deleteShiftImageFiles';
 
 /**
@@ -13,6 +13,13 @@ interface ShiftSessionState {
   images: ShiftImage[];
   /** Which workplace this scan run is for, chosen on 写真選択 (defaults to the active workplace there). */
   scanWorkplaceId: string;
+  /**
+   * どの精度で読むか。写真選択で「高度なスキャンで読む」を選んだとき、または結果の画面から
+   * 「高度なスキャンで読み直す」を押したときに 'advanced' になる。本人確認の画面での再照合も同じ精度で読む。
+   */
+  scanTier: AiTier;
+  /** 解析画面が「もう一度解析する」合図。同じ画像のまま読み直すたびに1つ増やす。 */
+  analysisRunId: number;
   analysisResult: ShiftAnalysisResult | null;
   analysisError: string | null;
   shifts: Shift[];
@@ -21,6 +28,12 @@ interface ShiftSessionState {
 
   setImages: (images: ShiftImage[]) => void;
   setScanWorkplaceId: (workplaceId: string) => void;
+  setScanTier: (tier: AiTier) => void;
+  /**
+   * 同じ画像を別の精度で読み直す準備をする（前の結果・エラー・修正内容は捨てる）。
+   * このあと解析画面（/analyzing）を開くか、開いている解析画面がそのまま読み直す。
+   */
+  startRescan: (tier: AiTier) => void;
   setAnalysisResult: (result: ShiftAnalysisResult, workplaceId: string) => void;
   setAnalysisError: (message: string) => void;
   updateShift: (id: string, patch: Partial<Shift>) => void;
@@ -42,6 +55,8 @@ export function createLocalShiftId(): string {
 export const useShiftSessionStore = create<ShiftSessionState>((set, get) => ({
   images: [],
   scanWorkplaceId: '',
+  scanTier: 'standard',
+  analysisRunId: 0,
   analysisResult: null,
   analysisError: null,
   shifts: [],
@@ -55,6 +70,18 @@ export const useShiftSessionStore = create<ShiftSessionState>((set, get) => ({
   },
 
   setScanWorkplaceId: (workplaceId) => set({ scanWorkplaceId: workplaceId }),
+
+  setScanTier: (tier) => set({ scanTier: tier }),
+
+  startRescan: (tier) =>
+    set((state) => ({
+      scanTier: tier,
+      analysisRunId: state.analysisRunId + 1,
+      analysisResult: null,
+      analysisError: null,
+      shifts: [],
+      removedShiftIds: [],
+    })),
 
   setAnalysisResult: (result, workplaceId) =>
     set({
@@ -107,6 +134,7 @@ export const useShiftSessionStore = create<ShiftSessionState>((set, get) => ({
     set({
       images: [],
       scanWorkplaceId: '',
+      scanTier: 'standard',
       analysisResult: null,
       analysisError: null,
       shifts: [],

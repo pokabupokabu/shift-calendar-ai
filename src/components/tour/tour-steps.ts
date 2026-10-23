@@ -41,7 +41,7 @@ export const TOUR_STEPS: Record<TourStep, TourStepConfig> = {
   analyze: {
     target: 'analyze-button',
     blocking: true,
-    message: '「解析する」を押してね。今回は回数を使わないよ',
+    message: '「スキャンする」を押してね。今回は回数を使わないよ',
     pose: 'happy',
   },
   analyzing: { blocking: false, message: '読み取り中…数秒待ってね', pose: 'running' },

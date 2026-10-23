@@ -1,9 +1,15 @@
 /**
- * Thin transparent proxy in front of the Gemini API (see shift-calendar-ai
- * README "8. 不明点・リスク" 1): the real Gemini API key lives only in this
- * Worker's secrets, never in the app bundle. The app sends the same request
- * shape it used to send straight to Google, just to this Worker's URL with a
+ * Thin transparent proxy in front of the AI APIs (see shift-calendar-ai
+ * README "8. 不明点・リスク" 1): the real API keys live only in this Worker's
+ * secrets, never in the app bundle. The app sends the same request shape it
+ * would send straight to the provider, just to this Worker's URL with a
  * shared-secret header instead of the real key.
+ *
+ * Routes:
+ * - POST /v1/messages → Anthropic Messages API（今の本命。モデルは本文の model で指定）
+ * - POST /v1beta/models/<model>:generateContent → Gemini（切り替えが済んだら閉じる）
+ *
+ * 合言葉・回数制限（KVの数え方）・本文の大きさ・画像の枚数の決まりは両方の道で共通。
  *
  * This does not fully stop abuse by someone who extracts the shared secret
  * from the app bundle (it's still client-embedded) — it bounds the blast
@@ -13,6 +19,8 @@
 
 export interface Env {
   GEMINI_API_KEY: string;
+  /** Anthropic の APIキー。`wrangler secret put ANTHROPIC_API_KEY` で設定する（アプリには入れない）。 */
+  ANTHROPIC_API_KEY: string;
   APP_SHARED_SECRET: string;
   /**
    * Salt used only for hashing the rate-limit key.
@@ -28,6 +36,9 @@ export interface Env {
 
 const GEMINI_ORIGIN = 'https://generativelanguage.googleapis.com';
 const GENERATE_CONTENT_PATH = /^\/v1beta\/models\/([\w.-]+):generateContent$/;
+const ANTHROPIC_MESSAGES_URL = 'https://api.anthropic.com/v1/messages';
+const ANTHROPIC_MESSAGES_PATH = '/v1/messages';
+const ANTHROPIC_VERSION = '2023-06-01';
 const RATE_LIMIT_PER_HOUR = 30;
 /**
  * 短時間の連打を粗く弾くための上限。1時間の上限だけだと、30回を一瞬で使い切る
@@ -45,6 +56,18 @@ const RATE_LIMIT_PER_MINUTE = 5;
  * ここの両方を更新してデプロイすること。
  */
 const ALLOWED_MODELS = new Set(['gemini-3.1-flash-lite', 'gemini-3.8-flash']);
+
+/**
+ * Anthropic の道で中継してよいモデル（ふだんの解析と、PROの高度なスキャン）。理由は ALLOWED_MODELS と同じ。
+ * アプリ側の既定値（src/config/env.ts の modelStandard / modelAdvanced）と必ず揃えること。
+ */
+const ANTHROPIC_ALLOWED_MODELS = new Set(['claude-haiku-5-5', 'claude-sonnet-5-5']);
+
+/**
+ * Anthropic の応答の長さの上限。アプリは16,000で送っている。これより大きい値を許すと、
+ * 合言葉を抜いた相手が1回の呼び出しを桁違いに高くできてしまう。
+ */
+const ANTHROPIC_MAX_OUTPUT_TOKENS = 16000;
 
 /** 1リクエストに詰め込める画像の枚数。アプリ側（photo-select）でも同じ値で制限している。 */
 const MAX_IMAGES_PER_REQUEST = 4;
@@ -115,6 +138,89 @@ function countInlineImages(body: unknown): number {
   return count;
 }
 
+/**
+ * Anthropic の本文に含まれる画像ブロック（type: "image"）の枚数を数える。
+ * messages が配列でないなど形が想定と違う場合は -1 を返し、呼び出し側で400にする。
+ */
+function countAnthropicImages(body: Record<string, unknown>): number {
+  const messages = body.messages;
+  if (!Array.isArray(messages)) return -1;
+
+  let count = 0;
+  for (const message of messages) {
+    const content = (message as { content?: unknown })?.content;
+    if (typeof content === 'string') continue;
+    if (!Array.isArray(content)) return -1;
+    for (const block of content) {
+      if (block && typeof block === 'object' && (block as { type?: unknown }).type === 'image') {
+        count += 1;
+      }
+    }
+  }
+  return count;
+}
+
+type Route = { kind: 'gemini'; path: string } | { kind: 'anthropic' };
+
+/** パスから道を決める。どちらにも当てはまらなければ null（404）。 */
+function matchRoute(pathname: string): Route | null {
+  if (pathname === ANTHROPIC_MESSAGES_PATH) return { kind: 'anthropic' };
+  // Only relay Gemini's own generateContent path shape — this must never
+  // become an open relay to arbitrary Google APIs.
+  const pathMatch = GENERATE_CONTENT_PATH.exec(pathname);
+  if (pathMatch && ALLOWED_MODELS.has(pathMatch[1])) return { kind: 'gemini', path: pathname };
+  return null;
+}
+
+/** 本文を検証してから Anthropic へ送る。中継するのは本文だけで、アプリのヘッダーは1つも渡さない。 */
+async function relayToAnthropic(parsedBody: unknown, rawBody: string, env: Env): Promise<Response> {
+  if (typeof parsedBody !== 'object' || parsedBody === null || Array.isArray(parsedBody)) {
+    return new Response('Bad Request', { status: 400 });
+  }
+  const body = parsedBody as Record<string, unknown>;
+
+  if (typeof body.model !== 'string') {
+    return new Response('Bad Request', { status: 400 });
+  }
+  if (!ANTHROPIC_ALLOWED_MODELS.has(body.model)) {
+    return new Response('Not Found', { status: 404 });
+  }
+  if (
+    typeof body.max_tokens !== 'number' ||
+    !Number.isFinite(body.max_tokens) ||
+    body.max_tokens > ANTHROPIC_MAX_OUTPUT_TOKENS
+  ) {
+    return new Response('Bad Request', { status: 400 });
+  }
+
+  const imageCount = countAnthropicImages(body);
+  if (imageCount < 0) {
+    return new Response('Bad Request', { status: 400 });
+  }
+  if (imageCount > MAX_IMAGES_PER_REQUEST) {
+    return new Response('Payload Too Large', { status: 413 });
+  }
+
+  if (!env.ANTHROPIC_API_KEY) {
+    return new Response('Service Unavailable', { status: 503 });
+  }
+
+  const upstream = await fetch(ANTHROPIC_MESSAGES_URL, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': env.ANTHROPIC_API_KEY,
+      'anthropic-version': ANTHROPIC_VERSION,
+    },
+    body: rawBody,
+  });
+
+  return new Response(upstream.body, {
+    status: upstream.status,
+    headers: { 'Content-Type': upstream.headers.get('Content-Type') ?? 'application/json' },
+  });
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     if (request.method !== 'POST') {
@@ -127,10 +233,8 @@ export default {
     }
 
     const url = new URL(request.url);
-    // Only relay Gemini's own generateContent path shape — this must never
-    // become an open relay to arbitrary Google APIs.
-    const pathMatch = GENERATE_CONTENT_PATH.exec(url.pathname);
-    if (!pathMatch || !ALLOWED_MODELS.has(pathMatch[1])) {
+    const route = matchRoute(url.pathname);
+    if (!route) {
       return new Response('Not Found', { status: 404 });
     }
 
@@ -165,6 +269,10 @@ export default {
       return new Response('Bad Request', { status: 400 });
     }
 
+    if (route.kind === 'anthropic') {
+      return relayToAnthropic(parsedBody, rawBody, env);
+    }
+
     const imageCount = countInlineImages(parsedBody);
     if (imageCount < 0) {
       return new Response('Bad Request', { status: 400 });
@@ -173,7 +281,7 @@ export default {
       return new Response('Payload Too Large', { status: 413 });
     }
 
-    const upstream = await fetch(`${GEMINI_ORIGIN}${url.pathname}`, {
+    const upstream = await fetch(`${GEMINI_ORIGIN}${route.path}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

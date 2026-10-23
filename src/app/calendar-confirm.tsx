@@ -4,6 +4,7 @@ import { ChevronRight, Trash2 } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { Alert, FlatList, Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
+import { AdvancedRescanRow } from '@/components/advanced-rescan-row';
 import { Dialog } from '@/components/dialog';
 import { PrimaryButton } from '@/components/primary-button';
 import { TourTarget } from '@/components/tour/tour-target';
@@ -223,6 +224,10 @@ export default function CalendarConfirmScreen() {
       )}
 
       {photoUri && <Image source={{ uri: photoUri }} style={styles.photo} resizeMode="contain" />}
+
+      {!registering && (
+        <AdvancedRescanRow discardNote="今の読み取り結果と、この画面で直した内容は消えます。" />
+      )}
 
       {removedShiftIds.length > 0 && (
         <Pressable onPress={restoreAllShifts} style={styles.restoreRow} hitSlop={Spacing.two}>

@@ -13,6 +13,7 @@ import { getProPriceString, purchasePro, restorePurchases } from '@/utils/purcha
 
 const FEATURES = [
   '読み取り回数が4回 → 15回に（15日ごとに戻ります）',
+  '高度なスキャンで、読み取りにくい表も高精度に（最大5回・15日ごとに3回戻ります）',
   '扶養の壁アラートで年収の壁を自動チェック',
   '過去の月の給与もさかのぼって確認',
   'バイト先を3つまで登録（掛け持ち対応）',
