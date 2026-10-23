@@ -50,7 +50,7 @@ interface AnthropicMessagesResponse {
 const SUPPORTED_MEDIA_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
 
 /**
- * シフト表の画像を、中継サーバー（server/gemini-proxy の Cloudflare Worker）経由で
+ * シフト表の画像を、中継サーバー（server/ai-proxy の Cloudflare Worker）経由で
  * Anthropic の Claude に読ませる。本物の Anthropic APIキーは Worker のシークレットにだけあり、
  * このアプリには入らない（README「8. 不明点・リスク」1）。アプリが持つのは中継先のURLと合言葉だけ。
  */

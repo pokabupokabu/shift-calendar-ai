@@ -24,8 +24,8 @@ interface GeminiGenerateContentResponse {
 }
 
 /**
- * Sends the shift table image(s) to Gemini via the gemini-shift-proxy Cloudflare
- * Worker (server/gemini-proxy) — the real Gemini API key lives only in that
+ * Sends the shift table image(s) to Gemini via the shiftokare-ai-proxy Cloudflare
+ * Worker (server/ai-proxy) — the real Gemini API key lives only in that
  * Worker's secrets, never in this client bundle (see README "8. 不明点・リスク" 1).
  * Parses the JSON response into a ShiftAnalysisResult.
  */
