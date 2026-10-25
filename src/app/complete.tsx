@@ -78,7 +78,9 @@ export default function CompleteScreen() {
             カレンダー登録が完了しました
           </ThemedText>
           <ThemedText type="subheadline" themeColor="textSecondary" style={styles.centerText}>
-            {countLabel}件のシフト予定を{providerLabel}に正常に追加しました。
+            {/* 「追／加」と言葉の途中で折り返さないよう、言葉の切れ目で改行する */}
+            {countLabel}件のシフト予定を{'\n'}
+            {providerLabel}に正常に追加しました。
           </ThemedText>
         </View>
 
@@ -129,8 +131,9 @@ export default function CompleteScreen() {
               <IconBadge tone="blue" size={32}>
                 <Camera size={IconSize.small} color={providerBadgeColors.icon} />
               </IconBadge>
+              {/* 「スキ／ャン」と言葉の途中で折り返さないよう、「配られたら」の後で改行する（B2の決定14） */}
               <ThemedText type="subheadline" style={styles.tipText}>
-                新しいシフト表が配られたら「スキャン」から撮影するだけ
+                {'新しいシフト表が配られたら\n「スキャン」から撮影するだけ'}
               </ThemedText>
             </View>
             <View style={[styles.tipSeparator, { backgroundColor: theme.border }]} />
@@ -146,7 +149,11 @@ export default function CompleteScreen() {
         </View>
 
         <View style={styles.actions}>
-          <PrimaryButton label="カレンダーを確認する" onPress={handleOpenCalendar} />
+          <PrimaryButton
+            label="カレンダーを確認する"
+            onPress={handleOpenCalendar}
+            variant="bluePill"
+          />
           <Pressable onPress={handleDone} style={styles.doneLink} hitSlop={Spacing.two}>
             <ThemedText type="headline" themeColor="primary">
               ホームに戻る

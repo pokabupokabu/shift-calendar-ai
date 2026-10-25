@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { Check, ChevronLeft, ChevronRight, Info } from 'lucide-react-native';
+import { Check, ChevronRight, Info } from 'lucide-react-native';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -7,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 
@@ -17,7 +18,7 @@ import { IconBadge } from '@/components/icon-badge';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
-import { BottomTabInset, IconSize, Spacing } from '@/constants/theme';
+import { BottomTabInset, IconSize, Radius, Spacing } from '@/constants/theme';
 import { useIconBadgeColors } from '@/hooks/use-icon-badge-colors';
 import { useTheme } from '@/hooks/use-theme';
 import { useTourStepOnFocus } from '@/hooks/use-tour-step';
@@ -35,6 +36,9 @@ export default function UserMatchSelectScreen() {
   useTourStepOnFocus('userMatch');
   const theme = useTheme();
   const infoBadgeColors = useIconBadgeColors('blue');
+  // iPhone SE・mini（幅375）では、見出しの2行目「見つかりませんでした」が はこブーの横の幅に
+  // 1〜2px 入りきらず「た」だけ落ちるため、狭い幅のときだけ見出しを 20pt にする（実装後の決定5の続き）
+  const isNarrow = useWindowDimensions().width < 390;
   const images = useShiftSessionStore((state) => state.images);
   const analysisResult = useShiftSessionStore((state) => state.analysisResult);
   const setAnalysisResult = useShiftSessionStore((state) => state.setAnalysisResult);
@@ -94,43 +98,35 @@ export default function UserMatchSelectScreen() {
     }
   };
 
-  const inputStyle = [styles.input, { color: theme.text, backgroundColor: theme.background }];
+  // 入力欄はカードの色の地にして、灰色の画面の上で欄の場所が分かるようにする（B2の決定2）。
+  const inputStyle = [
+    styles.input,
+    { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: theme.border },
+  ];
 
+  // どちらも言葉の途中（「選／択」「見つけ／られ」）で折り返さないよう、言葉の切れ目で改行する。
+  // 見つからないときは、2行目がはこブーの横の幅に収まるよう「見つかりませんでした」と短く言う
+  // （docs/ui-review/group-b.md の実装後の決定5）
   const introTitle =
     status === 'not_found'
-      ? 'あなたの行を見つけられませんでした'
-      : 'あなたの名前の行を選択してください';
+      ? 'あなたの行が\n見つかりませんでした'
+      : 'あなたの名前の行を\n選択してください';
   const introSubtitle =
     status === 'not_found'
-      ? 'シフト表に書かれている名前をそのまま入力してください。'
+      ? 'シフト表に書かれている名前を\nそのまま入力してください。'
       : `設定された名前「${shiftName}」に最も近い行を自動検出しました。正しい行が選択されているか確認してください。`;
 
   const showManualSection = manualOpen || !hasCandidates;
 
   return (
+    // 上のバーはほかの奥の画面と同じ共通のもの（_layout.tsx の Stack のヘッダー。B2の決定1）。
     <Screen style={styles.screen}>
-      <View
-        style={[
-          styles.header,
-          { backgroundColor: theme.backgroundElement, borderBottomColor: theme.border },
-        ]}
-      >
-        <Pressable onPress={() => router.back()} style={styles.backButton} hitSlop={Spacing.two}>
-          <ChevronLeft size={IconSize.medium} color={theme.primary} />
-          <ThemedText type="body" themeColor="primary">
-            戻る
-          </ThemedText>
-        </Pressable>
-        <ThemedText type="headline" numberOfLines={1} style={styles.headerTitle}>
-          本人確認
-        </ThemedText>
-        <View style={styles.headerSpacer} />
-      </View>
-
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.introRow}>
           <View style={styles.introBlock}>
-            <ThemedText type="title2">{introTitle}</ThemedText>
+            <ThemedText type="title2" style={isNarrow && styles.introTitleNarrow}>
+              {introTitle}
+            </ThemedText>
             <ThemedText type="subheadline" themeColor="textSecondary" style={styles.introSubtitle}>
               {introSubtitle}
             </ThemedText>
@@ -217,9 +213,12 @@ export default function UserMatchSelectScreen() {
 
         {showManualSection && (
           <View style={styles.section}>
-            <ThemedText type="small" themeColor="textSecondary">
-              この中にない場合は、表に書かれている名前を直接入力してください
-            </ThemedText>
+            {/* 候補が無いときは上の説明文と同じことを言うだけなので出さない（B2の決定2） */}
+            {hasCandidates && (
+              <ThemedText type="footnote" themeColor="textSecondary">
+                この中にない場合は、表に書かれている名前を直接入力してください
+              </ThemedText>
+            )}
             <TextInput
               value={customLabel}
               onChangeText={setCustomLabel}
@@ -232,6 +231,7 @@ export default function UserMatchSelectScreen() {
               label="この名前で確認する"
               onPress={() => void resolve(customLabel)}
               disabled={resolving || customLabel.trim().length === 0}
+              variant="bluePill"
             />
           </View>
         )}
@@ -276,6 +276,7 @@ export default function UserMatchSelectScreen() {
             label="この行で確定して次へ"
             onPress={() => selectedLabel && void resolve(selectedLabel)}
             disabled={resolving || !selectedLabel}
+            variant="bluePill"
           />
         </View>
       )}
@@ -287,26 +288,6 @@ const styles = StyleSheet.create({
   screen: {
     padding: 0,
     gap: 0,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    height: 44,
-    paddingHorizontal: Spacing.three,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minWidth: 60,
-  },
-  headerTitle: {
-    flex: 1,
-    textAlign: 'center',
-  },
-  headerSpacer: {
-    minWidth: 60,
   },
   scrollContent: {
     paddingHorizontal: Spacing.four,
@@ -322,6 +303,10 @@ const styles = StyleSheet.create({
   introBlock: {
     flex: 1,
     gap: Spacing.one,
+  },
+  introTitleNarrow: {
+    fontSize: 20,
+    lineHeight: 25,
   },
   introSubtitle: {
     lineHeight: 20,
@@ -388,9 +373,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   input: {
-    borderRadius: Spacing.three,
+    height: 44,
+    borderWidth: 1,
+    borderRadius: Radius.smallLarge,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
+    paddingVertical: 0,
     fontSize: 16,
   },
   spinner: {
