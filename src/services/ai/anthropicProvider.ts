@@ -119,13 +119,21 @@ export class AnthropicProvider implements AIProvider {
 
     // 中継サーバーやAIが受け付けなかった（合言葉違い・混雑・上限超え・障害など）場合は、
     // 解析そのものが行われていないので回数を消費させない（GeminiProvider と同じ扱い）。
+    // 画面には番号や英語の本文を出さず、分かる日本語だけを出す（docs/ui-review/group-b.md の決定12）。
+    // 原因を調べられるよう、番号と本文は開発用のログにだけ残す。
     if (!response.ok) {
       const errorBody = await response.json().catch(() => undefined);
       const message =
         isPlainObject(errorBody) && isPlainObject(errorBody.error)
           ? String(errorBody.error.message ?? response.statusText)
           : response.statusText;
-      throw new AnalysisNotPerformedError(`AI解析に失敗しました（${response.status}）: ${message}`);
+      if (__DEV__)
+        console.warn(`[AnthropicProvider] proxy returned ${response.status}: ${message}`);
+      throw new AnalysisNotPerformedError(
+        response.status === 429
+          ? '短い時間に続けて送られたため、一時的に止めています。少し時間をおいてお試しください。'
+          : 'AIのサービスが混み合っているか、一時的に使えません。少し時間をおいてお試しください。',
+      );
     }
 
     const data = (await response.json()) as AnthropicMessagesResponse;

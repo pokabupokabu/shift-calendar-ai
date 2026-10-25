@@ -15,7 +15,13 @@ export type LegalLine =
   /** 見出し。level 1 =「第1条（適用）」「1. 取得する情報」、level 2 =「(1) Google AdMob」。 */
   | { type: 'heading'; level: 1 | 2; text: string }
   /** 行頭に印のある項目。印の種類は `marker`、元の印（空白を含む）は `prefix`。 */
-  | { type: 'item'; marker: 'number' | 'bullet' | 'note'; prefix: string; text: string }
+  | {
+      type: 'item';
+      /** paren = 番号付きの項目の中の、字下げした「(1) …」（利用規約 第13条）。字下げして出す。 */
+      marker: 'number' | 'bullet' | 'note' | 'paren';
+      prefix: string;
+      text: string;
+    }
   /** ふつうの文。 */
   | { type: 'text'; text: string };
 
@@ -27,6 +33,8 @@ const NUMBERED = /^(\d+\.\s*)(.*)$/;
 const SUB_HEADING = /^\(\d+\)\s/;
 const BULLET = /^(・)(.*)$/;
 const NOTE = /^(※\s*)(.*)$/;
+/** 行頭に字下げ（全角・半角の空白）がある「(1) …」。字下げの無い見出しの「(1) …」とは別に扱う。 */
+const INDENTED_PAREN = /^([　 ]+\(\d+\)\s*)(.*)$/;
 
 /** 空行で区切ったまとまりごとに、空でない行の配列にする。 */
 function splitChunks(body: string): string[][] {
@@ -57,14 +65,30 @@ function classifyLine(line: string, indexInChunk: number, chunkLength: number): 
   const note = NOTE.exec(line);
   if (note) return { type: 'item', marker: 'note', prefix: note[1], text: note[2] };
 
+  const paren = INDENTED_PAREN.exec(line);
+  if (paren) return { type: 'item', marker: 'paren', prefix: paren[1], text: paren[2] };
+
   return { type: 'text', text: line };
 }
 
 /** 利用規約・プライバシーポリシーのような、見出しと本文の続く文書を分ける。 */
 export function parseArticle(body: string): LegalChunk[] {
-  return splitChunks(body).map((lines) =>
-    lines.map((line, index) => classifyLine(line, index, lines.length)),
-  );
+  return splitChunks(body).map((lines) => {
+    const classified = lines.map((line, index) => classifyLine(line, index, lines.length));
+    // 「2. 取得する情報」のすぐ下の行が「(1) …」で、その下に中身が続くときは、(1) も小見出しにする
+    // （2026-10-25 のプライバシーポリシー。(2) 以降は空行のあとのまとまりの先頭なので、もともと小見出しになる）。
+    const [first, second] = classified;
+    if (
+      first?.type === 'heading' &&
+      first.level === 1 &&
+      second?.type === 'text' &&
+      lines.length > 2 &&
+      SUB_HEADING.test(lines[1])
+    ) {
+      classified[1] = { type: 'heading', level: 2, text: lines[1] };
+    }
+    return classified;
+  });
 }
 
 /** よくある質問の1問。`questionPrefix` / `answerPrefix` は元の「Q. 」「A. 」。 */
