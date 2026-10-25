@@ -15,16 +15,20 @@ import {
 import { useEffect, useState } from 'react';
 import { Alert, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { AiConsentSheet } from '@/components/ai-consent-sheet';
 import { IconBadge } from '@/components/icon-badge';
+import { PhotoViewer } from '@/components/photo-viewer';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { TourTarget } from '@/components/tour/tour-target';
 import { IconSize, Radius, Spacing } from '@/constants/theme';
+import { useIconBadgeColors } from '@/hooks/use-icon-badge-colors';
 import { useTheme } from '@/hooks/use-theme';
 import type { AiTier, ShiftImage } from '@/services/ai';
 import { useAppStore } from '@/store/useAppStore';
 import { useShiftSessionStore } from '@/store/useShiftSessionStore';
 import { useTourStore } from '@/store/useTourStore';
+import { deferNavigation } from '@/utils/deferNavigation';
 import { resizeShiftImage } from '@/utils/resizeShiftImage';
 import { showRewardedAd } from '@/utils/rewardedAd';
 import {
@@ -43,24 +47,6 @@ const TIPS = [
   '表の枠線が平行になるように画面いっぱいに収めると認識率が上がります。',
   '複数月にまたがる場合や縦長の表は、分割して撮影した写真を複数選択できます。',
 ];
-
-/**
- * モックアップ (Tailwind HTML) 由来の、テーマトークンに無い専用色。
- * ほぼ同系色のトークン (textSecondary, orange 等) はあるが、正確性優先でハードコードする。
- */
-const MOCK_COLORS = {
-  heading: '#111827',
-  body: '#4B5563',
-  muted: '#6B7280',
-  blue: '#0066FF',
-  borderInput: '#D1D5DB',
-  borderCard: '#E5E7EB',
-  outlinePressed: '#F9FAFB',
-  disabledBg: '#E5E7EB',
-  tipsBadgeBg: '#FEF3C7',
-  tipsBadgeIcon: '#D97706',
-  cornerMark: '#D1D5DB',
-};
 
 /**
  * 1回の解析で送れる画像の枚数。AIへのリクエストが際限なく大きくならないようにするための
@@ -101,17 +87,18 @@ interface ActionButtonProps {
 function ActionButton({ icon: Icon, label, onPress, variant, disabled }: ActionButtonProps) {
   const theme = useTheme();
 
+  // 色はアプリ共通のトークンだけを使う（ダークでも読めるように。group-b.md の決定2）
   const palette = {
     outline: {
       bg: theme.backgroundElement,
-      pressedBg: MOCK_COLORS.outlinePressed,
-      fg: MOCK_COLORS.blue,
+      pressedBg: theme.backgroundSelected,
+      fg: theme.primary,
     },
-    primary: { bg: theme.primary, pressedBg: theme.primary, fg: '#FFFFFF' },
+    primary: { bg: theme.primary, pressedBg: theme.primary, fg: theme.onPrimary },
     disabled: {
-      bg: MOCK_COLORS.disabledBg,
-      pressedBg: MOCK_COLORS.disabledBg,
-      fg: MOCK_COLORS.muted,
+      bg: theme.backgroundSelected,
+      pressedBg: theme.backgroundSelected,
+      fg: theme.textSecondary,
     },
   }[variant];
 
@@ -121,7 +108,7 @@ function ActionButton({ icon: Icon, label, onPress, variant, disabled }: ActionB
       disabled={disabled}
       style={({ pressed }) => [
         styles.actionButton,
-        variant === 'outline' && { borderWidth: 1, borderColor: MOCK_COLORS.borderInput },
+        variant === 'outline' && { borderWidth: 1, borderColor: theme.border },
         { backgroundColor: pressed ? palette.pressedBg : palette.bg },
         variant === 'disabled' && styles.actionButtonDisabled,
         variant === 'primary' && { opacity: pressed ? 0.85 : 1 },
@@ -134,33 +121,47 @@ function ActionButton({ icon: Icon, label, onPress, variant, disabled }: ActionB
 }
 
 function CornerMarks() {
+  const theme = useTheme();
+  const color = { borderColor: theme.disabled };
   return (
     <>
-      <View style={[styles.cornerMark, styles.cornerTopLeft]} />
-      <View style={[styles.cornerMark, styles.cornerTopRight]} />
-      <View style={[styles.cornerMark, styles.cornerBottomLeft]} />
-      <View style={[styles.cornerMark, styles.cornerBottomRight]} />
+      <View style={[styles.cornerMark, color, styles.cornerTopLeft]} />
+      <View style={[styles.cornerMark, color, styles.cornerTopRight]} />
+      <View style={[styles.cornerMark, color, styles.cornerBottomLeft]} />
+      <View style={[styles.cornerMark, color, styles.cornerBottomRight]} />
     </>
   );
 }
 
-function PhotoPreview({ images }: { images: ShiftImage[] }) {
+function PhotoPreview({
+  images,
+  onOpenImage,
+}: {
+  images: ShiftImage[];
+  onOpenImage: (uri: string) => void;
+}) {
+  const theme = useTheme();
   if (images.length === 0) {
     return (
-      <View style={styles.previewBox}>
+      <View
+        style={[
+          styles.previewBox,
+          { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+        ]}
+      >
         <CornerMarks />
         <IconBadge tone="blue" size={64}>
-          <Camera size={IconSize.large} color={MOCK_COLORS.blue} />
+          <Camera size={IconSize.large} color={theme.primary} />
         </IconBadge>
         <ThemedText style={styles.previewTitle}>写真が未選択です</ThemedText>
-        <ThemedText style={styles.previewHint}>
+        <ThemedText themeColor="textSecondary" style={styles.previewHint}>
           フォーカスが合っている鮮明な写真をお使いいただくと認識精度が向上します
         </ThemedText>
       </View>
     );
   }
 
-  return <SelectedPhotos images={images} />;
+  return <SelectedPhotos images={images} onOpenImage={onOpenImage} />;
 }
 
 /** 選んだ写真の表示領域で、1列に並べる基本の枚数。この枚数のときの写真の大きさで領域の高さが決まる。 */
@@ -171,7 +172,14 @@ const THUMBNAIL_GAP = 8;
  * 選んだ写真を1列に並べる。領域の高さは「3枚が1列に収まる大きさ」で固定し、
  * 4枚選んだときは領域の大きさを変えずに写真を小さくして1列に収める。
  */
-function SelectedPhotos({ images }: { images: ShiftImage[] }) {
+function SelectedPhotos({
+  images,
+  onOpenImage,
+}: {
+  images: ShiftImage[];
+  onOpenImage: (uri: string) => void;
+}) {
+  const theme = useTheme();
   const [rowWidth, setRowWidth] = useState(0);
   const slotSize =
     rowWidth > 0 ? (rowWidth - THUMBNAIL_GAP * (THUMBNAILS_PER_ROW - 1)) / THUMBNAILS_PER_ROW : 0;
@@ -179,19 +187,39 @@ function SelectedPhotos({ images }: { images: ShiftImage[] }) {
   const thumbnailSize = rowWidth > 0 ? (rowWidth - THUMBNAIL_GAP * (perRow - 1)) / perRow : 0;
 
   return (
-    <View style={styles.selectedBox}>
+    <View
+      style={[
+        styles.selectedBox,
+        { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+      ]}
+    >
       <ThemedText style={styles.previewCount}>{images.length}枚選択中</ThemedText>
       <View
         style={[styles.thumbnailRow, { height: slotSize }]}
         onLayout={(event) => setRowWidth(event.nativeEvent.layout.width)}
       >
         {thumbnailSize > 0 &&
-          images.map((image) => (
-            <Image
+          images.map((image, index) => (
+            // 枠の中は正方形の切り抜きのまま。押すと全画面で写真全体を見られる（決定3）
+            <Pressable
               key={image.uri}
-              source={{ uri: image.uri }}
-              style={[styles.thumbnail, { width: thumbnailSize, height: thumbnailSize }]}
-            />
+              accessibilityRole="imagebutton"
+              accessibilityLabel={`${index + 1}枚目の写真を拡大して見る`}
+              onPress={() => onOpenImage(image.uri)}
+              style={({ pressed }) => pressed && styles.pressed}
+            >
+              <Image
+                source={{ uri: image.uri }}
+                style={[
+                  styles.thumbnail,
+                  {
+                    width: thumbnailSize,
+                    height: thumbnailSize,
+                    backgroundColor: theme.backgroundSelected,
+                  },
+                ]}
+              />
+            </Pressable>
           ))}
       </View>
     </View>
@@ -199,24 +227,35 @@ function SelectedPhotos({ images }: { images: ShiftImage[] }) {
 }
 
 function TipsSection() {
+  const theme = useTheme();
+  const tipsBadge = useIconBadgeColors('orange');
   const [expanded, setExpanded] = useState(false);
   const ChevronIcon = expanded ? ChevronUp : ChevronDown;
 
   return (
-    <View style={styles.tipsCard}>
+    <View
+      style={[
+        styles.tipsCard,
+        { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+      ]}
+    >
       <Pressable style={styles.tipsHeader} onPress={() => setExpanded((value) => !value)}>
-        <View style={styles.tipsIconBadge}>
-          <Lightbulb size={IconSize.small} color={MOCK_COLORS.tipsBadgeIcon} strokeWidth={2.2} />
+        <View style={[styles.tipsIconBadge, { backgroundColor: tipsBadge.background }]}>
+          <Lightbulb size={IconSize.small} color={tipsBadge.icon} strokeWidth={2.2} />
         </View>
         <ThemedText style={styles.tipsHeaderLabel}>きれいに読み取るコツ</ThemedText>
-        <ChevronIcon size={20} color={MOCK_COLORS.muted} strokeWidth={2.2} />
+        <ChevronIcon size={20} color={theme.textSecondary} strokeWidth={2.2} />
       </Pressable>
       {expanded && (
-        <View style={styles.tipsList}>
+        <View style={[styles.tipsList, { borderTopColor: theme.border }]}>
           {TIPS.map((tip) => (
             <View key={tip} style={styles.tipRow}>
-              <ThemedText style={styles.tipBullet}>•</ThemedText>
-              <ThemedText style={styles.tipText}>{tip}</ThemedText>
+              <ThemedText themeColor="primary" style={styles.tipBullet}>
+                •
+              </ThemedText>
+              <ThemedText themeColor="textSecondary" style={styles.tipText}>
+                {tip}
+              </ThemedText>
             </View>
           ))}
         </View>
@@ -261,8 +300,14 @@ function GoldPillButton({
 
 /** 写真選択画面 (requirements section 5): camera, library, or multiple screenshots at once. */
 export default function PhotoSelectScreen() {
+  const theme = useTheme();
   const [images, setImages] = useState<ShiftImage[]>([]);
   const [watchingAd, setWatchingAd] = useState(false);
+  // 全画面で拡大表示している写真（決定3）。null なら閉じている
+  const [viewerUri, setViewerUri] = useState<string | null>(null);
+  // 同意の小窓を開いているときの、押されたほうのスキャン（決定5）。null なら閉じている
+  const [pendingConsentTier, setPendingConsentTier] = useState<AiTier | null>(null);
+  const recordAiConsent = useAppStore((state) => state.recordAiConsent);
   const setSessionImages = useShiftSessionStore((state) => state.setImages);
   const setScanWorkplaceId = useShiftSessionStore((state) => state.setScanWorkplaceId);
   const setScanTier = useShiftSessionStore((state) => state.setScanTier);
@@ -347,6 +392,38 @@ export default function PhotoSelectScreen() {
     router.push('/analyzing');
   };
 
+  /**
+   * 読み取りを始める。まだ同意していなければ、先に同意の小窓を出す（初めての1回だけ。決定5）。
+   * 案内付き操作の途中でも出す。小窓のあいだは案内の重ね絵を隠す（小窓が押せなくならないように）。
+   */
+  const startScan = (tier: AiTier) => {
+    if (!useAppStore.getState().aiConsentAt) {
+      setPendingConsentTier(tier);
+      goToTourStep('consent');
+      return;
+    }
+    handleNext(tier);
+  };
+
+  const handleAgreeConsent = () => {
+    const tier = pendingConsentTier ?? 'standard';
+    recordAiConsent();
+    setPendingConsentTier(null);
+    // 案内中は、解析画面が開いた時点で次の手順（analyzing）へ進む
+    handleNext(tier);
+  };
+
+  const closeConsent = () => {
+    setPendingConsentTier(null);
+    // 案内中なら「スキャンする」を指す手順へ戻す
+    goToTourStep('analyze');
+  };
+
+  const handleOpenPrivacyPolicy = () => {
+    closeConsent();
+    deferNavigation(() => router.push('/settings/legal/privacy'));
+  };
+
   const canAnalyze = images.length > 0;
 
   const handleWatchAdForBonusScan = async () => {
@@ -355,8 +432,8 @@ export default function PhotoSelectScreen() {
     setWatchingAd(false);
     if (result.success) {
       recordBonusScan();
-      // 広告で足した1回で、そのままスキャンを始める
-      handleNext('standard');
+      // 広告で足した1回で、そのままスキャンを始める（まだ同意していなければ同意の小窓を挟む）
+      startScan('standard');
     } else if (result.error) {
       Alert.alert('広告を表示できませんでした', result.error);
     }
@@ -385,25 +462,23 @@ export default function PhotoSelectScreen() {
       router.push('/paywall');
       return;
     }
-    // 確認の小窓は挟まず、押したらすぐ読み取りを始める
-    handleNext('standard');
+    // 確認の小窓は挟まず、押したらすぐ読み取りを始める（初めての1回だけ同意の小窓を出す）
+    startScan('standard');
   };
 
   return (
     <Screen style={styles.screen}>
-      <View style={styles.header}>
-        <ThemedText style={styles.title}>シフト表の写真を選んでください</ThemedText>
-        <ThemedText style={styles.subtitle}>
-          複数のスクショや写真をまとめて選択・読み取りできます。手書きや印刷された表にも対応しています。
-        </ThemedText>
-      </View>
+      {/* 題名は上のバーの「シフト表を選択」だけにする（大見出しは二重になるので置かない。決定1） */}
+      <ThemedText type="subheadline" themeColor="textSecondary" style={styles.header}>
+        複数のスクショや写真をまとめて選択・読み取りできます。手書きや印刷された表にも対応しています。
+      </ThemedText>
 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <PhotoPreview images={images} />
+        <PhotoPreview images={images} onOpenImage={setViewerUri} />
 
         <View style={styles.buttonRow}>
           {/* 写真のボタンは副ボタン（白地＋枠＋青文字）で横に並べ、画面の主役は「スキャンする」だけにする */}
@@ -426,17 +501,24 @@ export default function PhotoSelectScreen() {
             </View>
           </TourTarget>
           {isPro && workplaces.length > 1 && (
-            <View style={styles.workplacePicker}>
-              <ThemedText style={styles.workplacePickerLabel}>読み取る勤務先</ThemedText>
+            <View
+              style={[
+                styles.workplacePicker,
+                { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+              ]}
+            >
+              <ThemedText themeColor="textSecondary" style={styles.workplacePickerLabel}>
+                読み取る勤務先
+              </ThemedText>
               {workplaces.map((workplace) => (
                 <Pressable
                   key={workplace.id}
                   onPress={() => setSelectedWorkplaceId(workplace.id)}
-                  style={styles.workplaceRow}
+                  style={[styles.workplaceRow, { borderTopColor: theme.border }]}
                 >
-                  <ThemedText style={{ color: MOCK_COLORS.heading }}>{workplace.name}</ThemedText>
+                  <ThemedText>{workplace.name}</ThemedText>
                   {workplace.id === effectiveWorkplaceId && (
-                    <Check size={IconSize.small} color={MOCK_COLORS.blue} />
+                    <Check size={IconSize.small} color={theme.primary} />
                   )}
                 </Pressable>
               ))}
@@ -461,7 +543,7 @@ export default function PhotoSelectScreen() {
               <GoldPillButton
                 label="高度なスキャンする"
                 disabled={!canAnalyze || watchingAd || advancedRemaining <= 0}
-                onPress={() => handleNext('advanced')}
+                onPress={() => startScan('advanced')}
               />
               {advancedRemaining <= 0 && (
                 <ThemedText type="footnote" themeColor="textSecondary" style={styles.centerText}>
@@ -475,10 +557,7 @@ export default function PhotoSelectScreen() {
         </View>
 
         <ThemedText
-          style={[
-            styles.quotaNote,
-            { color: quotaExceeded ? MOCK_COLORS.tipsBadgeIcon : MOCK_COLORS.muted },
-          ]}
+          style={[styles.quotaNote, { color: quotaExceeded ? theme.orange : theme.textSecondary }]}
         >
           {isTutorialFreeScan
             ? 'お試し中: 今回のスキャンは回数に数えません'
@@ -500,12 +579,20 @@ export default function PhotoSelectScreen() {
         <TipsSection />
 
         <View style={styles.footerNote}>
-          <Lock size={IconSize.small} color={MOCK_COLORS.muted} strokeWidth={2} />
-          <ThemedText style={styles.footerNoteText}>
+          <Lock size={IconSize.small} color={theme.textSecondary} strokeWidth={2} />
+          <ThemedText themeColor="textSecondary" style={styles.footerNoteText}>
             取り込んだシフト表画像は安全な通信でAIに送信され、シフトの読み取りにのみ使用されます。
           </ThemedText>
         </View>
       </ScrollView>
+
+      <PhotoViewer uri={viewerUri} onClose={() => setViewerUri(null)} />
+      <AiConsentSheet
+        visible={pendingConsentTier !== null}
+        onAgree={handleAgreeConsent}
+        onCancel={closeConsent}
+        onOpenPrivacyPolicy={handleOpenPrivacyPolicy}
+      />
     </Screen>
   );
 }
@@ -518,21 +605,7 @@ const styles = StyleSheet.create({
     gap: 0,
   },
   header: {
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 22,
-    lineHeight: 28,
-    fontWeight: '700',
-    letterSpacing: -0.26,
-    color: MOCK_COLORS.heading,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    lineHeight: 22,
-    fontWeight: '400',
-    color: MOCK_COLORS.body,
+    marginBottom: Spacing.three,
   },
   scroll: {
     flex: 1,
@@ -545,8 +618,6 @@ const styles = StyleSheet.create({
     minHeight: 220,
     borderRadius: Radius.medium,
     borderWidth: 1,
-    borderColor: MOCK_COLORS.borderCard,
-    backgroundColor: '#FFFFFF',
     padding: 24,
     marginBottom: 20,
     alignItems: 'center',
@@ -559,8 +630,6 @@ const styles = StyleSheet.create({
   selectedBox: {
     borderRadius: Radius.medium,
     borderWidth: 1,
-    borderColor: MOCK_COLORS.borderCard,
-    backgroundColor: '#FFFFFF',
     padding: 16,
     marginBottom: 20,
     shadowColor: '#000',
@@ -572,7 +641,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 18,
     height: 18,
-    borderColor: MOCK_COLORS.cornerMark,
   },
   cornerTopLeft: {
     top: 16,
@@ -606,7 +674,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 22,
     fontWeight: '700',
-    color: MOCK_COLORS.heading,
     textAlign: 'center',
     marginTop: 16,
     marginBottom: 6,
@@ -615,7 +682,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 21,
     fontWeight: '400',
-    color: MOCK_COLORS.body,
     textAlign: 'center',
     maxWidth: 280,
   },
@@ -623,7 +689,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     fontWeight: '700',
-    color: MOCK_COLORS.heading,
     marginBottom: 8,
   },
   thumbnailRow: {
@@ -633,7 +698,9 @@ const styles = StyleSheet.create({
   },
   thumbnail: {
     borderRadius: 8,
-    backgroundColor: MOCK_COLORS.borderCard,
+  },
+  pressed: {
+    opacity: 0.7,
   },
   buttonRow: {
     gap: 12,
@@ -676,9 +743,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
   },
   tipsCard: {
-    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: MOCK_COLORS.borderCard,
     borderRadius: Radius.medium,
     marginBottom: 16,
     overflow: 'hidden',
@@ -698,7 +763,6 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: MOCK_COLORS.tipsBadgeBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -708,7 +772,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: '700',
     letterSpacing: -0.23,
-    color: MOCK_COLORS.heading,
   },
   tipsList: {
     gap: 8,
@@ -716,7 +779,6 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 16,
     borderTopWidth: 1,
-    borderTopColor: '#F2F2F7',
   },
   tipRow: {
     flexDirection: 'row',
@@ -727,14 +789,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 21,
     fontWeight: '700',
-    color: MOCK_COLORS.blue,
   },
   tipText: {
     flex: 1,
     fontSize: 13,
     lineHeight: 21,
     fontWeight: '400',
-    color: MOCK_COLORS.body,
   },
   footerNote: {
     flexDirection: 'row',
@@ -749,7 +809,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 15,
     fontWeight: '400',
-    color: MOCK_COLORS.body,
     marginTop: 2,
   },
   centerText: {
@@ -767,16 +826,13 @@ const styles = StyleSheet.create({
     borderRadius: Radius.smallLarge,
   },
   workplacePicker: {
-    backgroundColor: '#FFFFFF',
     borderRadius: Radius.small,
     borderWidth: 1,
-    borderColor: MOCK_COLORS.borderCard,
     overflow: 'hidden',
   },
   workplacePickerLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: MOCK_COLORS.muted,
     paddingHorizontal: Spacing.three,
     paddingTop: Spacing.two,
     paddingBottom: 4,
@@ -788,6 +844,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: MOCK_COLORS.borderCard,
   },
 });

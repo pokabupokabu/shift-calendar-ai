@@ -11,6 +11,7 @@ export type TourStep =
   | 'tabScan'
   | 'pickPhoto'
   | 'analyze'
+  | 'consent'
   | 'analyzing'
   | 'analyzeFailed'
   | 'userMatch'

@@ -22,6 +22,11 @@ interface ShiftSessionState {
   analysisRunId: number;
   analysisResult: ShiftAnalysisResult | null;
   analysisError: string | null;
+  /**
+   * 今の失敗（analysisError）を回数に数えなかったか。AIまで届かなかった失敗（AnalysisNotPerformedError）と、
+   * チュートリアルのお試し中の失敗が true。失敗の画面で「今回の分は回数を使っていないので、…」を出すかに使う。
+   */
+  analysisErrorNotCounted: boolean;
   shifts: Shift[];
   /** Soft-deleted shift ids (section: 登録内容の確認 - "消す"+"元に戻す" instead of a select-to-include list). */
   removedShiftIds: string[];
@@ -35,7 +40,7 @@ interface ShiftSessionState {
    */
   startRescan: (tier: AiTier) => void;
   setAnalysisResult: (result: ShiftAnalysisResult, workplaceId: string) => void;
-  setAnalysisError: (message: string) => void;
+  setAnalysisError: (message: string, options?: { notCounted?: boolean }) => void;
   updateShift: (id: string, patch: Partial<Shift>) => void;
   addShift: (
     input: Pick<Shift, 'date' | 'startTime' | 'endTime' | 'shiftType' | 'isOvernight' | 'isAllDay'>,
@@ -59,6 +64,7 @@ export const useShiftSessionStore = create<ShiftSessionState>((set, get) => ({
   analysisRunId: 0,
   analysisResult: null,
   analysisError: null,
+  analysisErrorNotCounted: false,
   shifts: [],
   removedShiftIds: [],
 
@@ -66,7 +72,14 @@ export const useShiftSessionStore = create<ShiftSessionState>((set, get) => ({
     // The previous run's photos stop being referenced here, so drop their cache files
     // before they are replaced (see deleteShiftImageFiles for why this matters).
     deleteShiftImageFiles(get().images);
-    set({ images, analysisResult: null, analysisError: null, shifts: [], removedShiftIds: [] });
+    set({
+      images,
+      analysisResult: null,
+      analysisError: null,
+      analysisErrorNotCounted: false,
+      shifts: [],
+      removedShiftIds: [],
+    });
   },
 
   setScanWorkplaceId: (workplaceId) => set({ scanWorkplaceId: workplaceId }),
@@ -79,6 +92,7 @@ export const useShiftSessionStore = create<ShiftSessionState>((set, get) => ({
       analysisRunId: state.analysisRunId + 1,
       analysisResult: null,
       analysisError: null,
+      analysisErrorNotCounted: false,
       shifts: [],
       removedShiftIds: [],
     })),
@@ -87,6 +101,7 @@ export const useShiftSessionStore = create<ShiftSessionState>((set, get) => ({
     set({
       analysisResult: result,
       analysisError: null,
+      analysisErrorNotCounted: false,
       removedShiftIds: [],
       shifts: result.shifts.map((raw) => ({
         id: createLocalShiftId(),
@@ -102,7 +117,12 @@ export const useShiftSessionStore = create<ShiftSessionState>((set, get) => ({
       })),
     }),
 
-  setAnalysisError: (message) => set({ analysisError: message, analysisResult: null }),
+  setAnalysisError: (message, options) =>
+    set({
+      analysisError: message,
+      analysisErrorNotCounted: options?.notCounted ?? false,
+      analysisResult: null,
+    }),
 
   updateShift: (id, patch) =>
     set((state) => ({
@@ -137,6 +157,7 @@ export const useShiftSessionStore = create<ShiftSessionState>((set, get) => ({
       scanTier: 'standard',
       analysisResult: null,
       analysisError: null,
+      analysisErrorNotCounted: false,
       shifts: [],
       removedShiftIds: [],
     });

@@ -44,6 +44,8 @@ export const TOUR_STEPS: Record<TourStep, TourStepConfig> = {
     message: '「スキャンする」を押してね。今回は回数を使わないよ',
     pose: 'happy',
   },
+  // 初めてのスキャンの前の同意の小窓を開いているあいだ。重ね絵を隠して、小窓を押せるようにする
+  consent: { blocking: false, message: '', pose: 'happy', hidden: true },
   analyzing: { blocking: false, message: '読み取り中…数秒待ってね', pose: 'running' },
   analyzeFailed: {
     blocking: false,
