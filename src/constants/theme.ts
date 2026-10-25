@@ -29,6 +29,10 @@ export const Colors = {
     onGold: '#5C3D00',
     border: '#E5E5EA',
     disabled: '#C7C7CC',
+    // 「要確認」の薄い赤（docs/ui-review/group-b.md の B2。内容の確認の行の地と、シフトの編集の帯）。
+    // 文字は danger の赤のまま重ねる。
+    dangerSurface: '#FFF2F2',
+    dangerSurfaceBorder: '#FFD2D0',
     // カレンダータブの「カレンダーを見に行く」専用（共通ルールの例外。docs/design-system.md 6章）。
     // 画面の主役はタブバーの青いスキャンボタンなので、青い主ボタンにせず控えめなベージュにする。
     beigeButton: '#F3EBDD',
@@ -52,6 +56,9 @@ export const Colors = {
     onGold: '#4A3100',
     border: '#38383A',
     disabled: '#5C5C5E',
+    // ダークの「要確認」の地。カードの地（#1C1C1E）より赤みを帯びた暗い色で、赤い文字（#FF453A）も白い文字も読める。
+    dangerSurface: '#3A1D1D',
+    dangerSurfaceBorder: '#5C2A2A',
     // ライトのベージュに対応する、温かみのある濃いグレー（2026-10-16 ユーザー確認済み）。
     beigeButton: '#3A3530',
     onBeigeButton: '#F3EBDD',

@@ -36,11 +36,8 @@ export default function RootLayout() {
             gestureEnabled: false,
           }}
         />
-        <Stack.Screen
-          name="user-match-select"
-          options={{ title: '本人確認', headerShown: false }}
-        />
-        <Stack.Screen name="shift-review" options={{ title: '要確認・編集' }} />
+        <Stack.Screen name="user-match-select" options={{ title: '本人確認' }} />
+        <Stack.Screen name="shift-review" options={{ title: 'シフトの編集' }} />
         <Stack.Screen name="calendar-confirm" options={{ title: 'カレンダー登録の確認' }} />
         <Stack.Screen
           name="complete"
