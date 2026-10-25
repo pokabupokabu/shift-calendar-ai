@@ -59,13 +59,14 @@ function ArticleLine({ line }: { line: LegalLine }) {
     const themeColor = isNote ? 'textSecondary' : 'text';
     // 2行目以降が印の右にそろうよう、印と文を横に並べる（ぶら下げ）
     return (
-      <View style={styles.itemRow}>
+      <View style={[styles.itemRow, line.marker === 'paren' && styles.parenRow]}>
         <ThemedText
           type={textType}
           themeColor={themeColor}
           style={[
             !isNote && legalTextStyles.body,
             line.marker === 'number' && styles.numberMarker,
+            line.marker === 'paren' && styles.parenMarker,
             isNote && styles.noteMarker,
           ]}
         >
@@ -89,6 +90,9 @@ function ArticleLine({ line }: { line: LegalLine }) {
   );
 }
 
+/** 「1.」「2.」の印の幅。下の「(1)」の字下げもこの幅にそろえる。 */
+const NUMBER_MARKER_WIDTH = 18;
+
 const styles = StyleSheet.create({
   chunk: {
     gap: Spacing.two,
@@ -98,7 +102,14 @@ const styles = StyleSheet.create({
   },
   // 「1.」「2.」の幅をそろえ、少し間を空ける
   numberMarker: {
-    minWidth: 18,
+    minWidth: NUMBER_MARKER_WIDTH,
+    marginRight: Spacing.one,
+  },
+  // 「1.」の項目の中の「(1)」。行の頭を「1.」の項目の文にそろえ、折り返した行は「(1)」の後ろにそろえる
+  parenRow: {
+    marginLeft: NUMBER_MARKER_WIDTH + Spacing.one,
+  },
+  parenMarker: {
     marginRight: Spacing.one,
   },
   noteMarker: {

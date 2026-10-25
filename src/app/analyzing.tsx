@@ -37,7 +37,7 @@ const CHECKLIST_STEPS = [
   { label: '画像の歪み・傾き補正', threshold: 20 },
   { label: '氏名行の検出', threshold: 45 },
   { label: '日付・勤務時間の照合', threshold: 90 },
-  { label: 'カレンダー予定への変換', threshold: 100 },
+  { label: 'カレンダーに反映', threshold: 100 },
 ] as const;
 
 type StepStatus = 'done' | 'active' | 'pending';
@@ -139,6 +139,7 @@ export default function AnalyzingScreen() {
   const setAnalysisResult = useShiftSessionStore((state) => state.setAnalysisResult);
   const setAnalysisError = useShiftSessionStore((state) => state.setAnalysisError);
   const analysisError = useShiftSessionStore((state) => state.analysisError);
+  const analysisErrorNotCounted = useShiftSessionStore((state) => state.analysisErrorNotCounted);
   const analysisRunId = useShiftSessionStore((state) => state.analysisRunId);
   const scanTier = useShiftSessionStore((state) => state.scanTier);
   const shiftName = useAppStore((state) => state.user?.shiftName ?? '');
@@ -217,10 +218,12 @@ export default function AnalyzingScreen() {
       } catch (error) {
         // AIが応答したうえで読み取れなかった場合は、解析は行われたので回数に数える
         // お試し中の失敗は数えない（成功するまで何度でも試せる）
-        if (!isTutorialFreeScan && !(error instanceof AnalysisNotPerformedError)) recordUsage();
+        const notCounted = isTutorialFreeScan || error instanceof AnalysisNotPerformedError;
+        if (!notCounted) recordUsage();
         if (cancelled) return;
         setAnalysisError(
           error instanceof Error ? error.message : 'シフト表をうまく読み取れませんでした',
+          { notCounted },
         );
       }
     }
@@ -255,16 +258,28 @@ export default function AnalyzingScreen() {
         <IconBadge tone="red" size={56}>
           <CircleAlert size={IconSize.large} color={theme.danger} />
         </IconBadge>
-        <ThemedText type="subtitle" style={styles.centerText}>
-          シフト表をうまく読み取れませんでした
+        {/* 単語の途中で折り返さないよう、「シフト表を」の後で改行する（決定10） */}
+        <ThemedText type="title2" style={styles.centerText}>
+          {'シフト表を\nうまく読み取れませんでした'}
         </ThemedText>
-        <ThemedText themeColor="textSecondary" style={styles.centerText}>
-          {analysisError}
-        </ThemedText>
-        <PrimaryButton
-          label={isTouring ? 'もう一度試す' : '別の画像を選び直す'}
-          onPress={handleAbort}
-        />
+        <View style={styles.failureTextBlock}>
+          <ThemedText type="subheadline" themeColor="textSecondary" style={styles.centerText}>
+            {analysisError}
+          </ThemedText>
+          {/* 回数に数えなかった失敗のときだけ（決定11）。改行の位置はユーザー指定 */}
+          {analysisErrorNotCounted && (
+            <ThemedText type="subheadline" themeColor="textSecondary" style={styles.centerText}>
+              {'今回の分は回数を使っていないので、\n安心してもう一度お試しください。'}
+            </ThemedText>
+          )}
+        </View>
+        <View style={styles.failureButton}>
+          <PrimaryButton
+            variant="bluePill"
+            label={isTouring ? 'もう一度試す' : '別の画像を選び直す'}
+            onPress={handleAbort}
+          />
+        </View>
         <View style={styles.rescanRow}>
           <AdvancedRescanRow navigateToAnalyzing={false} />
         </View>
@@ -301,7 +316,7 @@ export default function AnalyzingScreen() {
           </View>
           <View style={styles.progressTextBlock}>
             <ThemedText type="title2" style={styles.centerText}>
-              シフト表を解析中...
+              シフト表をスキャン中…
             </ThemedText>
             <ThemedText type="subheadline" themeColor="textSecondary" style={styles.centerText}>
               {scanTier === 'advanced'
@@ -368,6 +383,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   rescanRow: {
+    alignSelf: 'stretch',
+  },
+  failureTextBlock: {
+    alignSelf: 'stretch',
+    gap: Spacing.two,
+  },
+  failureButton: {
     alignSelf: 'stretch',
   },
   header: {

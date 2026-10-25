@@ -78,6 +78,12 @@ interface AppState {
    * 数え方は src/utils/scanQuota.ts。
    */
   scanUsage: ScanUsage;
+  /**
+   * 初めてスキャンする前の同意（シフト表の写真と登録者キーワードを Anthropic のAIに送ること）に
+   * 同意した日時（ISO 8601）。null は未同意で、「スキャンする」「高度なスキャンする」を押したときに
+   * 同意の小窓を出す（App Review 5.1.2(i)。docs/ui-review/group-b.md の決定5・6）。
+   */
+  aiConsentAt: string | null;
 
   setShiftName: (shiftName: string) => void;
   setShiftTableHasNoNames: (value: boolean) => void;
@@ -104,6 +110,8 @@ interface AppState {
   /** 高度なスキャンを1回使った（ふつうの回数は減らさない）。 */
   recordAdvancedScanUsage: () => void;
   recordBonusScan: () => void;
+  /** 同意の小窓で「同意してスキャン」を押した。 */
+  recordAiConsent: () => void;
   resetAll: () => void;
 }
 
@@ -115,6 +123,7 @@ export const useAppStore = create<AppState>()(
       hasSeenTutorial: false,
       tutorialFreeScan: 'unoffered',
       scanUsage: DEFAULT_SCAN_USAGE,
+      aiConsentAt: null,
 
       setHasSeenTutorial: () => set({ hasSeenTutorial: true }),
 
@@ -281,6 +290,8 @@ export const useAppStore = create<AppState>()(
 
       recordBonusScan: () => set((state) => ({ scanUsage: grantBonusScan(state.scanUsage) })),
 
+      recordAiConsent: () => set({ aiConsentAt: new Date().toISOString() }),
+
       resetAll: () =>
         set({
           user: null,
@@ -288,12 +299,13 @@ export const useAppStore = create<AppState>()(
           hasSeenTutorial: false,
           tutorialFreeScan: 'unoffered',
           scanUsage: DEFAULT_SCAN_USAGE,
+          aiConsentAt: null,
         }),
     }),
     {
       name: 'shift-calendar-ai-store',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 19,
+      version: 20,
       migrate: (persisted, version) => {
         // Migration spans many historical shapes (pre-workplace, pre-isPro, etc.),
         // so this intentionally works on an untyped view rather than `AppState`.
@@ -489,6 +501,11 @@ export const useAppStore = create<AppState>()(
           } else {
             state.scanUsage = { ...DEFAULT_SCAN_USAGE };
           }
+        }
+        if (version < 20) {
+          // 初めてスキャンする前の同意を追加した。既存の人もまだ同意していないので、未同意から始める
+          // （次に「スキャンする」を押したときに1回だけ同意の小窓が出る）。
+          state.aiConsentAt = null;
         }
         return state;
       },

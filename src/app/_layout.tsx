@@ -30,7 +30,7 @@ export default function RootLayout() {
         <Stack.Screen
           name="analyzing"
           options={{
-            title: '解析中',
+            title: 'スキャン中',
             headerShown: false,
             headerBackVisible: false,
             gestureEnabled: false,
