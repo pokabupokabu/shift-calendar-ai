@@ -29,7 +29,8 @@ UI全体の見直しで、すべての画面が守る共通ルール。Google St
 
 | トークン             | ライト    | ダーク    | 使う場面                                                                              |
 | -------------------- | --------- | --------- | ------------------------------------------------------------------------------------- |
-| `background`         | `#F2F2F7` | `#000000` | 画面の地                                                                              |
+| `background`         | `#FFFBF0` | `#000000` | 画面の地・タブバー・上のバー・小窓の地                                                |
+| `fill`               | `#FAF5E8` | `#000000` | 一段沈んだ欄（白いカードの中の入れ子の行・切り替えの溝・入力欄・日付や時刻の札）      |
 | `backgroundElement`  | `#FFFFFF` | `#1C1C1E` | カード・行・シートの地                                                                |
 | `backgroundSelected` | `#E5E5EA` | `#2C2C2E` | 押している最中・選択中                                                                |
 | `text`               | `#000000` | `#FFFFFF` | 本文・見出し                                                                          |
@@ -43,6 +44,8 @@ UI全体の見直しで、すべての画面が守る共通ルール。Google St
 | `border`             | `#E5E5EA` | `#38383A` | 区切り線・枠                                                                          |
 | `disabled`           | `#C7C7CC` | `#5C5C5E` | 押せない状態                                                                          |
 | `tourHighlight`      | `#FFD43B` | `#FFD43B` | 案内付きの操作の光る枠（2026-10-26 決定。青いボタンの上でも見えるため。ユーザー決定） |
+
+✅ **決定（2026-10-27）: ライトの画面の地を薄灰色 `#F2F2F7` から温かいクリーム `#FFFBF0` に変える**（課金のお礼の画面の地をすべての画面に広げる。ユーザー決定）。カードは白のまま。地とカードの中の欄が同じ色だと白いカードに溶けるため、欄は `fill`（ベージュ `#FAF5E8`。課金画面の表の見出しと同じ）に分けた。タブバー・小窓・奥の画面の上のバーも地と同じクリーム。ダークは変えない（`fill` も黒）。確認のページ https://claude.ai/artifact/HuwwyF2FN9deuW5C47Q1zE
 
 **アイコンの丸い背景（`IconBadge`）**: `blue` / `green` / `orange` / `purple` / `red` / `neutral` の6種類。淡い背景＋濃いアイコンの組み合わせで、行の先頭に置く。
 
@@ -135,7 +138,7 @@ Product: "シフToカレ" - reads a photo of a shared shift schedule with AI and
 Users: Japanese university students with part-time jobs. They glance at the app one-handed between classes or on a train. Prioritize speed and low cognitive load over visual richness. Native iOS utility feel. Friendly but trustworthy.
 
 Design system (must follow):
-- Colors: Apple iOS system colors only. Page background #F2F2F7, cards #FFFFFF, primary #007AFF, success #34C759, danger #FF3B30, orange #FF9500, purple #5E35B1 (late night only), PRO = gold (gold fill with dark brown text; never orange or purple), secondary text #8E8E93, separators #E5E5EA. Must also work in dark mode.
+- Colors: Apple iOS system colors, except a warm cream page background. Light mode: page background, tab bar and navigation bar #FFFBF0 (warm cream), cards #FFFFFF, inset fields inside cards #FAF5E8. Dark mode: page background #000000. Other colors: primary #007AFF, success #34C759, danger #FF3B30, orange #FF9500, purple #5E35B1 (late night only), PRO = gold (gold fill with dark brown text; never orange or purple), secondary text #8E8E93, separators #E5E5EA. Must also work in dark mode.
 - Typography: iOS text styles only (Title1 28/34 bold, Title2 22/28 bold, Title3 20/25, Headline 17/22 semibold, Body 17/22, Subheadline 15/20, Footnote 13/18, Caption1 12/16, Caption2 11/13).
 - Spacing: 4 / 8 / 16 / 24 / 32. Screen side padding 24. Minimum tap target 44pt.
 - Corner radius: badges 8, inset elements 12, cards and bottom sheets 16, dialogs 24, buttons fully rounded (pill).

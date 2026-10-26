@@ -480,7 +480,7 @@ export default function TemplateTab() {
               <View
                 style={[
                   styles.wageTypeToggle,
-                  { backgroundColor: theme.background, borderColor: theme.border },
+                  { backgroundColor: theme.fill, borderColor: theme.border },
                 ]}
               >
                 {(['hourly', 'daily'] as const).map((option) => {
@@ -558,7 +558,7 @@ export default function TemplateTab() {
                 />
               </View>
               {settings.breakDeductionEnabled && (
-                <View style={[styles.nestedGroup, { backgroundColor: theme.background }]}>
+                <View style={[styles.nestedGroup, { backgroundColor: theme.fill }]}>
                   {settings.breakRules.map((rule, index) => (
                     <Pressable
                       key={index}
@@ -983,7 +983,7 @@ function PremiumBlock({
           onPress={onPressEdit}
           accessibilityRole="button"
           accessibilityLabel={`${title}の時間帯 編集`}
-          style={[styles.nestedGroup, styles.premiumRow, { backgroundColor: theme.background }]}
+          style={[styles.nestedGroup, styles.premiumRow, { backgroundColor: theme.fill }]}
         >
           <View style={[styles.premiumDot, { backgroundColor: dotColor }]} />
           <View style={styles.premiumRowText}>

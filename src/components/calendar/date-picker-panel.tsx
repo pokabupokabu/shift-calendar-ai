@@ -46,7 +46,7 @@ export function DatePickerPanel({ value, onChange, caption }: DatePickerPanelPro
   const emit = (date: Date) => onChange(format(date, DATE_FORMAT));
 
   return (
-    <View style={[styles.panel, { backgroundColor: theme.background, borderColor: theme.border }]}>
+    <View style={[styles.panel, { backgroundColor: theme.fill, borderColor: theme.border }]}>
       <ThemedText type="footnote" themeColor="textSecondary" style={styles.caption}>
         {caption}
       </ThemedText>

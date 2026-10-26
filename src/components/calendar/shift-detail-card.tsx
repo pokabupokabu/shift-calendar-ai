@@ -198,7 +198,7 @@ export function ShiftDetailCard({
       <Card style={styles.card}>
         {shiftTypeBadge}
         {/* 何を消すのかが分かるよう、勤務時間と給与見込みを1行で添える */}
-        <View style={[styles.summaryRow, { backgroundColor: theme.background }]}>
+        <View style={[styles.summaryRow, { backgroundColor: theme.fill }]}>
           <View style={styles.summaryLabel}>
             <Clock size={IconSize.small} color={shiftColors.icon} />
             {/* iPhone SE の幅でも途中で折り返さないよう、実働時間は時刻の下の2行目に分ける */}
