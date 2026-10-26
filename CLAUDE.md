@@ -26,21 +26,21 @@
 - 変更後は `npm run lint` / `npm run typecheck` / `npm run format` を通す。
 - iPhone専用。実機/シミュレータでの確認ができない場合はその旨を明記する。
 
-## 引き継ぎメモ（2026-10-26時点、次セッション向け）
+## 引き継ぎメモ（2026-10-27時点、次セッション向け）
 
 ### このプロジェクトは何か
 
 Expo Router（SDK 57.0.24）+ TypeScript の **iPhone専用アプリ「シフToカレ」**。シフト表の写真をAIが読み取り、本人のシフトだけを抽出して Apple / Google カレンダーへ登録する。休憩自動控除・深夜/早朝割増の給与見込み、扶養の壁アラート、Pro課金（月330円・税込）、広告を実装済み。
 
-| 項目          | 値                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| リポジトリ    | https://github.com/pokabupokabu/shift-calendar-ai **（⚠️ PUBLIC。秘密情報を絶対にコミットしない）**                                                                                                                                                                                                                                                                                                                                                                  |
-| `main` の先頭 | **`06f0e2d`**（PR #39＝名前の登録の廃止のマージ。その前が #38＝C2、#37＝C1）。**開いているPRは #40（このメモの更新）だけ**。Auto-fix は付けない（メモだけなのでユーザー判断）。マージはユーザーが自分で行う。手元の `main` は `06f0e2d` まで進めてある（#37〜#39 は依存関係を変えていないので `npm install` は不要だった）                                                                                                                                           |
-| アプリ名      | **「シフToカレ」で確定**（`expo.name` はASCIIの `ShifToKare`、表示名は `ios.infoPlist.CFBundleDisplayName`）                                                                                                                                                                                                                                                                                                                                                         |
-| Bundle ID     | **`com.pokabu.shiftcalendarai`（登録済み）**。Team ID `7Q63PJ345L`                                                                                                                                                                                                                                                                                                                                                                                                   |
-| AIプロキシ    | コードは `server/ai-proxy/`、Worker の名前は **`shiftokare-ai-proxy`（2026-10-23 公開済み。URL は `https://shiftokare-ai-proxy.shift-calendar-ai.workers.dev`、Version ID `f7f63014-4eb9-42e1-840a-716168dae798`。Anthropic のキーも登録済み・Node から実際に読ませて動作確認済み）**。古い **`gemini-shift-proxy`**（Gemini だけ）もまだ残っている（実機で Anthropic を確かめたら削除）                                                                             |
-| ローカル確認  | Expo Web。`preview_start` に `{name: "expo-web"}` で既存の8081番（本人の実データあり）。ほかに `expo-web-start`（8082。保存データが8081番と別なので、架空データの撮影に使える）と `stitch-preview`（8090）がある（`.claude/launch.json`、未コミット）。サブエージェントの worktree を確かめるときは一時的に設定を足し、worktree を消したら設定も消す。**2026-10-26 時点で 8081番は止まっている**。撮影は撮影専用のヘッドレスChromeで行い、本人の実データには触れない |
-| CI            | GitHub Actions（`.github/workflows/ci.yml`）。PR作成と main への push で lint / typecheck / format:check と Worker の typecheck が走る                                                                                                                                                                                                                                                                                                                               |
+| 項目          | 値                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| リポジトリ    | https://github.com/pokabupokabu/shift-calendar-ai **（⚠️ PUBLIC。秘密情報を絶対にコミットしない）**                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `main` の先頭 | **`5959ffd`**（PR #40＝前回のメモの更新のマージ。その前が #39＝名前の登録の廃止）。**開いているPRは #41（グループE＝課金画面。2026-10-27 に出した。CI はアプリ本体が実行中・Worker は成功の時点で終了）と #42（このメモの更新）**。#41 の Auto-fix はユーザーが決める前にセッションを終えたので**付けていない**。マージはユーザーが自分で行う。手元の `main` は `5959ffd`                                                                                                                                                                           |
+| アプリ名      | **「シフToカレ」で確定**（`expo.name` はASCIIの `ShifToKare`、表示名は `ios.infoPlist.CFBundleDisplayName`）                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Bundle ID     | **`com.pokabu.shiftcalendarai`（登録済み）**。Team ID `7Q63PJ345L`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| AIプロキシ    | コードは `server/ai-proxy/`、Worker の名前は **`shiftokare-ai-proxy`（2026-10-23 公開済み。URL は `https://shiftokare-ai-proxy.shift-calendar-ai.workers.dev`、Version ID `f7f63014-4eb9-42e1-840a-716168dae798`。Anthropic のキーも登録済み・Node から実際に読ませて動作確認済み）**。古い **`gemini-shift-proxy`**（Gemini だけ）もまだ残っている（実機で Anthropic を確かめたら削除）                                                                                                                                                            |
+| ローカル確認  | Expo Web。`preview_start` に `{name: "expo-web"}` で既存の8081番（本人の実データあり）。ほかに `expo-web-start`（8082。保存データが8081番と別なので、架空データの撮影に使える）と `stitch-preview`（8090）がある（`.claude/launch.json`、未コミット）。サブエージェントの worktree を確かめるときは一時的に設定を足し、worktree を消したら設定も消す（2026-10-27 に `expo-web-e` を消した）。**2026-10-27 時点で 8081・8082・8083・8090番は止まっている**。撮影は撮影専用のヘッドレスChrome（9333番。動いたまま）で行い、本人の実データには触れない |
+| CI            | GitHub Actions（`.github/workflows/ci.yml`）。PR作成と main への push で lint / typecheck / format:check と Worker の typecheck が走る                                                                                                                                                                                                                                                                                                                                                                                                              |
 
 **このMacにXcode本体が無く（Command Line Toolsのみ）iOSシミュレータが使えない。** 実機検証・スクリーンショット撮影には EAS Build が必須。
 
@@ -56,15 +56,15 @@ PR #14（2026-10-14マージ）で `web/` を追跡対象から外し、`.gitign
 
 **リリース前の作業7項目**に着手したところ。**順番はユーザー確定済み**（2026-10-14）。
 
-| 順    | 項目                                                             | 状態                                                                                                      |
-| ----- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| 1     | キャラクターのデザイン                                           | ✅ ChatGPTで作画済み（`docs/character/hakobu.md`）                                                        |
-| 2     | キャラクターのアニメーション                                     | ✅ PR #17（実機では未確認）                                                                               |
-| 3     | アプリアイコン                                                   | ✅ PR #16                                                                                                 |
-| 4     | チュートリアルの改善                                             | ✅ PR #20（説明＋分岐）・#21（案内付き操作）                                                              |
-| **5** | **UI全体の見直し**（全画面・色・余白・文字サイズ・ボタンの統一） | 🟠 **進行中**。A・D・B・**C（C1 #37・C2 #38・名前の登録の廃止 #39）は main 反映済み**。次は **E（課金）** |
-| 6     | サブタイトル・説明文・キーワード                                 | 未着手。**他に依存しないので待ち時間に差し込める**                                                        |
-| 7     | App Storeのプレビュー画面                                        | 🔴 **EAS Buildが通るまで物理的に撮影できない**                                                            |
+| 順    | 項目                                                             | 状態                                                                                                                                               |
+| ----- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | キャラクターのデザイン                                           | ✅ ChatGPTで作画済み（`docs/character/hakobu.md`）                                                                                                 |
+| 2     | キャラクターのアニメーション                                     | ✅ PR #17（実機では未確認）                                                                                                                        |
+| 3     | アプリアイコン                                                   | ✅ PR #16                                                                                                                                          |
+| 4     | チュートリアルの改善                                             | ✅ PR #20（説明＋分岐）・#21（案内付き操作）                                                                                                       |
+| **5** | **UI全体の見直し**（全画面・色・余白・文字サイズ・ボタンの統一） | 🟠 **進行中**。A・D・B・C は main 反映済み。**E（課金）は PR #41 を出した（未マージ）**。次は**地の色を全画面で温かい色に（別 PR。ユーザー決定）** |
+| 6     | サブタイトル・説明文・キーワード                                 | 未着手。**他に依存しないので待ち時間に差し込める**                                                                                                 |
+| 7     | App Storeのプレビュー画面                                        | 🔴 **EAS Buildが通るまで物理的に撮影できない**                                                                                                     |
 
 ### 🔴 2026-10-24〜25 のセッションで起きたこと（必ず読む）
 
@@ -93,6 +93,19 @@ PR #14（2026-10-14マージ）で `web/` を追跡対象から外し、`.gitign
 #### 失敗したときの回数（ユーザーの質問への回答）
 
 AIまで届かなかった失敗（通信失敗・サーバーのエラー・429・読めない形式＝`AnalysisNotPerformedError`）は数えない。AIが答えたうえで読めなかった失敗は数える。B1 で、数えない失敗のときだけ「今回の分は回数を使っていないので、／安心してもう一度お試しください。」を出すようにした
+
+### 🟢 2026-10-26〜27 のセッションでやったこと（グループE＝課金）
+
+- 冒頭で引き継ぎメモと実際の状態を突き合わせた（ズレなし）。#40 はマージ済みだったので手元の main を `5959ffd` まで進めた
+- **グループE（課金）を PR #41 まで**。正本は `docs/ui-review/group-e.md`（PR #41 に入っている。手元の main には**同じ中身が未追跡のファイルとして残っている**）。流れ:
+  1. 修正前を撮影 → 全画面のページ https://claude.ai/artifact/5sxS4L4XvtdVB8xJJmdsUX → 範囲（分けない・Stitch を使う・回数切れの案内も含める）
+  2. 法令・審査・競合を調べて原文で確認 → 修正案のページ https://claude.ai/artifact/U6tXsCCM5Ch528hodRHqb2 → 1（星を金に）・2（説明文）だけ決め、**ユーザーが「Stitch で10パターン見たい」と方針を変えた**
+  3. 課金画面の並べ方を調べて10パターンを Stitch で作成（2つずつ5回・回ごとに新しいプロジェクト）→ https://claude.ai/artifact/XjjwhQX6FLd6idg9PpoFaa → **「特別これがいいのは無い」**
+  4. ユーザーの要望（特典は一画面で分かる・②の比較表をコンパクトに色味を・⑥の上部が良い・規約は小さく下へ・帯を小さく・金色感を増やす）を、**AskUserQuestion で質問を重ねて要件に**（ユーザーの指示「grill me」）
+  5. 色味違い3案 https://claude.ai/artifact/PiZzLFNKesYiuWKrPzBP1v → **B 濃い金**に決定 → 同じプロジェクトでダーク・お礼・回数切れ2つ https://claude.ai/artifact/AcKuDQA8XMyjCH5Lx4Rj3Z
+  6. サブエージェントが worktree で実装 → 私が撮影して確認（実装の確認ページ https://claude.ai/artifact/5kkpm9dUeRT4hgKGvpYB4X 版3）→ 4点を決定 → ユーザーのコミット前の直し10項目 → 撮り直し → コミット `6af6982` → **PR #41**
+- キャッチコピー候補「バイト生活をもっと便利にもっと快適に」をメモリに保存（`project_catchphrase_baito_seikatsu.md`。今は使わない）
+- 撮影用のサーバー（8082・8083・8090）は止め、`.claude/launch.json` の一時的な `expo-web-e` は消した。**worktree `.claude/worktrees/agent-a488a478954afe15f`（ブランチ `feat/ui-paywall-e`）は PR #41 のマージまで残している**
 
 ### 🟢 2026-10-26 のセッションでやったこと（グループC）
 
@@ -154,6 +167,7 @@ AIまで届かなかった失敗（通信失敗・サーバーのエラー・429
 | **UI見直しC1（起動画面・チュートリアル。スキップ廃止・同意の一文をボタンの真上へ）**                                       | ✅     | ✅ Expo Web（起動画面は実機のみ）   | ✅ PR #37（2026-10-26 マージ）                                                                  |
 | **UI見直しC2（案内の光る枠・吹き出し・出口・登録者キーワードの小窓）**                                                     | ✅     | ✅ Expo Web（実機は未確認）         | ✅ PR #38（2026-10-26 マージ）                                                                  |
 | **名前の登録の画面の廃止（スキャンを押したとき名前が空なら小窓・`keyword-dialog.tsx`）**                                   | ✅     | ✅ Expo Web（実機は未確認）         | ✅ PR #39（2026-10-26 マージ）                                                                  |
+| **UI見直しE（課金画面・お礼の表示・回数切れの小窓・設定タブの PRO のカード・法務の「Apple Account」）**                    | ✅     | ✅ Expo Web（実機は未確認）         | 🟠 **PR #41 未マージ**（2026-10-27 に出した。Auto-fix なし）                                    |
 
 ### 🔴 AIをAnthropicへ切り替え中（2026-10-21〜23にユーザー決定）
 
@@ -295,7 +309,7 @@ git log main..feat/legal-site --oneline   # 91f7435（法務ページ）と 26de
 | 奥の画面 | **上のバーの題名だけ**（大見出しを置かない）。上のバーはアプリの「外観」の設定に従う（PR #30）                                                    |
 | ダーク   | 灰色の丸（`IconBadgeTones.dark.neutral`）は #2C2C2E、小窓（`dialog.tsx`）はダークのとき**真っ白の1ptの枠**（PR #31）                              |
 
-**グループ分け**（全21画面）: A 毎日使うタブ ✅ ／ D 設定の下の画面 ✅ ／ B スキャンの流れ ✅ ／ **C 初回体験（次）** ／ E 課金。順番は A → D → B → C → E。
+**グループ分け**（全21画面）: A 毎日使うタブ ✅ ／ D 設定の下の画面 ✅ ／ B スキャンの流れ ✅ ／ C 初回体験 ✅ ／ **E 課金（PR #41 未マージ）**。順番は A → D → B → C → E。
 
 #### グループA（✅ すべて main 反映済み）
 
@@ -319,6 +333,19 @@ git log main..feat/legal-site --oneline   # 91f7435（法務ページ）と 26de
 - 残した小さな点: 小窓の名前の欄の例文「シフト表に書かれている自分の名前」が幅375・393で途中で切れる（前から）。説明②〜⑤のスマホの枠の下の角が青い地の境目に来る（スキップをなくして上半分が高くなったため）
 - **説明の枠の中の画像（古い画面）は、全部の見直しが終わってから撮り直す**（ユーザー決定）
 
+#### グループE（🟠 PR #41 未マージ）— 正本は `docs/ui-review/group-e.md`
+
+- 課金画面 `src/app/paywall.tsx`: **濃い金**の上部（走るはこブー＋吹き出し「キミのシフト、／もっとたくさん届けさせて！」）、起動画面と同じロゴの「シフToカレ」（`assets/images/logo-name.png`。作り直しは `scripts/make-logo-name.mjs`、縁の色 #1E2440）＋金のグラデーションの「PRO」、**無料と PRO の7行の比較表**、下に固定の帯（「税込・1か月ごとの自動更新。解約するまで毎月続きます」→「¥330/月でPROに申し込む」→「購入を復元する」→「利用規約・プライバシー・特商法」）。お申し込み内容は**要点3行＋特商法へのリンク**。右上の丸い×。ダーク対応。**説明文は置かない**（吹き出しが代わり）
+- **iPhone SE でも下へ送らずに全部見えること**が要件（ユーザー決定）。上部122pt・行34ptで、使える高さ637ptの見込みに対し余り6pt（Web の実測）
+- お礼（`src/components/paywall/pro-thanks.tsx`）: 買えた「PROになりました！」・復元「PROを復元しました」・PROの人「PROをご利用中です」。笑顔のはこブー「ありがとう！これからもっと運ぶよ！」、4行（スキャン15回・高度なスキャン5回・扶養の壁アラート・その他さまざまなPRO機能）、「はじめる」
+- 回数切れの小窓（`src/components/quota-exceeded-dialog.tsx`）: 困った顔のはこブー「ごめんね、／しばらくはもう運べないんだ」、戻る日と回数、広告あり＝「広告を見て1回スキャン」＋金の縁の「PROにする ¥330/月」、広告なし＝PRO だけ。**黙って課金画面へ移らない**
+- 設定タブの PRO のカード: 3行の箇条書き、「PROにアップグレード」は表の PRO の列と同じ金の地＋濃い茶色
+- 法務: 利用規約・プライバシーポリシー・特商法の「Apple ID（App Store）」→「Apple Account（App Store）」、特商法の解約方法「「設定」→ ユーザ名 →「サブスクリプション」」（Apple の今の日本語サポートの書き方。ユーザー決定）
+- 例外として認めたこと: 帯の一番下のリンクは**灰色**（押せる文字は青、の例外）。高度なスキャンのアイコンは**キラキラ（Sparkles）**にそろえた
+- 色は `theme.ts` の `PaywallColors`（`src/hooks/use-paywall-colors.ts`）、上限の定数は `src/constants/pro-plan.ts`
+- **お礼の画面の温かい地の色（#FFFBF0）を、薄灰色の地のすべての画面（A〜E）に広げる**（ライトだけ）: **別の PR**（ユーザー決定）。確認の撮影は主要な5画面ほど（カレンダー・給与・マイカスタム・設定・写真選択のつもり）
+- 法令・審査の調べ（原文で確認済み）: 消費者庁の通販ガイドラインの脚注2（アプリ内課金では決済シートの手前の画面が最終確認画面）・脚注10（条件を申込みボタンの下に置くと誤認のおそれ）・参照先を明示すればリンク可・1年分の目安は望ましい。Apple は請求額を最も目立たせる・復元の手段は必須・規約リンクの位置の決まりは無い。詳しくは group-e.md
+
 #### グループD（設定の下の画面）— 正本は `docs/ui-review/group-d.md`
 
 **ユーザーの指摘（2026-10-20）: 設定の下の画面は整理されておらず、細かい直しではなく「どの画面に何を置くか」から根本的に見直す。** 文字ばかりの画面は嫌われる（D2の1回目で「文字ばっかりで見づらい。UI最悪」と言われ、図＋短い手順に作り直した）。
@@ -341,7 +368,7 @@ D1・D2で決まった大事なこと（詳細は group-d.md）:
 
 #### Stitch のプロジェクト
 
-グループA: ③ `projects/17842133410464231297`、④ `projects/8956966937979714452`、⑤ `projects/5608018983632471059`。グループD: D1 `projects/4354302893102681059`、D2 `projects/1611427046835374762`、D3 `projects/14865294426237983048`。グループB: **B1 `projects/16964023857402075646`**、**B2 `projects/10808005300105480422`**（2026-10-25 に v1 を送信）。Stitchはログインが切れることがある（送信時にGoogleのログイン画面へ飛ぶ。ログインはユーザー。入力済みの指示文と添付は残っていた）。
+グループA: ③ `projects/17842133410464231297`、④ `projects/8956966937979714452`、⑤ `projects/5608018983632471059`。グループD: D1 `projects/4354302893102681059`、D2 `projects/1611427046835374762`、D3 `projects/14865294426237983048`。グループB: **B1 `projects/16964023857402075646`**、**B2 `projects/10808005300105480422`**（2026-10-25 に v1 を送信）。グループE: 10パターン `9113829933262830275`・`10907935007448055414`・`14615123898316192088`・`6010639146517933281`・`2095660412929361651`、**色味3案＋追加4画面（B 濃い金で確定）`projects/14898452403529613434`**（一覧は `.stitch-work/group-e/projects.txt`）。Stitchはログインが切れることがある（送信時にGoogleのログイン画面へ飛ぶ。ログインはユーザー。入力済みの指示文と添付は残っていた）。
 
 #### 架空データ・撮影のしかた（2026-10-21 版）
 
@@ -373,11 +400,17 @@ D1・D2で決まった大事なこと（詳細は group-d.md）:
 - [ ] B2: 本人確認の上のバーの「‹」で写真選択に戻れるか、登録完了で戻るボタンが出ないこと（Web では「←」が出ていた）
 - [ ] **C2: 案内の光る枠の角丸の切り抜き（`react-native-svg`）と、暗い所を押しても下に届かないこと**。解析失敗・本人確認・内容の確認・完了の吹き出しを本物の流れで（Web では吹き出しだけで確かめた）
 - [ ] **名前の登録の廃止: 名前が空のまま「スキャンする」→ 小窓 → 閉じたら同意の小窓が出るか**（`Modal` の `onDismiss` を待って開く作り。合図が来ないと「閉じても何も始まらない」になる）。回数を使い切った状態で名前が空なら、広告の案内より先に小窓が出るか
+- [ ] **E: 課金画面が下からせり上がる形で出たとき、iPhone SE で帯まで下へ送らずに見えるか**（Web の見込みで余り6pt）、下へ引いて閉じる、右上の×。金のグラデーションの「PRO」の字の見え方。ダークでロゴの紺の縁が黒い地に溶ける件（ピンクと青の文字は読める）
+- [ ] **E: 本物の購入・復元のあとにお礼の表示へ切り替わるか**（RevenueCat の設定が要る）。回数切れの小窓の「広告を見て1回スキャン」→ 広告 → スキャン、「PROにする」→ 小窓が閉じてから課金画面（`onDismiss` 待ち）
 
 ### 次のアクション（順番どおり）
 
-0. **#40（このメモ）がマージされたかを先に確かめる**: `gh pr view 40 --repo pokabupokabu/shift-calendar-ai --json state,mergedAt`。マージ済みなら、手元の main の `CLAUDE.md`（#40 と同じ中身を未コミットの変更として入れてある）を `git checkout -- CLAUDE.md` で戻してから `git fetch origin && git merge --ff-only origin/main`。まだなら、そのまま作業を始めてよい（このメモの中身は #40 と同じ）
-1. **グループE（課金）を `stitch-ui-review` の手順で始める**: 修正前を撮る → 全画面のページ → 範囲・サブグループを聞く → 修正案のページ → 番号順に質問。グループCでは C1・C2 とも Stitch を使わずに実装した（ユーザー判断）。E でも Stitch を使うかを最初に聞く
+0. **#41（課金）と #42（このメモ）がマージされたかを先に確かめる**: `gh pr view 41 --repo pokabupokabu/shift-calendar-ai --json state,mergedAt,statusCheckRollup` と `gh pr view 42 …`。
+   - #41 がマージ済みなら: 手元の main の未追跡の `docs/ui-review/group-e.md` は `cmp docs/ui-review/group-e.md <(git show origin/main:docs/ui-review/group-e.md)` で同じことを確かめてから消す。worktree を片付ける（`git worktree remove .claude/worktrees/agent-a488a478954afe15f` → `git branch -D feat/ui-paywall-e worktree-agent-a488a478954afe15f`。後者はあれば）
+   - #42 がマージ済みなら: 手元の `CLAUDE.md`（#42 と同じ中身を未コミットの変更として入れてある）を `git checkout -- CLAUDE.md` で戻す
+   - そのあと `git fetch origin && git merge --ff-only origin/main`。#41 は依存パッケージを足していないので `npm install` は不要
+   - #41 がまだなら、CI の結果（`statusCheckRollup`）を見て、失敗していれば worktree で直してプッシュ。**Auto-fix を付けるかはユーザーに聞く**（前のセッションで聞いたまま答えをもらわずに終えた）
+1. **地の色を全画面で温かい色にする PR**（ユーザー決定。グループE の続き）: お礼の画面の地 #FFFBF0（`PaywallColors` の該当トークン）を、`theme.ts` のライトの `background`（今は #F2F2F7）に。ダークは黒のまま。白いカード・上のバー・タブバーとの見え方を確かめ、主要な5画面（カレンダー・給与・マイカスタム・設定・写真選択のつもり。選ぶのは任された）を架空データでライト撮影して、変更前と並べたページで見せる。共通ルール `docs/design-system.md` の色の節も直す。**#41 のマージ後に main から**始めると衝突が少ない（#41 も `theme.ts` を変えている）
 2. 全タブ共通の直し（`PrimaryButton` の既定を青に、`ThemedText` の初期値、古い文字の段階の置き換え）と、**全タブの広告の配置の見直し**（ユーザーの宿題）
 3. 説明5枚の枠の中の画像の撮り直し（2 のあと。`docs/tutorial-screenshots.md`）
 4. AIの切り替えの残り: 実機（開発用ビルド）で Anthropic を確かめたら、Gemini のコード（`src/services/ai/geminiProvider.ts`・env の gemini 系・Worker の Gemini の道）と古い Worker `gemini-shift-proxy` を消す（`npx wrangler delete --name gemini-shift-proxy`、許可を得てから）。`.env` の測定用キー（ANTHROPIC）と Gemini の残骸も消す。README の Gemini 前提の記述（12か所）も直す。README の画面一覧も全体に古い（`shift-results.tsx` など今は無い画面がある）
@@ -673,7 +706,45 @@ cd server/ai-proxy && npm run typecheck
 - 画像の色を読むのに Pillow が無いので、PNG は Python の `zlib` で自前で解いた（アイコンの地 `#FEFAE7`、はこブーの顔 `#F8C8C8`・帽子 `#2F7AE8` をこれで読んだ）
 - 撮影用のヘッドレスChrome（9333番）は前のセッションのものが動き続けていることがある。`curl http://127.0.0.1:9333/json/version` で HeadlessChrome なら、そのまま使ってよい
 
-### 今セッションで変更したファイル（2026-10-26）
+**2026-10-26〜27に判明**
+
+- 🔴 **Stitch はブラウザペインの2つ目のタブでは中身が出ない**（真っ暗・本文が空）。生成中に次の回を入力しようとしても無理なので、1つのタブで「送る → 待つ → トップへ戻って次」を繰り返す。生成は1回3分ほど
+- **Stitch で回ごとに新しいプロジェクトにすると、前の案に引っぱられない**（10パターンで使った）。逆に「選んだ案の見た目で追加の画面」は**同じプロジェクト**の下の入力欄で頼み、「今ある画面は変えない」と書く
+- Stitch の同じプロジェクトで、前に添付した画像をもう一度添付すると札が出ないことがある（重ねて付けられない？）。プロジェクトに入っている画像は使われた
+- Stitch の書き出しの小窓の位置は、ブラウザペインの大きさで変わる（800×827 と 800×664 で別の座標）。毎回撮ってから押す。画面が右端の道具の列に隠れたら、手のひらの道具で寄せる（スクロールでは動かない）
+- Stitch は指示しても作り話を足す（「PREMIUM PASS」「Pro Paywall」「回数を気にせず」「約4倍」「1回あたりの利用可能枠」など）。禁止の言葉を例に挙げて書いた2回目以降はほぼ消えた
+- **AskUserQuestion の選択肢の `preview` に入れた表は、ユーザーに見えていなかった**（「表の内容わからん」）。判断に要る情報（全項目の一覧など）は、質問の前に**ふつうの文で**出す
+- ユーザーは「grill me」（AskUserQuestion で質問を重ねて要件を詰める）を好んだ。1回に4問まで、推しを先頭に
+- 「今日の分」のような言い方は 15日ごとに戻る仕組みと食い違う → 台詞・文言は仕組みとずれないか確かめる。「何回でも」「無制限」は景品表示法の有利誤認になりうるので使わない
+- zsh の `for p in "a b" "c d"; do set -- $p` は空白で分かれない（zsh は既定で単語分割しない）。分けたいときは別々の行で書く
+- `render-page.mjs` に相対パスを渡すと `file://group-e/...` になって開けない。**絶対パス**で渡す
+- 課金画面は `presentation: 'modal'` のまま `headerShown: false` にして右上に自前の×（iPhone の modal は上のバーに戻るボタンが出ない見込みのため）
+- サブエージェントの worktree は `worktree-agent-…` という名前のブランチで作られ、中で `git checkout -b` した作業用ブランチと2つできる。片付けるときは両方消す
+
+### 今セッションで変更したファイル（2026-10-26〜27）
+
+**PR #41（`feat/ui-paywall-e`、コミット `6af6982`。未マージ）**
+
+- 新規: `assets/images/logo-name.png`、`scripts/make-logo-name.mjs`、`src/components/paywall/{comparison-table,paywall-hero,pro-thanks,pro-title,speech-bubble}.tsx`、`src/components/quota-exceeded-dialog.tsx`、`src/constants/pro-plan.ts`、`src/hooks/use-paywall-colors.ts`、`docs/ui-review/group-e.md`
+- 変更: `src/app/paywall.tsx`（作り直し）、`src/app/_layout.tsx`（paywall の上のバーを消す）、`src/app/photo-select.tsx`（回数切れの小窓）、`src/app/(tabs)/settings.tsx`（PRO のカード）、`src/app/(tabs)/template.tsx`（上限の定数を `pro-plan.ts` から）、`src/constants/theme.ts`（`PaywallColors`）、`src/constants/legalContent.ts`（Apple Account・特商法の解約方法）
+
+**main のチェックアウト（未コミット）**
+
+- 変更: `CLAUDE.md`（このメモ。中身は PR #42 のブランチ `docs/handoff-group-e` と同じ）、`.claude/launch.json`（`stitch-preview` は前から。今回足した `expo-web-e` は消した。いつもどおりコミットしない）
+- 未追跡: `docs/ui-review/group-e.md`（PR #41 の版と同じ中身）
+
+**Git対象外（`.stitch-work/group-e/`）**
+
+`before/`（修正前）、`overview/`（全画面のページ）、`page/`（修正案）、`attach/`・`attach-v2/`（Stitch に添付した画像）、`prompts/`・`prompts-v2/`（指示文）、`export/`・`v1-export/`・`v1-iphone/`・`v1-page/`（10パターン）、`export-v2/`・`v2-export/`・`v2-iphone/`・`v2b-iphone/`・`v2-page/`・`v2b-page/`（色味3案と追加4画面）、`impl/`・`impl2/`・`impl-page/`（実装の撮影と確認のページ）、`projects.txt`（Stitch のプロジェクト番号）
+
+**リポジトリ外**
+
+- GitHub: PR #41（課金。Auto-fix なし）、PR #42（このメモ）
+- メモリ: `project_catchphrase_baito_seikatsu.md`（キャッチコピー候補）
+- worktree `.claude/worktrees/agent-a488a478954afe15f`（#41 のマージまで残す）
+- 撮影用のスクリプトは一時フォルダ（次のセッションでは消えている）
+
+### （参考）前のセッションで変更したファイル（2026-10-26）
 
 **main に入った（PR #37・#38・#39。2026-10-26 マージ）**
 
@@ -692,24 +763,4 @@ cd server/ai-proxy && npm run typecheck
 **リポジトリ外**
 
 - GitHub: PR #37・#38・#39（マージ済み・どれも Auto-fix を有効にした）
-- 撮影用のスクリプトは一時フォルダ（次のセッションでは消えている）
-
-### （参考）前のセッションで変更したファイル（2026-10-25〜26）
-
-**main に入った（PR #35・#36。2026-10-26 マージ）**
-
-- #35（B1）: 新規 `src/components/{ai-consent-sheet,photo-viewer}.tsx`、`docs/ui-review/group-b.md`。変更 `src/app/{photo-select,analyzing,_layout}.tsx`、`src/services/ai/anthropicProvider.ts`、`src/store/{useAppStore,useShiftSessionStore,useTourStore}.ts`、`src/components/tour/tour-steps.ts`、`src/constants/legalContent.ts`、`src/utils/legalBlocks.ts`、`src/components/legal/legal-article.tsx`
-- #36（B2）: 新規 `src/components/calendar/{picker-chip,date-picker-panel}.tsx`。変更 `src/app/{user-match-select,calendar-confirm,shift-review,complete,_layout}.tsx`、`src/components/dialog.tsx`、`src/constants/theme.ts`、`docs/ui-review/group-b.md`
-
-**main のチェックアウト（未コミット）**
-
-- 変更: `CLAUDE.md`（このメモ）、`.claude/launch.json`（`expo-web-b2` を追加 → 2026-10-26 に消した）
-
-**Git対象外（`.stitch-work/group-b/b2/`）**
-
-`prompt.txt` ほか（指示文）、`v1-export/`（Stitch の書き出し7画面）、`v1-iphone/`（iPhone サイズの撮影）、`page/`（Stitch の結果のページの元）、`impl/`（実装の撮影57枚）、`impl-v2/`（直したあとの撮影）、`impl-page/`（実装の確認のページの元）
-
-**リポジトリ外**
-
-- GitHub: PR #35・#36（マージ済み）、#36 の Auto-fix を有効にした
 - 撮影用のスクリプトは一時フォルダ（次のセッションでは消えている）
