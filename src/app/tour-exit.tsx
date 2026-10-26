@@ -1,14 +1,14 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';
-import { Linking, Pressable, StyleSheet, View } from 'react-native';
+import { Linking, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { HakobuMascot } from '@/components/hakobu-mascot';
 import { PrimaryButton } from '@/components/primary-button';
+import { SecondaryButton } from '@/components/secondary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 import { useTourStore } from '@/store/useTourStore';
 
 type ExitReason = 'noTable' | 'permission';
@@ -16,12 +16,13 @@ type ExitReason = 'noTable' | 'permission';
 const CONTENT: Record<ExitReason, { title: string; description: string }> = {
   noTable: {
     title: 'また今度にしよう',
-    description: 'シフト表が配られたら、画面の真ん中にある「スキャン」から読み取れるよ。',
+    // 言葉の途中で折り返さないよう、切れ目で改行する（幅375・393で確認）
+    description: 'シフト表が配られたら、\n画面の真ん中にある「スキャン」から\n読み取れるよ。',
   },
   permission: {
     title: 'カレンダーに入れないみたい',
     description:
-      '「設定」アプリでカレンダーへのアクセスを許可すると、読み取ったシフトを登録できるよ。',
+      '「設定」アプリで\nカレンダーへのアクセスを許可すると、\n読み取ったシフトを登録できるよ。',
   },
 };
 
@@ -31,7 +32,6 @@ const CONTENT: Record<ExitReason, { title: string; description: string }> = {
  * - permission: 登録のときにカレンダーの許可を断った
  */
 export default function TourExitScreen() {
-  const theme = useTheme();
   const { reason } = useLocalSearchParams<{ reason?: ExitReason }>();
   const content = CONTENT[reason === 'permission' ? 'permission' : 'noTable'];
   const endTour = useTourStore((state) => state.end);
@@ -60,21 +60,15 @@ export default function TourExitScreen() {
         <View style={styles.footer}>
           {reason === 'permission' ? (
             <>
-              <PrimaryButton label="設定で許可する" onPress={() => void Linking.openSettings()} />
-              <Pressable
-                onPress={goHome}
-                style={({ pressed }) => [
-                  styles.secondaryButton,
-                  { borderColor: theme.border, opacity: pressed ? 0.7 : 1 },
-                ]}
-              >
-                <ThemedText type="headline" themeColor="primary">
-                  また今度
-                </ThemedText>
-              </Pressable>
+              <PrimaryButton
+                variant="bluePill"
+                label="設定で許可する"
+                onPress={() => void Linking.openSettings()}
+              />
+              <SecondaryButton label="また今度" onPress={goHome} />
             </>
           ) : (
-            <PrimaryButton label="ホームへ" onPress={goHome} />
+            <PrimaryButton variant="bluePill" label="ホームへ" onPress={goHome} />
           )}
         </View>
       </SafeAreaView>
@@ -103,11 +97,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     paddingBottom: Spacing.four,
     gap: Spacing.three,
-  },
-  secondaryButton: {
-    borderWidth: 1,
-    borderRadius: Spacing.three,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
   },
 });
