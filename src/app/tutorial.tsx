@@ -132,7 +132,7 @@ export default function TutorialScreen() {
 
   const handleFinish = () => {
     setHasSeenTutorial();
-    // 名前が未設定ならトップ（index）が名前入力へ案内する
+    // トップ（index）がカレンダーの画面へ送る。名前が空なら、スキャンするときに写真選択の画面で小窓を出す
     router.replace('/');
   };
 

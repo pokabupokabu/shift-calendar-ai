@@ -18,9 +18,9 @@ import { Alert, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-na
 import { AdPlaceholder } from '@/components/ad-placeholder';
 import { Card } from '@/components/card';
 import { Dialog } from '@/components/dialog';
-import { HakobuMascot } from '@/components/hakobu-mascot';
 import { TabTitleRow } from '@/components/header-status';
 import { IconBadge } from '@/components/icon-badge';
+import { hasShiftKeyword, KeywordDialog } from '@/components/keyword-dialog';
 import { SecondaryButton } from '@/components/secondary-button';
 import { Screen } from '@/components/screen';
 import {
@@ -137,9 +137,6 @@ export default function TemplateTab() {
   const orangeBadge = useIconBadgeColors('orange');
   const goldBadge = useIconBadgeColors('gold');
   const user = useAppStore((state) => state.user);
-  const setShiftName = useAppStore((state) => state.setShiftName);
-  const setShiftTableHasNoNames = useAppStore((state) => state.setShiftTableHasNoNames);
-  const shiftTableHasNoNames = user?.shiftTableHasNoNames ?? false;
   const addWorkplace = useAppStore((state) => state.addWorkplace);
   const removeWorkplace = useAppStore((state) => state.removeWorkplace);
   const renameWorkplace = useAppStore((state) => state.renameWorkplace);
@@ -217,10 +214,7 @@ export default function TemplateTab() {
     setNameDialogOpen(false);
     if (tourStep !== 'keywordDialog') return;
     // 名前を入れた（または「名前が載っていない」を選んだ）ときだけ次へ。空のままなら入力からやり直す
-    const state = useAppStore.getState();
-    const named =
-      Boolean(state.user?.shiftName?.trim()) || Boolean(state.user?.shiftTableHasNoNames);
-    goToTourStep(named ? 'tabScan' : 'keywordRow');
+    goToTourStep(hasShiftKeyword() ? 'tabScan' : 'keywordRow');
   };
   const [editingShiftTypeId, setEditingShiftTypeId] = useState<string | null>(null);
   const [addDraft, setAddDraft] = useState<ShiftType | null>(null);
@@ -617,51 +611,11 @@ export default function TemplateTab() {
         </View>
       </ScrollView>
 
-      <Dialog visible={isNameDialogOpen} onClose={closeNameDialog}>
-        <DialogBody>
-          <DialogTitle>登録者キーワードを編集</DialogTitle>
-          {tourStep === 'keywordDialog' && (
-            <View style={styles.tourHint}>
-              <HakobuMascot pose="happy" size={48} />
-              <ThemedText type="footnote" style={styles.flexLabel}>
-                {'シフト表に書いてあるキミの名前を\n入れたら「閉じる」を押してね'}
-              </ThemedText>
-            </View>
-          )}
-          <DialogTextInput
-            value={user?.shiftName ?? ''}
-            onChangeText={setShiftName}
-            placeholder="シフト表に書かれている自分の名前"
-            editable={!shiftTableHasNoNames}
-            autoFocus={!shiftTableHasNoNames}
-            // スイッチがオンのあいだは名前を使わないので、灰色にして効いていないと分かるようにする
-            style={
-              shiftTableHasNoNames && {
-                backgroundColor: theme.backgroundSelected,
-                color: theme.textSecondary,
-              }
-            }
-          />
-          {/* iPhoneの設定アプリの行と同じ形: 見出しとスイッチを横に並べ、見出しの行の高さでそろえる。
-              見出しは幅375でも1行に収まるよう 15pt（docs/ui-review/group-c.md の C2 の8） */}
-          <View style={styles.noNameRow}>
-            <ThemedText type="subheadline" numberOfLines={1} style={styles.flexLabel}>
-              シフト表に名前が載っていない
-            </ThemedText>
-            <Switch value={shiftTableHasNoNames} onValueChange={setShiftTableHasNoNames} />
-          </View>
-          {shiftTableHasNoNames ? (
-            <ThemedText type="footnote" themeColor="textSecondary">
-              {'キーワードがない場合は、表に載っている\n勤務を全てキミのものとして読み取るよ'}
-            </ThemedText>
-          ) : (
-            <ThemedText type="footnote" themeColor="textSecondary">
-              {'このキーワードをもとに、AIがシフト表から\nあなたの行を抽出します。'}
-            </ThemedText>
-          )}
-          <SecondaryButton label="閉じる" onPress={closeNameDialog} />
-        </DialogBody>
-      </Dialog>
+      <KeywordDialog
+        visible={isNameDialogOpen}
+        onClose={closeNameDialog}
+        hint={tourStep === 'keywordDialog' ? 'tour' : undefined}
+      />
 
       <Dialog visible={isCalendarDialogOpen} onClose={() => setCalendarDialogOpen(false)}>
         <DialogBody>
@@ -1071,11 +1025,6 @@ const styles = StyleSheet.create({
   blockBorder: {
     borderTopWidth: 1,
   },
-  tourHint: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1254,10 +1203,5 @@ const styles = StyleSheet.create({
     width: 56,
     textAlign: 'right',
     paddingHorizontal: Spacing.two,
-  },
-  noNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
   },
 });

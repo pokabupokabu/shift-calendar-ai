@@ -21,10 +21,15 @@ interface DialogProps {
    * 画面に収まるときの見た目は既定と同じ。
    */
   scrollable?: boolean;
+  /**
+   * 閉じる動きが終わったあとに呼ぶ（任意）。閉じた直後に別の小窓を開くときに使う
+   * （iPhoneでは、小窓が閉じきる前に次の小窓を開くと出ないことがあるため）。
+   */
+  onDismiss?: () => void;
 }
 
 /** Centered modal card ("ダイアログ") for compound edits, as opposed to BottomSheet-style single-field edits. */
-export function Dialog({ visible, onClose, children, scrollable = false }: DialogProps) {
+export function Dialog({ visible, onClose, children, scrollable = false, onDismiss }: DialogProps) {
   const theme = useTheme();
   const isDark = useResolvedColorScheme() === 'dark';
   const insets = useSafeAreaInsets();
@@ -36,7 +41,13 @@ export function Dialog({ visible, onClose, children, scrollable = false }: Dialo
   ];
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+      onDismiss={onDismiss}
+    >
       <View
         style={[
           styles.overlay,
