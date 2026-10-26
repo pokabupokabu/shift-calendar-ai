@@ -71,7 +71,8 @@ export function AiConsentSheet({
           style={[
             styles.sheet,
             {
-              backgroundColor: theme.backgroundElement,
+              // ライトは小窓と同じ画面の地（クリーム）。ダークは今までどおりカードの地（2026-10-27 ユーザー決定）
+              backgroundColor: isDark ? theme.backgroundElement : theme.background,
               paddingBottom: Math.max(insets.bottom, Spacing.three),
               transform: [{ translateY: slide }],
             },
