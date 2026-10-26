@@ -1,5 +1,6 @@
 import { Image, type ImageSource } from 'expo-image';
 import { StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
@@ -18,14 +19,18 @@ export interface TutorialSlideProps {
   overlay?: React.ReactNode;
 }
 
-/** チュートリアル1枚分。上半分に絵、下半分に見出しと説明を出す。 */
+/**
+ * チュートリアル1枚分。上半分に絵、下半分に見出しと説明を出す。
+ * 上半分の薄い青の地は画面のいちばん上（状態バーの下）まで塗り、絵は上の安全領域の分だけ下げる。
+ */
 export function TutorialSlide({ title, description, visual, overlay }: TutorialSlideProps) {
   const theme = useTheme();
   const panel = useIconBadgeColors('blue');
+  const insets = useSafeAreaInsets();
 
   return (
     <View style={styles.container}>
-      <View style={[styles.panel, { backgroundColor: panel.background }]}>
+      <View style={[styles.panel, { backgroundColor: panel.background, paddingTop: insets.top }]}>
         {visual.kind === 'appIcon' ? (
           <View style={styles.iconWrap}>
             <Image
@@ -35,7 +40,7 @@ export function TutorialSlide({ title, description, visual, overlay }: TutorialS
             />
           </View>
         ) : (
-          <View style={styles.phoneArea}>
+          <View style={[styles.phoneArea, { top: Spacing.five + insets.top }]}>
             <View style={[styles.phone, { borderColor: theme.text }]}>
               <Image source={visual.source} style={styles.screen} contentFit="cover" />
             </View>
@@ -81,7 +86,6 @@ const styles = StyleSheet.create({
   phoneArea: {
     // 枠の下側はパネルの外へはみ出させて切る（参考にした画面と同じ見せ方）
     position: 'absolute',
-    top: Spacing.five,
     width: '72%',
   },
   phone: {
@@ -96,7 +100,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   textBlock: {
-    paddingHorizontal: Spacing.five,
+    paddingHorizontal: Spacing.four,
     paddingTop: Spacing.four,
     paddingBottom: Spacing.two,
     gap: Spacing.two,
