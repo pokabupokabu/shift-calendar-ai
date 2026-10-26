@@ -24,7 +24,6 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: true }}>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="tutorial" options={{ headerShown: false, gestureEnabled: false }} />
-        <Stack.Screen name="name-input" options={{ title: '名前の登録' }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="photo-select" options={{ title: 'シフト表を選択' }} />
         <Stack.Screen

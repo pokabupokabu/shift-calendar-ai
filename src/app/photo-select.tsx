@@ -12,11 +12,12 @@ import {
   Sparkles,
   type LucideIcon,
 } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AiConsentSheet } from '@/components/ai-consent-sheet';
 import { IconBadge } from '@/components/icon-badge';
+import { hasShiftKeyword, KeywordDialog } from '@/components/keyword-dialog';
 import { PhotoViewer } from '@/components/photo-viewer';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
@@ -307,6 +308,10 @@ export default function PhotoSelectScreen() {
   const [viewerUri, setViewerUri] = useState<string | null>(null);
   // 同意の小窓を開いているときの、押されたほうのスキャン（決定5）。null なら閉じている
   const [pendingConsentTier, setPendingConsentTier] = useState<AiTier | null>(null);
+  // 名前が空のままスキャンを押したときに出す登録者キーワードの小窓（C2の6）。押されたほうのスキャンを覚えておく
+  const [pendingKeywordTier, setPendingKeywordTier] = useState<AiTier | null>(null);
+  // 小窓を閉じたときに名前が入っていれば、閉じきったあとにこのスキャンを続ける
+  const resumeTierRef = useRef<AiTier | null>(null);
   const recordAiConsent = useAppStore((state) => state.recordAiConsent);
   const setSessionImages = useShiftSessionStore((state) => state.setImages);
   const setScanWorkplaceId = useShiftSessionStore((state) => state.setScanWorkplaceId);
@@ -393,16 +398,46 @@ export default function PhotoSelectScreen() {
   };
 
   /**
-   * 読み取りを始める。まだ同意していなければ、先に同意の小窓を出す（初めての1回だけ。決定5）。
-   * 案内付き操作の途中でも出す。小窓のあいだは案内の重ね絵を隠す（小窓が押せなくならないように）。
+   * 読み取りを始める。名前（登録者キーワード）が空で「シフト表に名前が載っていない」もオフなら、
+   * 先に登録者キーワードの小窓を出す（C2の6）。まだ同意していなければ、続けて同意の小窓を出す
+   * （初めての1回だけ。決定5）。どちらの小窓も案内付き操作の途中でも出し、小窓のあいだは
+   * 案内の重ね絵を隠す（小窓が押せなくならないように）。
    */
   const startScan = (tier: AiTier) => {
+    if (!hasShiftKeyword()) {
+      openKeywordDialog(tier);
+      return;
+    }
     if (!useAppStore.getState().aiConsentAt) {
       setPendingConsentTier(tier);
       goToTourStep('consent');
       return;
     }
     handleNext(tier);
+  };
+
+  const openKeywordDialog = (tier: AiTier) => {
+    setPendingKeywordTier(tier);
+    // 案内中は、マイカスタムの小窓と同じ手順にして、重ね絵を隠しはこブーの一言を小窓の中に出す
+    goToTourStep('keywordDialog');
+  };
+
+  const closeKeywordDialog = () => {
+    // 名前が入った（または「名前が載っていない」をオンにした）ときだけ、押したほうのスキャンを続ける。
+    // 空のままなら何も始めず、写真選択の画面に戻るだけ
+    resumeTierRef.current = hasShiftKeyword() ? pendingKeywordTier : null;
+    setPendingKeywordTier(null);
+    // 案内中なら「スキャンする」を指す手順へ戻す（続けるときは、このあと同意の小窓か解析へ進む）
+    goToTourStep('analyze');
+  };
+
+  /** 登録者キーワードの小窓が閉じきったあと。続けるスキャンがあれば始める（同意の小窓と重ならないように）。 */
+  const handleKeywordDialogDismissed = () => {
+    const tier = resumeTierRef.current;
+    resumeTierRef.current = null;
+    // ふつうのスキャンは、回数の確認（使い切ったときの広告・課金の案内）からやり直す
+    if (tier === 'standard') handlePressScan();
+    else if (tier) startScan(tier);
   };
 
   const handleAgreeConsent = () => {
@@ -444,6 +479,11 @@ export default function PhotoSelectScreen() {
   const proQuotaExceeded = isPro && quotaExceeded;
 
   const handlePressScan = () => {
+    // 名前が空なら、回数を使い切ったときの案内より先に名前の小窓を出す（広告を見たあとに名前を聞かないため）
+    if (!hasShiftKeyword()) {
+      openKeywordDialog('standard');
+      return;
+    }
     if (quotaExceeded) {
       if (canWatchAdForBonus) {
         Alert.alert(
@@ -587,6 +627,12 @@ export default function PhotoSelectScreen() {
       </ScrollView>
 
       <PhotoViewer uri={viewerUri} onClose={() => setViewerUri(null)} />
+      <KeywordDialog
+        visible={pendingKeywordTier !== null}
+        onClose={closeKeywordDialog}
+        onDismiss={handleKeywordDialogDismissed}
+        hint={tourStep === 'keywordDialog' ? 'tour' : 'scan'}
+      />
       <AiConsentSheet
         visible={pendingConsentTier !== null}
         onAgree={handleAgreeConsent}

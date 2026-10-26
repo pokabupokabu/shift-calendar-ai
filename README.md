@@ -103,19 +103,19 @@ interface AIProvider {
 `src/app/` にexpo-routerのファイルとして配置済み。AI解析（Gemini、Phase 1/2）とApple Calendar登録は
 実処理まで接続済み。Google Calendarは未接続（下記「未実装」参照）。
 
-| #   | 画面                         | ファイル                       |
-| --- | ---------------------------- | ------------------------------ |
-| 1   | 初回画面                     | `app/index.tsx`                |
-| 2   | 名前入力画面                 | `app/name-input.tsx`           |
-| 3   | 写真選択画面                 | `app/photo-select.tsx`         |
-| 4   | AI解析中画面                 | `app/analyzing.tsx`            |
-| 4.5 | 本人確認（候補選択）画面※    | `app/user-match-select.tsx`    |
-| 5   | シフト結果一覧               | `app/shift-results.tsx`        |
-| 6   | 要確認・編集画面             | `app/shift-review.tsx`         |
-| 7   | カレンダー登録確認画面       | `app/calendar-confirm.tsx`     |
-| 8   | 登録完了画面                 | `app/complete.tsx`             |
-| 9   | 設定画面                     | `app/settings/index.tsx`       |
-| 10  | シフト種別・時間マスター画面 | `app/settings/shift-types.tsx` |
+| #   | 画面                                                                             | ファイル                        |
+| --- | -------------------------------------------------------------------------------- | ------------------------------- |
+| 1   | 初回画面                                                                         | `app/index.tsx`                 |
+| 2   | （廃止）名前入力画面。名前が空のままスキャンを押すと登録者キーワードの小窓を出す | `components/keyword-dialog.tsx` |
+| 3   | 写真選択画面                                                                     | `app/photo-select.tsx`          |
+| 4   | AI解析中画面                                                                     | `app/analyzing.tsx`             |
+| 4.5 | 本人確認（候補選択）画面※                                                        | `app/user-match-select.tsx`     |
+| 5   | シフト結果一覧                                                                   | `app/shift-results.tsx`         |
+| 6   | 要確認・編集画面                                                                 | `app/shift-review.tsx`          |
+| 7   | カレンダー登録確認画面                                                           | `app/calendar-confirm.tsx`      |
+| 8   | 登録完了画面                                                                     | `app/complete.tsx`              |
+| 9   | 設定画面                                                                         | `app/settings/index.tsx`        |
+| 10  | シフト種別・時間マスター画面                                                     | `app/settings/shift-types.tsx`  |
 
 ※ MVP画面一覧（要件定義書）にはない、Phase 2で追加した画面。`userMatch.status`が
 `ambiguous`/`not_found`のときだけ`analyzing`からここへ遷移し、`matched`ならそのまま5へ進む。

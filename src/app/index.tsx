@@ -16,10 +16,6 @@ export default function IndexGate() {
     () => useAppStore.persist.hasHydrated(),
   );
   const hasSeenTutorial = useAppStore((state) => state.hasSeenTutorial);
-  const shiftName = useAppStore((state) => state.user?.shiftName);
-  // 「シフト表に名前が載っていない」を選んだ人は shiftName が空のままなので、
-  // 名前の有無だけで判定すると名前入力画面から出られなくなる。
-  const shiftTableHasNoNames = useAppStore((state) => state.user?.shiftTableHasNoNames);
 
   useEffect(() => {
     if (hydrated) void SplashScreen.hideAsync();
@@ -27,6 +23,7 @@ export default function IndexGate() {
 
   if (!hydrated) return null;
   if (!hasSeenTutorial) return <Redirect href="/tutorial" />;
-  if (!shiftName && !shiftTableHasNoNames) return <Redirect href="/name-input" />;
+  // 名前（登録者キーワード）が空でもそのまま通す。名前の登録の画面はなくし、名前が空のまま
+  // 「スキャンする」を押したときに写真選択の画面で小窓を出す（docs/ui-review/group-c.md の C2 の6）
   return <Redirect href="/(tabs)/calendar-view" />;
 }
