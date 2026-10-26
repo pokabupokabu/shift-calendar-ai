@@ -624,7 +624,7 @@ export default function TemplateTab() {
             <View style={styles.tourHint}>
               <HakobuMascot pose="happy" size={48} />
               <ThemedText type="footnote" style={styles.flexLabel}>
-                シフト表に書いてあるとおりに名前を入れたら「閉じる」を押してね
+                {'シフト表に書いてあるキミの名前を\n入れたら「閉じる」を押してね'}
               </ThemedText>
             </View>
           )}
@@ -634,19 +634,29 @@ export default function TemplateTab() {
             placeholder="シフト表に書かれている自分の名前"
             editable={!shiftTableHasNoNames}
             autoFocus={!shiftTableHasNoNames}
+            // スイッチがオンのあいだは名前を使わないので、灰色にして効いていないと分かるようにする
+            style={
+              shiftTableHasNoNames && {
+                backgroundColor: theme.backgroundSelected,
+                color: theme.textSecondary,
+              }
+            }
           />
+          {/* iPhoneの設定アプリの行と同じ形: 見出しとスイッチを横に並べ、見出しの行の高さでそろえる。
+              見出しは幅375でも1行に収まるよう 15pt（docs/ui-review/group-c.md の C2 の8） */}
           <View style={styles.noNameRow}>
-            <View style={styles.noNameLabel}>
-              <ThemedText type="body">シフト表に名前が載っていない</ThemedText>
-              <ThemedText type="footnote" themeColor="textSecondary">
-                自分専用の勤務表やカレンダー形式など、人の名前が書かれていない表はこちら。表に載っている勤務をすべてあなたのものとして読み取ります。
-              </ThemedText>
-            </View>
+            <ThemedText type="subheadline" numberOfLines={1} style={styles.flexLabel}>
+              シフト表に名前が載っていない
+            </ThemedText>
             <Switch value={shiftTableHasNoNames} onValueChange={setShiftTableHasNoNames} />
           </View>
-          {!shiftTableHasNoNames && (
+          {shiftTableHasNoNames ? (
             <ThemedText type="footnote" themeColor="textSecondary">
-              このキーワードをもとに、AIがシフト表からあなたの行を抽出します。
+              {'キーワードがない場合は、表に載っている\n勤務を全てキミのものとして読み取るよ'}
+            </ThemedText>
+          ) : (
+            <ThemedText type="footnote" themeColor="textSecondary">
+              {'このキーワードをもとに、AIがシフト表から\nあなたの行を抽出します。'}
             </ThemedText>
           )}
           <SecondaryButton label="閉じる" onPress={closeNameDialog} />
@@ -1249,9 +1259,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
-  },
-  noNameLabel: {
-    flex: 1,
-    gap: Spacing.one,
   },
 });

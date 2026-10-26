@@ -37,6 +37,10 @@ export const Colors = {
     // 画面の主役はタブバーの青いスキャンボタンなので、青い主ボタンにせず控えめなベージュにする。
     beigeButton: '#F3EBDD',
     onBeigeButton: '#3C3836',
+
+    // 案内付きの操作の光る枠（docs/ui-review/group-c.md の C2。2026-10-26 ユーザー決定）。
+    // 青いボタンの上でも見える黄色。初めて開いたときはいつもライトだが、ダークも同じ値にしておく。
+    tourHighlight: '#FFD43B',
   },
   dark: {
     text: '#ffffff',
@@ -62,6 +66,8 @@ export const Colors = {
     // ライトのベージュに対応する、温かみのある濃いグレー（2026-10-16 ユーザー確認済み）。
     beigeButton: '#3A3530',
     onBeigeButton: '#F3EBDD',
+
+    tourHighlight: '#FFD43B',
   },
 } as const;
 

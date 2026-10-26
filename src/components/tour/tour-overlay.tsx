@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
 
 import { HakobuMascot } from '@/components/hakobu-mascot';
 import { PrimaryButton } from '@/components/primary-button';
@@ -14,9 +15,46 @@ import { TOUR_STEPS } from './tour-steps';
 
 const HOLE_PADDING = 6;
 const DIM = 'rgba(0,0,0,0.55)';
-const HIGHLIGHT = '#FFD43B';
+/** 光る枠と、暗い幕の切り抜きの角の丸み（両方を同じにして、角の外側に明るい三角が残らないようにする）。 */
+const HOLE_RADIUS = Radius.smallLarge;
+/**
+ * 指で押しやすい最小の高さ。「シフト表が手元にない」の文字（13pt・行の高さ18pt）を44ptの押せる箱に入れ、
+ * 増えた分と同じだけ負の余白を付けて、見た目の位置と吹き出しの大きさは今のままにする。
+ * （`hitSlop` は Web では押せる範囲が広がらないため、箱そのものを大きくする）
+ */
+const MIN_TAP_HEIGHT = 44;
+const NO_TABLE_LINE_HEIGHT = 18;
+const NO_TABLE_EXTRA_V = (MIN_TAP_HEIGHT - NO_TABLE_LINE_HEIGHT) / 2;
+const NO_TABLE_EXTRA_H = Spacing.two;
 
-/** 押せない暗い部分。触っても下の画面に届かないよう、自分で受け止める。 */
+interface Hole {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * 画面全体の四角から、角丸の四角をくり抜いた形（evenodd で塗ると、内側の角丸が穴になる）。
+ * 角の丸みは穴の短い辺の半分を超えないようにする。
+ */
+function dimPath(screenWidth: number, screenHeight: number, hole: Hole) {
+  const r = Math.min(HOLE_RADIUS, hole.width / 2, hole.height / 2);
+  const { x, y, width: w, height: h } = hole;
+  return [
+    `M0 0H${screenWidth}V${screenHeight}H0Z`,
+    `M${x + r} ${y}H${x + w - r}`,
+    `A${r} ${r} 0 0 1 ${x + w} ${y + r}V${y + h - r}`,
+    `A${r} ${r} 0 0 1 ${x + w - r} ${y + h}H${x + r}`,
+    `A${r} ${r} 0 0 1 ${x} ${y + h - r}V${y + r}`,
+    `A${r} ${r} 0 0 1 ${x + r} ${y}Z`,
+  ].join('');
+}
+
+/**
+ * 押せない部分。触っても下の画面に届かないよう、自分で受け止める。
+ * 見た目の暗さは角丸の穴を持つ別の層（`dimPath`）が描くので、ここは透明。
+ */
 function Blocker({ style }: { style: object }) {
   return (
     <View
@@ -79,6 +117,11 @@ export function TourOverlay() {
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       {hole && config.blocking && (
         <>
+          <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+            <Svg width={width} height={height}>
+              <Path d={dimPath(width, height, hole)} fill={DIM} fillRule="evenodd" />
+            </Svg>
+          </View>
           <Blocker style={{ top: 0, left: 0, right: 0, height: hole.y }} />
           <Blocker style={{ top: hole.y + hole.height, left: 0, right: 0, bottom: 0 }} />
           <Blocker style={{ top: hole.y, left: 0, width: hole.x, height: hole.height }} />
@@ -97,7 +140,13 @@ export function TourOverlay() {
           pointerEvents="none"
           style={[
             styles.highlight,
-            { left: hole.x, top: hole.y, width: hole.width, height: hole.height },
+            {
+              left: hole.x,
+              top: hole.y,
+              width: hole.width,
+              height: hole.height,
+              borderColor: theme.tourHighlight,
+            },
           ]}
         />
       )}
@@ -113,13 +162,15 @@ export function TourOverlay() {
           </ThemedText>
         </View>
         {step === 'pickPhoto' && (
-          <Pressable onPress={handleNoTable} hitSlop={Spacing.two} style={styles.bubbleLink}>
+          <Pressable accessibilityRole="button" onPress={handleNoTable} style={styles.bubbleLink}>
             <ThemedText type="footnote" themeColor="primary">
               シフト表が手元にない
             </ThemedText>
           </Pressable>
         )}
-        {step === 'done' && <PrimaryButton label="はじめる" onPress={handleFinish} />}
+        {step === 'done' && (
+          <PrimaryButton label="はじめる" onPress={handleFinish} variant="bluePill" />
+        )}
       </View>
     </View>
   );
@@ -128,13 +179,11 @@ export function TourOverlay() {
 const styles = StyleSheet.create({
   blocker: {
     position: 'absolute',
-    backgroundColor: DIM,
   },
   highlight: {
     position: 'absolute',
     borderWidth: 3,
-    borderColor: HIGHLIGHT,
-    borderRadius: Radius.smallLarge,
+    borderRadius: HOLE_RADIUS,
   },
   bubble: {
     position: 'absolute',
@@ -159,5 +208,10 @@ const styles = StyleSheet.create({
   },
   bubbleLink: {
     alignSelf: 'flex-end',
+    minHeight: MIN_TAP_HEIGHT,
+    justifyContent: 'center',
+    paddingHorizontal: NO_TABLE_EXTRA_H,
+    marginVertical: -NO_TABLE_EXTRA_V,
+    marginHorizontal: -NO_TABLE_EXTRA_H,
   },
 });
