@@ -100,6 +100,117 @@ export const IconBadgeTones = {
 
 export type IconBadgeTone = keyof typeof IconBadgeTones.light;
 
+/**
+ * 課金画面・お礼の表示・回数切れの小窓の色（docs/ui-review/group-e.md「B（濃い金）で確定」。
+ * Stitch の B（ライト）と D（ダーク）の値）。PRO の金（`gold`/`onGold`）を、濃い金の上部・金の列の表などに
+ * 広げたもの。この3つの場面でだけ使う。
+ */
+export const PaywallColors = {
+  light: {
+    /** 画面の地。白より少し温かいクリーム */
+    background: '#FFFBF0',
+    /** 上部の濃い金のグラデーション（上→下） */
+    heroStart: '#FFD60A',
+    heroEnd: '#F2B200',
+    /** 上部のきらめき・星 */
+    sparkle: '#FFFFFF',
+    /** 右上の閉じるの丸（半透明）と× */
+    closeBackground: 'rgba(0,0,0,0.15)',
+    closeIcon: '#FFFFFF',
+    /** はこブーの吹き出し */
+    bubbleBackground: '#FFFFFF',
+    bubbleBorder: '#FFFFFF',
+    bubbleText: '#2C2C2E',
+    /** 見出しの「PRO」の金のグラデーションの文字（左→右） */
+    proTextStart: '#FFD60A',
+    proTextEnd: '#C99A00',
+    /** 比較表 */
+    tableBackground: '#FFFFFF',
+    tableBorder: '#F0E4C8',
+    tableHeaderBackground: '#FAF5E8',
+    tableHeaderText: '#636366',
+    tableDivider: '#F7EED8',
+    /** 無料の列の文字（「—」は textSecondary） */
+    freeText: '#636366',
+    /** PRO の列（金一色の地に濃い茶色の太字） */
+    proColumnHeaderBackground: '#FFD60A',
+    proColumnBackground: '#FFE566',
+    proColumnBorder: '#F0CD00',
+    proColumnText: '#5C3D00',
+    /** PRO の列の見出しの札 */
+    proBadgeBackground: '#5C3D00',
+    proBadgeText: '#FFD60A',
+    /** 表の行の頭の小さなアイコン */
+    rowIconBackground: '#FFF5D9',
+    rowIcon: '#C99A00',
+    /** お申し込み内容の確認の枠 */
+    termsBackground: '#FFFFFF',
+    termsBorder: '#EBE4D5',
+    /** 下に固定した購入の帯 */
+    barBackground: '#FFFBF0',
+    barBorder: '#EAE3D2',
+    /** お礼の表示の右の丸いチェック */
+    checkBackground: '#FFF8E1',
+    checkBorder: '#FDE68A',
+    checkIcon: '#C99A00',
+    /** 見出しの両脇の星 */
+    titleStar: '#F2B200',
+    /** 回数切れの小窓の「PROにする」のカード（金の縁） */
+    proCardBackground: '#FFFDF5',
+    proCardBorder: '#FFD60A',
+    proCardTitle: '#5C3D00',
+    proCardPrice: '#B48200',
+    proCardStar: '#F2B200',
+    /** 回数切れの小窓の「〇日に〇回分戻ります」の灰色の札 */
+    pillBackground: '#E5E5EA',
+    pillText: '#636366',
+  },
+  dark: {
+    background: '#000000',
+    // 暗い金茶（Stitch の D）
+    heroStart: '#3D2C00',
+    heroEnd: '#291C00',
+    sparkle: '#FCD34D',
+    closeBackground: 'rgba(255,255,255,0.15)',
+    closeIcon: '#FFFFFF',
+    bubbleBackground: '#232326',
+    bubbleBorder: 'rgba(255,214,10,0.3)',
+    bubbleText: '#FFFFFF',
+    proTextStart: '#FFD60A',
+    proTextEnd: '#F5A623',
+    tableBackground: '#1C1C1E',
+    tableBorder: 'rgba(255,255,255,0.08)',
+    tableHeaderBackground: '#1C1C1E',
+    tableHeaderText: 'rgba(255,255,255,0.7)',
+    tableDivider: 'rgba(255,255,255,0.06)',
+    freeText: '#8E8E93',
+    // 暗い金の地に金の文字
+    proColumnHeaderBackground: 'rgba(255,214,10,0.12)',
+    proColumnBackground: 'rgba(255,214,10,0.12)',
+    proColumnBorder: 'transparent',
+    proColumnText: '#FFD60A',
+    proBadgeBackground: '#FFD60A',
+    proBadgeText: '#5C3D00',
+    rowIconBackground: 'transparent',
+    rowIcon: '#FBBF24',
+    termsBackground: '#1C1C1E',
+    termsBorder: 'rgba(255,255,255,0.06)',
+    barBackground: '#000000',
+    barBorder: 'rgba(255,255,255,0.1)',
+    checkBackground: '#3A3014',
+    checkBorder: 'rgba(255,214,10,0.4)',
+    checkIcon: '#FFD60A',
+    titleStar: '#FFD60A',
+    proCardBackground: '#2A2208',
+    proCardBorder: '#FFD60A',
+    proCardTitle: '#FFFFFF',
+    proCardPrice: '#FFD60A',
+    proCardStar: '#FFD60A',
+    pillBackground: '#2C2C2E',
+    pillText: '#AEAEB2',
+  },
+} as const;
+
 export const Fonts = Platform.select({
   ios: {
     /** iOS `UIFontDescriptorSystemDesignDefault` */

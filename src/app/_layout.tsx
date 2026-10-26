@@ -48,7 +48,8 @@ export default function RootLayout() {
         <Stack.Screen name="tour-exit" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen
           name="paywall"
-          options={{ title: 'PROにアップグレード', presentation: 'modal' }}
+          // 上のバーは出さず、右上の丸い×で閉じる（下へ引いて閉じるのも残る。docs/ui-review/group-e.md）
+          options={{ title: 'PROにアップグレード', presentation: 'modal', headerShown: false }}
         />
       </Stack>
       {/* 案内付き操作の重ね絵。どの画面よりも手前に出すため、Stack の後ろに置く */}

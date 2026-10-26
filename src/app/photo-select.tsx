@@ -19,6 +19,7 @@ import { AiConsentSheet } from '@/components/ai-consent-sheet';
 import { IconBadge } from '@/components/icon-badge';
 import { hasShiftKeyword, KeywordDialog } from '@/components/keyword-dialog';
 import { PhotoViewer } from '@/components/photo-viewer';
+import { QuotaExceededDialog } from '@/components/quota-exceeded-dialog';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { TourTarget } from '@/components/tour/tour-target';
@@ -312,6 +313,10 @@ export default function PhotoSelectScreen() {
   const [pendingKeywordTier, setPendingKeywordTier] = useState<AiTier | null>(null);
   // 小窓を閉じたときに名前が入っていれば、閉じきったあとにこのスキャンを続ける
   const resumeTierRef = useRef<AiTier | null>(null);
+  // スキャンの回数を使い切ったときの小窓（docs/ui-review/group-e.md）
+  const [quotaDialogVisible, setQuotaDialogVisible] = useState(false);
+  // 回数切れの小窓で押されたほう。小窓が閉じきってから広告・課金画面を始める（小窓と重ならないように）
+  const quotaNextActionRef = useRef<'ad' | 'paywall' | null>(null);
   const recordAiConsent = useAppStore((state) => state.recordAiConsent);
   const setSessionImages = useShiftSessionStore((state) => state.setImages);
   const setScanWorkplaceId = useShiftSessionStore((state) => state.setScanWorkplaceId);
@@ -335,6 +340,12 @@ export default function PhotoSelectScreen() {
   const recoveryLabel = recoveryAt
     ? `${recoveryAt.getMonth() + 1}月${recoveryAt.getDate()}日`
     : null;
+  // 回数切れの小窓の札。満タンに戻ると残りが基本の回数まで戻るので、戻る回数は「基本の回数 − 今の残り」
+  const scanRecoveryAmount = Math.max(0, scanLimit - remainingScans);
+  const quotaRecoveryText =
+    recoveryLabel && scanRecoveryAmount > 0
+      ? `${recoveryLabel}に${scanRecoveryAmount}回分戻ります`
+      : null;
   // 残り回数の文（ユーザー指定の形）。回復の予定が無い（時計が止まっている・戻る回数が0）ときは（）を出さない。
   const recoveryDays = daysUntilNextRecovery(scanUsage);
   const recoveryNote = (amount: number) =>
@@ -485,25 +496,27 @@ export default function PhotoSelectScreen() {
       return;
     }
     if (quotaExceeded) {
-      if (canWatchAdForBonus) {
-        Alert.alert(
-          'スキャンできる回数を使い切りました',
-          recoveryLabel
-            ? `広告を見るとあと1回スキャンできます。${recoveryLabel}には回数が戻ります。`
-            : '広告を見るとあと1回スキャンできます。',
-          [
-            { text: 'キャンセル', style: 'cancel' },
-            { text: 'PROを見る', onPress: () => router.push('/paywall') },
-            { text: '広告を見る', onPress: handleWatchAdForBonusScan },
-          ],
-        );
-        return;
-      }
-      router.push('/paywall');
+      // 広告を見られるときも見られないときも、はこブーの小窓で次の一手を選んでもらう
+      // （見られないときに黙って課金画面へ移らない。docs/ui-review/group-e.md）
+      quotaNextActionRef.current = null;
+      setQuotaDialogVisible(true);
       return;
     }
     // 確認の小窓は挟まず、押したらすぐ読み取りを始める（初めての1回だけ同意の小窓を出す）
     startScan('standard');
+  };
+
+  const chooseQuotaAction = (action: 'ad' | 'paywall' | null) => {
+    quotaNextActionRef.current = action;
+    setQuotaDialogVisible(false);
+  };
+
+  /** 回数切れの小窓が閉じきったあと。押されたほう（広告・課金画面）を始める。 */
+  const handleQuotaDialogDismissed = () => {
+    const action = quotaNextActionRef.current;
+    quotaNextActionRef.current = null;
+    if (action === 'ad') handleWatchAdForBonusScan();
+    else if (action === 'paywall') router.push('/paywall');
   };
 
   return (
@@ -632,6 +645,15 @@ export default function PhotoSelectScreen() {
         onClose={closeKeywordDialog}
         onDismiss={handleKeywordDialogDismissed}
         hint={tourStep === 'keywordDialog' ? 'tour' : 'scan'}
+      />
+      <QuotaExceededDialog
+        visible={quotaDialogVisible}
+        canWatchAd={canWatchAdForBonus}
+        recoveryText={quotaRecoveryText}
+        onWatchAd={() => chooseQuotaAction('ad')}
+        onGoPro={() => chooseQuotaAction('paywall')}
+        onClose={() => chooseQuotaAction(null)}
+        onDismiss={handleQuotaDialogDismissed}
       />
       <AiConsentSheet
         visible={pendingConsentTier !== null}
