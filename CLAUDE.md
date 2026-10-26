@@ -35,7 +35,7 @@ Expo Router（SDK 57.0.24）+ TypeScript の **iPhone専用アプリ「シフTo�
 | 項目          | 値                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | リポジトリ    | https://github.com/pokabupokabu/shift-calendar-ai **（⚠️ PUBLIC。秘密情報を絶対にコミットしない）**                                                                                                                                                                                                                                                                                                                                                                  |
-| `main` の先頭 | **`06f0e2d`**（PR #39＝名前の登録の廃止のマージ。その前が #38＝C2、#37＝C1）。**開いているPRは無し**。手元の `main` も 2026-10-26 に最新へ進めた（#37〜#39 は依存関係を変えていないので `npm install` は不要だった）                                                                                                                                                                                                                                                 |
+| `main` の先頭 | **`06f0e2d`**（PR #39＝名前の登録の廃止のマージ。その前が #38＝C2、#37＝C1）。**開いているPRは #40（このメモの更新）だけ**。Auto-fix は付けない（メモだけなのでユーザー判断）。マージはユーザーが自分で行う。手元の `main` は `06f0e2d` まで進めてある（#37〜#39 は依存関係を変えていないので `npm install` は不要だった）                                                                                                                                           |
 | アプリ名      | **「シフToカレ」で確定**（`expo.name` はASCIIの `ShifToKare`、表示名は `ios.infoPlist.CFBundleDisplayName`）                                                                                                                                                                                                                                                                                                                                                         |
 | Bundle ID     | **`com.pokabu.shiftcalendarai`（登録済み）**。Team ID `7Q63PJ345L`                                                                                                                                                                                                                                                                                                                                                                                                   |
 | AIプロキシ    | コードは `server/ai-proxy/`、Worker の名前は **`shiftokare-ai-proxy`（2026-10-23 公開済み。URL は `https://shiftokare-ai-proxy.shift-calendar-ai.workers.dev`、Version ID `f7f63014-4eb9-42e1-840a-716168dae798`。Anthropic のキーも登録済み・Node から実際に読ませて動作確認済み）**。古い **`gemini-shift-proxy`**（Gemini だけ）もまだ残っている（実機で Anthropic を確かめたら削除）                                                                             |
@@ -376,6 +376,7 @@ D1・D2で決まった大事なこと（詳細は group-d.md）:
 
 ### 次のアクション（順番どおり）
 
+0. **#40（このメモ）がマージされたかを先に確かめる**: `gh pr view 40 --repo pokabupokabu/shift-calendar-ai --json state,mergedAt`。マージ済みなら、手元の main の `CLAUDE.md`（#40 と同じ中身を未コミットの変更として入れてある）を `git checkout -- CLAUDE.md` で戻してから `git fetch origin && git merge --ff-only origin/main`。まだなら、そのまま作業を始めてよい（このメモの中身は #40 と同じ）
 1. **グループE（課金）を `stitch-ui-review` の手順で始める**: 修正前を撮る → 全画面のページ → 範囲・サブグループを聞く → 修正案のページ → 番号順に質問。グループCでは C1・C2 とも Stitch を使わずに実装した（ユーザー判断）。E でも Stitch を使うかを最初に聞く
 2. 全タブ共通の直し（`PrimaryButton` の既定を青に、`ThemedText` の初期値、古い文字の段階の置き換え）と、**全タブの広告の配置の見直し**（ユーザーの宿題）
 3. 説明5枚の枠の中の画像の撮り直し（2 のあと。`docs/tutorial-screenshots.md`）
@@ -682,7 +683,7 @@ cd server/ai-proxy && npm run typecheck
 
 **main のチェックアウト（未コミット）**
 
-- 変更: `CLAUDE.md`（このメモ）、`.claude/launch.json`（`stitch-preview` は前から。今日足した設定は消した）
+- 変更: `CLAUDE.md`（このメモ。中身は PR #40 のブランチ `docs/handoff-group-c` と同じ）、`.claude/launch.json`（`stitch-preview` は前から。今日足した設定は消した。いつもどおりコミットしない）
 
 **Git対象外（`.stitch-work/group-c/`）**
 
