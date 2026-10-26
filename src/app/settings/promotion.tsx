@@ -158,7 +158,7 @@ function DevPromoCodeCard() {
         placeholder="コードを入力"
         autoCapitalize="characters"
         placeholderTextColor={theme.textSecondary}
-        style={[styles.input, { color: theme.text, backgroundColor: theme.background }]}
+        style={[styles.input, { color: theme.text, backgroundColor: theme.fill }]}
       />
       <SecondaryButton
         label="適用する"

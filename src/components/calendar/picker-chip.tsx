@@ -51,7 +51,7 @@ export function PickerChip({
       style={({ pressed }) => [
         styles.chip,
         {
-          backgroundColor: active ? theme.primary : theme.background,
+          backgroundColor: active ? theme.primary : theme.fill,
           borderColor: active ? theme.primary : theme.border,
           opacity: pressed ? 0.7 : 1,
         },

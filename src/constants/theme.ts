@@ -10,8 +10,11 @@ import { Platform } from 'react-native';
 export const Colors = {
   light: {
     text: '#000000',
-    // Apple HIG "systemGroupedBackground": the page sits on a soft gray, cards sit on white.
-    background: '#F2F2F7',
+    // 画面の地。白より少し温かいクリーム（課金画面の地と同じ。docs/ui-review/group-e.md）。カードは白のまま重ねる。
+    background: '#FFFBF0',
+    // 一段沈んだ欄の地（白いカードの中の入れ子の行・切り替えの溝・入力欄・日付や時刻の札）。
+    // 地がクリームになると白いカードとの差が無くなるため、画面の地とは分ける。
+    fill: '#FAF5E8',
     backgroundElement: '#FFFFFF',
     backgroundSelected: '#E5E5EA',
     textSecondary: '#8E8E93',
@@ -45,6 +48,8 @@ export const Colors = {
   dark: {
     text: '#ffffff',
     background: '#000000',
+    // ダークは画面の地と同じ黒のまま（ライトだけ分ける）
+    fill: '#000000',
     backgroundElement: '#1C1C1E',
     backgroundSelected: '#2C2C2E',
     textSecondary: '#98989F',

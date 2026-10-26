@@ -70,7 +70,10 @@ function FaqCard({ item, open, onPress }: { item: FaqItem; open: boolean; onPres
       accessibilityHint={open ? '押すと答えを閉じます' : '押すと答えを開きます'}
       style={({ pressed }) => [
         styles.card,
-        { backgroundColor: pressed ? theme.backgroundSelected : theme.backgroundElement },
+        {
+          backgroundColor: pressed ? theme.backgroundSelected : theme.backgroundElement,
+          borderColor: theme.border,
+        },
       ]}
     >
       <View style={styles.questionRow}>
@@ -113,6 +116,7 @@ const styles = StyleSheet.create({
   },
   card: {
     borderRadius: Radius.medium,
+    borderWidth: 1,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,
     minHeight: 56,

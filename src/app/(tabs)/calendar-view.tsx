@@ -170,10 +170,7 @@ export default function CalendarViewTab() {
           </View>
 
           <View
-            style={[
-              styles.viewToggle,
-              { backgroundColor: theme.background, borderColor: theme.border },
-            ]}
+            style={[styles.viewToggle, { backgroundColor: theme.fill, borderColor: theme.border }]}
           >
             {VIEW_MODE_OPTIONS.map((option) => {
               const active = viewMode === option.mode;

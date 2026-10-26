@@ -50,7 +50,7 @@ export function TimePickerPanel({ value, onChange, caption }: TimePickerPanelPro
   const { hour, minute } = parseTime(value);
 
   return (
-    <View style={[styles.panel, { backgroundColor: theme.background, borderColor: theme.border }]}>
+    <View style={[styles.panel, { backgroundColor: theme.fill, borderColor: theme.border }]}>
       <ThemedText type="footnote" themeColor="textSecondary" style={styles.caption}>
         {caption}
       </ThemedText>

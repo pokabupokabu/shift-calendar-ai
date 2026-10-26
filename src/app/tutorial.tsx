@@ -33,7 +33,12 @@ function CalendarCard() {
     { day: '4', label: '早番 9:00', colors: orange },
   ];
   return (
-    <View style={[styles.calendarCard, { backgroundColor: theme.backgroundElement }]}>
+    <View
+      style={[
+        styles.calendarCard,
+        { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+      ]}
+    >
       <ThemedText type="caption1" themeColor="textSecondary">
         10月のカレンダー
       </ThemedText>
@@ -298,6 +303,7 @@ const styles = StyleSheet.create({
     right: '-14%',
     width: '68%',
     borderRadius: Radius.medium,
+    borderWidth: 1,
     padding: Spacing.three,
     gap: Spacing.two,
     shadowColor: '#000',

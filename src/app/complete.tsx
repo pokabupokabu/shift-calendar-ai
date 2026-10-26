@@ -84,7 +84,12 @@ export default function CompleteScreen() {
           </ThemedText>
         </View>
 
-        <View style={[styles.summaryCard, { backgroundColor: theme.backgroundElement }]}>
+        <View
+          style={[
+            styles.summaryCard,
+            { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+          ]}
+        >
           <View style={styles.summaryRow}>
             <View style={styles.summaryLabel}>
               <ThemedText type="subheadline" themeColor="textSecondary">
@@ -126,7 +131,12 @@ export default function CompleteScreen() {
           <ThemedText type="caption1" themeColor="textSecondary" style={styles.tipsCaption}>
             次回からの使い方
           </ThemedText>
-          <View style={[styles.tipsCard, { backgroundColor: theme.backgroundElement }]}>
+          <View
+            style={[
+              styles.tipsCard,
+              { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+            ]}
+          >
             <View style={styles.tipRow}>
               <IconBadge tone="blue" size={32}>
                 <Camera size={IconSize.small} color={providerBadgeColors.icon} />
@@ -186,6 +196,7 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     borderRadius: Radius.medium,
+    borderWidth: 1,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -222,6 +233,7 @@ const styles = StyleSheet.create({
   },
   tipsCard: {
     borderRadius: Radius.medium,
+    borderWidth: 1,
     padding: Spacing.three,
     gap: Spacing.three,
   },

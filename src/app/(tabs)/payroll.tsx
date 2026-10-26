@@ -554,7 +554,7 @@ export default function PayrollTab() {
               <View
                 style={[
                   styles.filterTrack,
-                  { backgroundColor: theme.background, borderColor: theme.border },
+                  { backgroundColor: theme.fill, borderColor: theme.border },
                 ]}
               >
                 <FilterSegment

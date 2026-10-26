@@ -59,7 +59,7 @@ export function AdPlaceholder({ slot, size = 'banner', style }: AdPlaceholderPro
         style={[
           styles.base,
           AD_PLACEHOLDER_DIMENSIONS.inline,
-          { backgroundColor: theme.backgroundElement },
+          { backgroundColor: theme.backgroundElement, borderColor: theme.border },
           style,
         ]}
       >
@@ -93,6 +93,7 @@ export function AdPlaceholder({ slot, size = 'banner', style }: AdPlaceholderPro
 const styles = StyleSheet.create({
   base: {
     borderRadius: Radius.medium,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
