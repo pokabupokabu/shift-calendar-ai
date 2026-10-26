@@ -40,6 +40,7 @@ import { formatShiftTypeTime, ShiftTypeForm } from '@/components/template/shift-
 import { WorkplaceTabs } from '@/components/template/workplace-tabs';
 import { ThemedText } from '@/components/themed-text';
 import { TourTarget } from '@/components/tour/tour-target';
+import { MAX_ADDED_SHIFT_TYPES, PRO_MAX_WORKPLACES } from '@/constants/pro-plan';
 import { resolveShiftTypePreset, SHIFT_TYPE_ICON_PRESETS } from '@/constants/shiftTypeIcons';
 import { BottomTabInset, IconBadgeTones, IconSize, Radius, Spacing } from '@/constants/theme';
 import { useIconBadgeColors } from '@/hooks/use-icon-badge-colors';
@@ -77,12 +78,11 @@ const WAGE_TYPE_LABEL = {
 /** 名前変更・削除ができない基本3種別(早番/遅番/夜勤、時間だけ編集可)。 */
 const BASE_SHIFT_TYPE_IDS = new Set(['early', 'late', 'night']);
 
-/** PROで追加できるシフト種別の数。基本3種と合わせて合計8つまで。 */
-const MAX_ADDED_SHIFT_TYPES = 5;
+/** PROで使えるシフト種別の合計（基本3種＋追加5つ。上限の値は課金画面の比較表と共通の `pro-plan.ts`）。 */
 const MAX_SHIFT_TYPES = BASE_SHIFT_TYPE_IDS.size + MAX_ADDED_SHIFT_TYPES;
 
 /** PROで登録できる勤務先（掛け持ち）の数。 */
-const MAX_WORKPLACES = 3;
+const MAX_WORKPLACES = PRO_MAX_WORKPLACES;
 
 const ROW_ICON_SIZE = 20;
 /** 指で押しやすい最小の高さ。 */

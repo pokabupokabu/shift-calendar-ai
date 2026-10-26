@@ -29,11 +29,13 @@ import { ThemedText } from '@/components/themed-text';
 import { ageBracketForYear } from '@/constants/dependencyWalls';
 import { BottomTabInset, Radius, Spacing, type IconBadgeTone } from '@/constants/theme';
 import { useIconBadgeColors } from '@/hooks/use-icon-badge-colors';
+import { usePaywallColors } from '@/hooks/use-paywall-colors';
 import { useTheme } from '@/hooks/use-theme';
 import type { CalendarProviderId } from '@/models/calendarEvent';
 import { getConnectedProviders } from '@/services/calendar/getConnectedProviders';
 import { useAppStore } from '@/store/useAppStore';
 import { useShiftSessionStore } from '@/store/useShiftSessionStore';
+import { PRO_SCAN_LIMIT } from '@/utils/scanQuota';
 
 interface SettingsRow {
   icon: LucideIcon;
@@ -47,6 +49,13 @@ interface SettingsRow {
 
 const ROW_ICON_BADGE_SIZE = 28;
 const ROW_ICON_SIZE = 18;
+
+/** PRO のカードの箇条書き（docs/ui-review/group-e.md「コミット前の直し」）。 */
+const PRO_POINTS = [
+  `スキャン${PRO_SCAN_LIMIT}回／高度なスキャン`,
+  '扶養の壁アラート',
+  'その他さまざまな機能',
+];
 
 /** カレンダー連携の行の右に出す短い名前（「Apple カレンダー」だとiPhone SEで切れるため短くする）。 */
 const CALENDAR_PROVIDER_SHORT_LABELS: Record<CalendarProviderId, string> = {
@@ -281,8 +290,8 @@ function ResetDataRow() {
  * （docs/ui-review/group-d.md 構成①）。
  */
 export default function SettingsTab() {
-  const theme = useTheme();
   const goldBadge = useIconBadgeColors('gold');
+  const paywallColors = usePaywallColors();
   const isPro = useAppStore((state) => state.user?.settings.isPro ?? false);
   const generalRows = useGeneralRows();
 
@@ -303,9 +312,23 @@ export default function SettingsTab() {
               </IconBadge>
               <ThemedText type="headline">シフToカレ PRO</ThemedText>
             </View>
-            <ThemedText type="footnote" themeColor="textSecondary">
-              読み取り回数が15回に増え、扶養の壁アラート・過去月の給与・掛け持ち・広告非表示が使えます。
-            </ThemedText>
+            {/* 3行の箇条書き（2026-10-27 ユーザーの要望）。行頭の「・」をそろえるため、記号と文を別の列にする */}
+            <View style={styles.proPoints}>
+              {PRO_POINTS.map((point) => (
+                <View key={point} style={styles.proPointRow}>
+                  <ThemedText type="footnote" themeColor="textSecondary">
+                    ・
+                  </ThemedText>
+                  <ThemedText
+                    type="footnote"
+                    themeColor="textSecondary"
+                    style={styles.proPointText}
+                  >
+                    {point}
+                  </ThemedText>
+                </View>
+              ))}
+            </View>
             {/* 価格の右にボタン（Stitchの案どおり。2026-10-20 ユーザー決定）。横いっぱいの主ボタン（17pt）では
                 iPhone SEで文字が切れるため、このボタンだけ文字15pt・左右の余白16ptの小さめのピル型にする */}
             <View style={styles.proPriceRow}>
@@ -320,15 +343,19 @@ export default function SettingsTab() {
               <Pressable
                 accessibilityRole="button"
                 onPress={() => router.push('/paywall')}
+                // 課金画面の表の PRO の列と同じ地と文字の色（2026-10-27 ユーザーの要望）
                 style={({ pressed }) => [
                   styles.proButton,
-                  { backgroundColor: theme.primary, opacity: pressed ? 0.7 : 1 },
+                  {
+                    backgroundColor: paywallColors.proColumnBackground,
+                    opacity: pressed ? 0.7 : 1,
+                  },
                 ]}
               >
                 <ThemedText
                   type="subheadline"
                   numberOfLines={1}
-                  style={[styles.proButtonLabel, { color: theme.onPrimary }]}
+                  style={[styles.proButtonLabel, { color: paywallColors.proColumnText }]}
                 >
                   PROにアップグレード
                 </ThemedText>
@@ -384,6 +411,15 @@ const styles = StyleSheet.create({
   },
   proCard: {
     gap: Spacing.two + Spacing.half,
+  },
+  proPoints: {
+    gap: Spacing.half,
+  },
+  proPointRow: {
+    flexDirection: 'row',
+  },
+  proPointText: {
+    flex: 1,
   },
   proHeading: {
     flexDirection: 'row',
