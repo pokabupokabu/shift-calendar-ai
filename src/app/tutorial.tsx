@@ -3,7 +3,6 @@ import { useRef, useState } from 'react';
 import {
   NativeScrollEvent,
   NativeSyntheticEvent,
-  Pressable,
   ScrollView,
   StyleSheet,
   useWindowDimensions,
@@ -13,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { HakobuMascot } from '@/components/hakobu-mascot';
 import { PrimaryButton } from '@/components/primary-button';
+import { SecondaryButton } from '@/components/secondary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TutorialSlide, type TutorialSlideProps } from '@/components/tutorial/tutorial-slide';
@@ -57,22 +57,22 @@ const SLIDES: TutorialSlideProps[] = [
   {
     title: 'シフToカレへようこそ',
     description:
-      'シフト表の写真から、あなたのシフトだけを読み取ってカレンダーに登録するアプリです。',
+      'シフト表の写真から、あなたのシフトだけを\n読み取ってカレンダーに登録するアプリです。',
     visual: { kind: 'appIcon' },
   },
   {
     title: '名前とカレンダーを設定',
-    description: 'シフト表に書かれているあなたの名前と、登録先のカレンダーを選びます。',
+    description: 'シフト表に書かれているあなたの名前と、\n登録先のカレンダーを選びます。',
     visual: { kind: 'screen', source: require('@/assets/images/tutorial/screen-mycustom.jpg') },
   },
   {
     title: 'シフト表を撮るか選ぶだけ',
-    description: '配られた表を撮影するか、LINEで届いたスクショを選ぶだけでOK。',
+    description: '配られた表を撮影するか、\nLINEで届いたスクショを選ぶだけでOK。',
     visual: { kind: 'screen', source: require('@/assets/images/tutorial/screen-photo.jpg') },
   },
   {
     title: 'はこブーが読み取るよ',
-    description: 'AIがあなたの名前の行だけを見つけて、日付と時間を読み取ります。',
+    description: 'AIがあなたの名前の行だけを見つけて、\n日付と時間を読み取ります。',
     visual: { kind: 'screen', source: require('@/assets/images/tutorial/screen-analyzing.jpg') },
   },
   {
@@ -88,6 +88,7 @@ type Step = 'slides' | 'choice' | 'declined';
 /** 初回起動時のチュートリアル: 説明5枚 → 「実際にやってみよう」の分岐 → （やらない場合）補足1枚。 */
 export default function TutorialScreen() {
   const theme = useTheme();
+  const limitedTagColors = useIconBadgeColors('blue');
   const { width } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
   const [page, setPage] = useState(0);
@@ -145,49 +146,40 @@ export default function TutorialScreen() {
               実際にやってみよう！
             </ThemedText>
             {canOfferFreeScan && (
-              <View style={[styles.limitedTag, { backgroundColor: `${theme.danger}1A` }]}>
-                <ThemedText type="footnote" themeColor="danger" style={styles.limitedTagText}>
+              <View style={[styles.limitedTag, { backgroundColor: limitedTagColors.background }]}>
+                <ThemedText type="footnote" themeColor="primary" style={styles.limitedTagText}>
                   回数制限なしで試せるのは今だけ！
                 </ThemedText>
               </View>
             )}
             <ThemedText type="subheadline" themeColor="textSecondary" style={styles.centerText}>
-              名前を入れて、シフト表を1枚読み取るところまで進めます。
+              {'名前を入れて、\nシフト表を1枚読み取るところまで進めます。'}
             </ThemedText>
           </View>
 
           <View style={styles.footer}>
-            <PrimaryButton label="やってみる" onPress={handleTry} />
-            <Pressable
-              onPress={handleDecline}
-              style={({ pressed }) => [
-                styles.secondaryButton,
-                { borderColor: theme.border, opacity: pressed ? 0.7 : 1 },
-              ]}
-            >
-              <ThemedText type="headline" themeColor="primary">
-                やらない
-              </ThemedText>
-            </Pressable>
-            <ThemedText type="caption1" themeColor="textSecondary" style={styles.centerText}>
-              続けると
+            {/* 2つのボタンのどちらを押しても同意になるため、押す前に読めるようボタンの真上に置く */}
+            <ThemedText type="footnote" themeColor="textSecondary" style={styles.centerText}>
+              「やってみる」「やらない」のどちらかを押すと、{'\n'}
               <ThemedText
-                type="caption1"
+                type="footnote"
                 themeColor="primary"
                 onPress={() => router.push('/settings/legal/terms')}
               >
                 利用規約
               </ThemedText>
-              ・
+              と
               <ThemedText
-                type="caption1"
+                type="footnote"
                 themeColor="primary"
                 onPress={() => router.push('/settings/legal/privacy')}
               >
                 プライバシーポリシー
               </ThemedText>
-              に同意したとみなされます。
+              に{'\n'}同意したことになります。
             </ThemedText>
+            <PrimaryButton label="やってみる" onPress={handleTry} variant="bluePill" />
+            <SecondaryButton label="やらない" onPress={handleDecline} />
           </View>
         </SafeAreaView>
       </ThemedView>
@@ -208,7 +200,7 @@ export default function TutorialScreen() {
             </ThemedText>
           </View>
           <View style={styles.footer}>
-            <PrimaryButton label="はじめる" onPress={handleFinish} />
+            <PrimaryButton label="はじめる" onPress={handleFinish} variant="bluePill" />
           </View>
         </SafeAreaView>
       </ThemedView>
@@ -217,13 +209,8 @@ export default function TutorialScreen() {
 
   return (
     <ThemedView style={styles.fill}>
-      <SafeAreaView style={styles.fill}>
-        <View style={styles.skipRow}>
-          <Pressable onPress={() => setStep('choice')} hitSlop={Spacing.two}>
-            <ThemedText type="link">スキップ</ThemedText>
-          </Pressable>
-        </View>
-
+      {/* 上の安全領域は各ページの薄い青の地の中で取る（TutorialSlide）ので、ここでは下と左右だけ */}
+      <SafeAreaView style={styles.fill} edges={['bottom', 'left', 'right']}>
         <ScrollView
           ref={scrollRef}
           horizontal
@@ -253,7 +240,11 @@ export default function TutorialScreen() {
         </View>
 
         <View style={styles.footer}>
-          <PrimaryButton label={isLastSlide ? 'はじめる' : '次へ'} onPress={handleNext} />
+          <PrimaryButton
+            label={isLastSlide ? 'はじめる' : '次へ'}
+            onPress={handleNext}
+            variant="bluePill"
+          />
         </View>
       </SafeAreaView>
     </ThemedView>
@@ -263,11 +254,6 @@ export default function TutorialScreen() {
 const styles = StyleSheet.create({
   fill: {
     flex: 1,
-  },
-  skipRow: {
-    alignItems: 'flex-end',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
   },
   dots: {
     flexDirection: 'row',
@@ -305,12 +291,6 @@ const styles = StyleSheet.create({
   },
   limitedTagText: {
     fontWeight: '700',
-  },
-  secondaryButton: {
-    borderWidth: 1,
-    borderRadius: Spacing.three,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
   },
   calendarCard: {
     position: 'absolute',
