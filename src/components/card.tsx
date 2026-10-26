@@ -11,12 +11,19 @@ export interface CardProps {
   style?: StyleProp<ViewStyle>;
 }
 
-/** Flat, background+radius card (no left-border accent) shared by every list/tile UI. */
+/**
+ * Flat, background+radius card (no left-border accent) shared by every list/tile UI.
+ * 地がクリームになって白いカードの輪郭が見えにくくなったため、カレンダーと同じ1ptの枠を付ける
+ * （docs/design-system.md 2章。2026-10-27 ユーザー決定）。
+ */
 export function Card({ children, onPress, selected, disabled, style }: CardProps) {
   const theme = useTheme();
   const cardStyle = [
     styles.card,
-    { backgroundColor: selected ? theme.backgroundSelected : theme.backgroundElement },
+    {
+      backgroundColor: selected ? theme.backgroundSelected : theme.backgroundElement,
+      borderColor: theme.border,
+    },
     disabled && styles.disabled,
     style,
   ];
@@ -35,6 +42,7 @@ export function Card({ children, onPress, selected, disabled, style }: CardProps
 const styles = StyleSheet.create({
   card: {
     borderRadius: Radius.medium,
+    borderWidth: 1,
     padding: Spacing.three,
   },
   disabled: {

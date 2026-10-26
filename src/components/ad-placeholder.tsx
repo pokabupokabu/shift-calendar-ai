@@ -32,7 +32,7 @@ export function AdPlaceholder({ size = 'banner', style }: AdPlaceholderProps) {
       style={[
         styles.base,
         AD_PLACEHOLDER_DIMENSIONS[size],
-        { backgroundColor: theme.backgroundElement },
+        { backgroundColor: theme.backgroundElement, borderColor: theme.border },
         style,
       ]}
     >
@@ -46,6 +46,7 @@ export function AdPlaceholder({ size = 'banner', style }: AdPlaceholderProps) {
 const styles = StyleSheet.create({
   base: {
     borderRadius: Radius.medium,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',

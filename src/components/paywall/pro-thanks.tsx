@@ -70,7 +70,7 @@ function PerkCard({ perk }: { perk: (typeof PERKS)[number] }) {
 
   return (
     <View
-      style={[styles.card, { backgroundColor: theme.backgroundElement }]}
+      style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
       accessible
       accessibilityLabel={`${perk.title}、${perk.where.replace('\n', '')}`}
     >
@@ -177,6 +177,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderRadius: Radius.medium,
+    borderWidth: 1,
   },
   cardIcon: {
     width: 40,

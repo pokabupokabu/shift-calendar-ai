@@ -72,7 +72,10 @@ export function AdvancedRescanRow({
         disabled={!canUse}
         style={({ pressed }) => [
           styles.row,
-          { backgroundColor: pressed ? theme.backgroundSelected : theme.backgroundElement },
+          {
+            backgroundColor: pressed ? theme.backgroundSelected : theme.backgroundElement,
+            borderColor: theme.border,
+          },
           !canUse && styles.disabled,
         ]}
       >
@@ -123,6 +126,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.one,
     borderRadius: Radius.smallLarge,
+    borderWidth: 1,
   },
   text: {
     flex: 1,

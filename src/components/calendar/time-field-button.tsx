@@ -18,10 +18,10 @@ export interface TimeFieldButtonProps {
   /** 値が空のときの表示。既定は「--:--」（マイカスタムの基本種別では「未登録」）。 */
   placeholder?: string;
   /**
-   * 欄の地の色。既定の `background`（淡い灰色）は白いカードの上に置くとき（②のカレンダー）。
-   * 灰色の地の小窓に直接置くとき（④のマイカスタム）は `backgroundElement`（白）。
+   * 欄の地の色。既定の `fill`（一段沈んだ欄のベージュ）は白いカードの上に置くとき（②のカレンダー）。
+   * クリームの地の小窓に直接置くとき（④のマイカスタム）は `backgroundElement`（白）。
    */
-  surface?: 'background' | 'backgroundElement';
+  surface?: 'fill' | 'backgroundElement';
 }
 
 /**
@@ -34,7 +34,7 @@ export function TimeFieldButton({
   active,
   onPress,
   placeholder = '--:--',
-  surface = 'background',
+  surface = 'fill',
 }: TimeFieldButtonProps) {
   const theme = useTheme();
   return (

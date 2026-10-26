@@ -119,7 +119,12 @@ export default function ShiftReviewScreen() {
           </View>
         )}
 
-        <View style={[styles.formCard, { backgroundColor: theme.backgroundElement }]}>
+        <View
+          style={[
+            styles.formCard,
+            { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+          ]}
+        >
           {/* 日付は今までどおり読み取り専用（表示だけ「10月8日（木）」の形に。B2の決定10） */}
           <View style={styles.dateBlock}>
             <ThemedText type="subheadline" themeColor="textSecondary">
@@ -314,6 +319,7 @@ const styles = StyleSheet.create({
   },
   formCard: {
     borderRadius: Radius.medium,
+    borderWidth: 1,
     padding: Spacing.three,
     gap: Spacing.three - Spacing.one,
   },

@@ -205,7 +205,12 @@ export default function CalendarConfirmScreen() {
     <Screen style={styles.screen}>
       {/* 画面全体を1本のスクロールにする（まとめ・写真・一覧が一緒に流れる。B2の決定4） */}
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={[styles.summaryCard, { backgroundColor: theme.backgroundElement }]}>
+        <View
+          style={[
+            styles.summaryCard,
+            { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+          ]}
+        >
           <View style={styles.summaryHeaderRow}>
             <ThemedText type="subheadline" themeColor="textSecondary">
               {monthLabel}
@@ -226,7 +231,12 @@ export default function CalendarConfirmScreen() {
         </View>
 
         {allDayCount > 0 && (
-          <View style={[styles.noticeCard, { backgroundColor: theme.backgroundElement }]}>
+          <View
+            style={[
+              styles.noticeCard,
+              { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+            ]}
+          >
             <ThemedText type="footnote" themeColor="textSecondary">
               {allDayCount}
               件は時刻が読み取れなかったため「終日」で登録します。給与の見込み額には含まれません。タップして時間を入れると、通常のシフトとして計算に入ります。
@@ -259,7 +269,12 @@ export default function CalendarConfirmScreen() {
           </View>
 
           {visible.length > 0 && (
-            <View style={[styles.listCard, { backgroundColor: theme.backgroundElement }]}>
+            <View
+              style={[
+                styles.listCard,
+                { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+              ]}
+            >
               {visible.map((item, index) => {
                 // 「要確認」の行は薄い赤の地にして、一覧の中で目に留まるようにする（v1 の決定2）
                 const isReview = item.status === 'needs_review';
@@ -415,7 +430,12 @@ export default function CalendarConfirmScreen() {
         )}
 
         {/* 日付・時刻は手入力をやめ、札を押して回して選ぶ（B2の決定7・v1 の決定3） */}
-        <View style={[styles.formGroup, { backgroundColor: theme.backgroundElement }]}>
+        <View
+          style={[
+            styles.formGroup,
+            { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+          ]}
+        >
           <View style={styles.formRow}>
             <ThemedText type="body">日付</ThemedText>
             <PickerChip
@@ -504,6 +524,7 @@ const styles = StyleSheet.create({
   },
   noticeCard: {
     borderRadius: Radius.smallLarge,
+    borderWidth: 1,
     padding: Spacing.three,
   },
   photo: {
@@ -513,6 +534,7 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     borderRadius: Radius.smallLarge,
+    borderWidth: 1,
     padding: Spacing.three,
     gap: Spacing.one,
   },
@@ -547,6 +569,7 @@ const styles = StyleSheet.create({
   },
   listCard: {
     borderRadius: Radius.smallLarge,
+    borderWidth: 1,
     overflow: 'hidden',
   },
   separator: {
@@ -627,6 +650,7 @@ const styles = StyleSheet.create({
   },
   formGroup: {
     borderRadius: Radius.medium,
+    borderWidth: 1,
     padding: Spacing.two,
     gap: Spacing.one,
   },
