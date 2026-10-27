@@ -11,9 +11,11 @@
 
 サンプルのシフト表は `assets/images/tutorial/sample-shift-table.png`（登場人物はすべて架空）。登録者キーワードは表の1行目の **佐藤 ひなた** にする。
 
+**撮る状態は「無料・広告の枠だけ隠す」**（2026-10-28 ユーザー決定）。チュートリアルを見るのは無料の人なので、見出しの右の札は「無料」、写真選択のボタンは青の「スキャンする」だけにする。広告の枠（Web では「広告」と書いた白い枠）は撮るときにブラウザの上で隠すだけで、アプリのコードは変えない。PRO で撮ると金の札と「高度なスキャンする」が写るので使わない。
+
 ## 手順（Expo Web・ブラウザの開発者ツールのコンソールで実行）
 
-ブラウザの表示幅を **375×812（iPhone相当）** にしてから行う。
+ブラウザの表示幅を **375×812（iPhone相当）** にしてから行う。本人の実データが入っていない 8082番（`expo-web-start`）で撮ると、退避の手間が要らない。
 
 ### 1. 自分のデータを退避して、架空のデータに差し替える
 
@@ -23,20 +25,28 @@ sessionStorage.setItem('__store_backup', localStorage.getItem(KEY));
 const v = JSON.parse(localStorage.getItem(KEY));
 v.state.user.shiftName = '佐藤 ひなた';
 v.state.user.displayName = '佐藤 ひなた';
-v.state.user.settings.isPro = true; // 広告の枠を出さないため
+v.state.user.settings.isPro = false; // 無料の人の画面で撮る
+v.state.aiConsentAt = new Date().toISOString(); // 初めてのスキャンの前の同意の小窓を出さない
 localStorage.setItem(KEY, JSON.stringify(v));
 location.href = '/template';
 ```
 
-### 2. スクロールバーを消す（ページを開くたびに実行）
+架空データ一式（`.stitch-work/fixtures/store-fictional.json`。Git 対象外）があるときは、それを入れて一度開いてから（移行が走る）上の `isPro`・`aiConsentAt` だけ書き換えて開き直す。
+
+### 2. スクロールバーと広告の枠を消す（ページを開くたびに実行）
 
 ```js
 const st = document.createElement('style');
 st.textContent = '*::-webkit-scrollbar{display:none!important} *{scrollbar-width:none!important}';
 document.head.appendChild(st);
+// 広告の枠（マイカスタム・写真選択）。下の中身との間の余白ごと消える
+const ad = [...document.querySelectorAll('*')].find(
+  (e) => e.children.length === 0 && e.textContent.trim() === '広告',
+);
+if (ad) ad.parentElement.style.display = 'none';
 ```
 
-### 3. 写真選択でサンプルを選ぶ（`/photo-select` を開いた状態で実行してから「ライブラリから選ぶ」を押す）
+### 3. 写真選択でサンプルを選ぶ（`/photo-select` を開いた状態で実行してから「ライブラリ」を押す）
 
 ```js
 const r = await fetch(
@@ -63,24 +73,28 @@ document.createElement = function (t, ...a) {
 };
 ```
 
-### 4. 解析中の画面で止める（「解析する」を押す前に実行）
+広告の枠は写真を選んだあとにもう一度隠す（2の後半を実行し直す）。
 
-AIへの通信を返さないようにして、解析中の画面のまま止める。実際の解析は行われず、回数も減らない。
+### 4. スキャン中の画面で止める（「スキャンする」を押す前に実行）
+
+AIへの通信を返さないようにして、スキャン中の画面のまま止める。実際の読み取りは行われず、回数も減らない。
 
 ```js
 const of = window.fetch;
 window.fetch = (u, ...a) =>
-  String(u).includes('generateContent') ? new Promise(() => {}) : of(u, ...a);
+  String(u).includes('/v1/messages') ? new Promise(() => {}) : of(u, ...a);
 ```
 
 ### 5. 撮影と切り出し
 
-各画面を等倍（750×1624）で撮り、アプリの描画範囲 **幅726・高さ1300** に切り出して、上の表のファイル名で JPEG（品質88）保存する。
+各画面を2倍（750×1624）で撮り、左上から **幅726・高さ1300** に切り出して、上の表のファイル名で JPEG（品質88）保存する。ヘッドレスChrome の DevTools Protocol で撮るときは、`Page.captureScreenshot` に `clip: { x: 0, y: 0, width: 363, height: 650, scale: 1 }`（2倍の画面なので726×1300になる）を渡すと切り出しまで一度に済む。
 
 ```python
 from PIL import Image
 Image.open('raw.jpg').convert('RGB').crop((0, 0, 726, 1300)).save('screen-xxx.jpg', quality=88)
 ```
+
+登録完了は `/complete?count=10` を直接開いて撮る（Web ではカレンダーへの登録が通らないため）。
 
 ### 6. 自分のデータに戻す（必ず行う）
 
