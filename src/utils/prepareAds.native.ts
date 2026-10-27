@@ -32,6 +32,22 @@ async function resolveTrackingGranted(): Promise<boolean> {
 }
 
 /**
+ * 確認（ATT）を出さずに、すでに出ている答えだけを読んで広告の要求の設定を返す。
+ * 確認を出さない枠（写真選択など）用。まだ答えていない人・読み取りに失敗したときは、
+ * 個人に合わせない広告にする（2026-10-27 ユーザー決定: 許可した人には合わせる）。
+ */
+export async function peekAdRequestState(): Promise<AdRequestState> {
+  try {
+    const current = await getTrackingPermissionsAsync();
+    return {
+      requestNonPersonalizedAdsOnly: !(current.status !== 'undetermined' && current.granted),
+    };
+  } catch {
+    return { requestNonPersonalizedAdsOnly: true };
+  }
+}
+
+/**
  * Resolves the request options every ad in this app must load with: asks for ATT first, then
  * starts the SDK (Google's documented order — the SDK picks up the IDFA at start()).
  * Never rejects; on failure callers get non-personalized ads rather than no ads.

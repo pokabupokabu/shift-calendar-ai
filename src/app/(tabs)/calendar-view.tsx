@@ -272,15 +272,16 @@ export default function CalendarViewTab() {
             styles.goToCalendarButton,
             styles.sideInset,
             {
-              backgroundColor: theme.beigeButton,
+              backgroundColor: theme.calendarLinkButton,
+              borderColor: theme.calendarLinkButtonBorder,
               opacity: pressed || isOpeningCalendar ? 0.85 : 1,
             },
           ]}
         >
-          <ThemedText type="headline" style={{ color: theme.onBeigeButton }}>
+          <ThemedText type="headline" style={{ color: theme.onCalendarLinkButton }}>
             カレンダーを見に行く
           </ThemedText>
-          <ChevronRight size={IconSize.small} color={theme.onBeigeButton} />
+          <ChevronRight size={IconSize.small} color={theme.onCalendarLinkButton} />
         </Pressable>
       </ScrollView>
 
@@ -456,6 +457,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.four,
     borderRadius: Radius.pill,
+    borderWidth: 1,
   },
   // topSection の gap（16）＋ 8 で、下の勤務日数・切り替えと24空ける
   ad: {

@@ -38,9 +38,11 @@ export const Colors = {
     dangerSurface: '#FFF2F2',
     dangerSurfaceBorder: '#FFD2D0',
     // カレンダータブの「カレンダーを見に行く」専用（共通ルールの例外。docs/design-system.md 6章）。
-    // 画面の主役はタブバーの青いスキャンボタンなので、青い主ボタンにせず控えめなベージュにする。
-    beigeButton: '#F3EBDD',
-    onBeigeButton: '#3C3836',
+    // 画面の主役はタブバーの青いスキャンボタンなので、青い主ボタンにしない。
+    // さくら色の地＋濃いピンクの文字＋赤い枠線（22候補から選んだ「さくら」。2026-10-27 ユーザー決定）
+    calendarLinkButton: '#FCE4EC',
+    onCalendarLinkButton: '#AD1457',
+    calendarLinkButtonBorder: '#FF3B30',
 
     // 案内付きの操作の光る枠（docs/ui-review/group-c.md の C2。2026-10-26 ユーザー決定）。
     // 青いボタンの上でも見える黄色。初めて開いたときはいつもライトだが、ダークも同じ値にしておく。
@@ -69,9 +71,10 @@ export const Colors = {
     // ダークの「要確認」の地。カードの地（#1C1C1E）より赤みを帯びた暗い色で、赤い文字（#FF453A）も白い文字も読める。
     dangerSurface: '#3A1D1D',
     dangerSurfaceBorder: '#5C2A2A',
-    // ライトのベージュに対応する、温かみのある濃いグレー（2026-10-16 ユーザー確認済み）。
-    beigeButton: '#3A3530',
-    onBeigeButton: '#F3EBDD',
+    // ライトのさくら色に対応する、暗いさくら色の地＋明るいピンクの文字＋ダークの赤の枠線
+    calendarLinkButton: '#3D1F2B',
+    onCalendarLinkButton: '#F8BBD0',
+    calendarLinkButtonBorder: '#FF453A',
 
     tourHighlight: '#FFD43B',
   },

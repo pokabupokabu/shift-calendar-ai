@@ -2,7 +2,7 @@ import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads'
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { Radius } from '@/constants/theme';
-import { useAdRequestState } from '@/hooks/use-ad-request-state';
+import { useAdRequestState, useStoredAdRequestState } from '@/hooks/use-ad-request-state';
 import { useTheme } from '@/hooks/use-theme';
 import { useAppStore } from '@/store/useAppStore';
 
@@ -17,8 +17,9 @@ export interface AdPlaceholderProps {
 }
 
 /**
- * Slots allowed to raise the ATT prompt. Excluded slots still show ads — they just fall back
- * to non-personalized ones. 'photo-select' は含めない: 写真を選んでスキャンしようとしている
+ * Slots allowed to raise the ATT prompt. Excluded slots never ask — they read the answer the
+ * user already gave elsewhere and show personalized ads only if tracking was granted
+ * （2026-10-27 ユーザー決定）。'photo-select' は含めない: 写真を選んでスキャンしようとしている
  * 最中（チュートリアルのお試しのスキャンも通る）に、トラッキングの許可の確認を割り込ませないため。
  */
 const ATT_TRIGGER_SLOTS: readonly AdPlaceholderProps['slot'][] = [
@@ -26,10 +27,6 @@ const ATT_TRIGGER_SLOTS: readonly AdPlaceholderProps['slot'][] = [
   'calendar-view',
   'payroll',
 ];
-
-const NON_PERSONALIZED: { requestNonPersonalizedAdsOnly: boolean } = {
-  requestNonPersonalizedAdsOnly: true,
-};
 
 /**
  * iOS/Android build: real AdMob banner for 'banner'/'rectangle' slots. Unit IDs are
@@ -52,8 +49,10 @@ export function AdPlaceholder({ slot, size = 'banner', style }: AdPlaceholderPro
   const isPro = useAppStore((state) => state.user?.settings.isPro ?? false);
 
   // Hooks must run unconditionally, so this sits above the isPro/inline early returns.
-  const canTriggerAtt = !isPro && size !== 'inline' && ATT_TRIGGER_SLOTS.includes(slot);
+  const showsBanner = !isPro && size !== 'inline';
+  const canTriggerAtt = showsBanner && ATT_TRIGGER_SLOTS.includes(slot);
   const resolved = useAdRequestState(canTriggerAtt);
+  const stored = useStoredAdRequestState(showsBanner && !canTriggerAtt);
 
   if (isPro) return null;
 
@@ -74,10 +73,10 @@ export function AdPlaceholder({ slot, size = 'banner', style }: AdPlaceholderPro
     );
   }
 
-  // Slots that may raise ATT wait for the answer before mounting BannerAd: changing
+  // Every slot waits for its request options before mounting BannerAd: changing
   // requestOptions after mount makes the native view re-request, which would bill a second
   // impression for the same slot.
-  const requestOptions = canTriggerAtt ? resolved : NON_PERSONALIZED;
+  const requestOptions = canTriggerAtt ? resolved : stored;
 
   return (
     <View

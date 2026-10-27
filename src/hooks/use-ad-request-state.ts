@@ -2,7 +2,7 @@ import { useIsFocused } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { AppState, InteractionManager } from 'react-native';
 
-import { prepareAds, type AdRequestState } from '@/utils/prepareAds';
+import { peekAdRequestState, prepareAds, type AdRequestState } from '@/utils/prepareAds';
 
 /**
  * Resolves the request options for the first ad slot that actually becomes visible — the point
@@ -53,6 +53,28 @@ export function useAdRequestState(enabled: boolean): AdRequestState | null {
       appStateSub?.remove();
     };
   }, [enabled, isFocused]);
+
+  return state;
+}
+
+/**
+ * 確認（ATT）を出さない枠用。すでに出ている答えを読んでから設定を返す（それまでは null）。
+ * 広告を出したあとに設定が変わると、同じ枠で広告を取り直して表示が二重に数えられるため、
+ * 答えを読み終えるまで広告を置かない。
+ */
+export function useStoredAdRequestState(enabled: boolean): AdRequestState | null {
+  const [state, setState] = useState<AdRequestState | null>(null);
+
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    void peekAdRequestState().then((next) => {
+      if (!cancelled) setState(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled]);
 
   return state;
 }
