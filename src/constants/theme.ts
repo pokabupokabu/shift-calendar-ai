@@ -14,7 +14,8 @@ export const Colors = {
     background: '#FFFBF0',
     // 一段沈んだ欄の地（白いカードの中の入れ子の行・切り替えの溝・入力欄・日付や時刻の札）。
     // 地がクリームになると白いカードとの差が無くなるため、画面の地とは分ける。
-    fill: '#FAF5E8',
+    // ごく薄いブラウン（9候補から選んだ⑦。2026-10-27 ユーザー決定）
+    fill: '#F4EEE8',
     backgroundElement: '#FFFFFF',
     backgroundSelected: '#E5E5EA',
     textSecondary: '#8E8E93',

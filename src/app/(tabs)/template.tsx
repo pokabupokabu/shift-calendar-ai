@@ -1089,8 +1089,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
   },
+  // 欄の地（fill のブラウン）の上でも見えるよう、区切り線は2pt（2026-10-27 ユーザー決定）
   nestedDivider: {
-    borderTopWidth: 1,
+    borderTopWidth: 2,
   },
   boldText: {
     fontWeight: '700',

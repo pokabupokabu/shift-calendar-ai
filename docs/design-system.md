@@ -30,7 +30,7 @@ UI全体の見直しで、すべての画面が守る共通ルール。Google St
 | トークン             | ライト    | ダーク    | 使う場面                                                                              |
 | -------------------- | --------- | --------- | ------------------------------------------------------------------------------------- |
 | `background`         | `#FFFBF0` | `#000000` | 画面の地・タブバー・上のバー・小窓の地                                                |
-| `fill`               | `#FAF5E8` | `#000000` | 一段沈んだ欄（白いカードの中の入れ子の行・切り替えの溝・入力欄・日付や時刻の札）      |
+| `fill`               | `#F4EEE8` | `#000000` | 一段沈んだ欄（白いカードの中の入れ子の行・切り替えの溝・入力欄・日付や時刻の札）      |
 | `backgroundElement`  | `#FFFFFF` | `#1C1C1E` | カード・行・シートの地                                                                |
 | `backgroundSelected` | `#E5E5EA` | `#2C2C2E` | 押している最中・選択中                                                                |
 | `text`               | `#000000` | `#FFFFFF` | 本文・見出し                                                                          |
@@ -45,7 +45,7 @@ UI全体の見直しで、すべての画面が守る共通ルール。Google St
 | `disabled`           | `#C7C7CC` | `#5C5C5E` | 押せない状態                                                                          |
 | `tourHighlight`      | `#FFD43B` | `#FFD43B` | 案内付きの操作の光る枠（2026-10-26 決定。青いボタンの上でも見えるため。ユーザー決定） |
 
-✅ **決定（2026-10-27）: ライトの画面の地を薄灰色 `#F2F2F7` から温かいクリーム `#FFFBF0` に変える**（課金のお礼の画面の地をすべての画面に広げる。ユーザー決定）。カードは白のまま。地とカードの中の欄が同じ色だと白いカードに溶けるため、欄は `fill`（ベージュ `#FAF5E8`。課金画面の表の見出しと同じ）に分けた。タブバー・小窓・奥の画面の上のバーも地と同じクリーム。ダークは変えない（`fill` も黒）。確認のページ https://claude.ai/artifact/HuwwyF2FN9deuW5C47Q1zE
+✅ **決定（2026-10-27）: ライトの画面の地を薄灰色 `#F2F2F7` から温かいクリーム `#FFFBF0` に変える**（課金のお礼の画面の地をすべての画面に広げる。ユーザー決定）。カードは白のまま。地とカードの中の欄が同じ色だと白いカードに溶けるため、欄は `fill` に分けた（最初はベージュ `#FAF5E8` にしたが白いカードの中で浮くため、9候補を見比べて**ごく薄いブラウン `#F4EEE8`** に決定。候補のページ https://claude.ai/artifact/BefsDNFeXnm6aUxRFwTX7o ）。欄の中の行の区切り線は、ブラウンの上でも見えるよう幅2（色は `border` の灰色のまま）。タブバー・小窓・奥の画面の上のバーも地と同じクリーム。ダークは変えない（`fill` も黒）。確認のページ https://claude.ai/artifact/HuwwyF2FN9deuW5C47Q1zE
 
 ✅ **決定（2026-10-27）: 白いカードにはすべて、カレンダーと同じ幅1の枠線（`border`）を付ける**（クリームの地では白いカードの輪郭が見えにくいため。ダークも同じ。ユーザー決定）。共通の `Card` は枠線込み。`Card` を使わずに `backgroundElement` の地でカードを作るときも `borderWidth: 1`・`borderColor: theme.border` を付ける。タブバーの切り替えの選択部分・下から出るシート・案内の吹き出しはカードではないので付けない。
 
@@ -140,7 +140,7 @@ Product: "シフToカレ" - reads a photo of a shared shift schedule with AI and
 Users: Japanese university students with part-time jobs. They glance at the app one-handed between classes or on a train. Prioritize speed and low cognitive load over visual richness. Native iOS utility feel. Friendly but trustworthy.
 
 Design system (must follow):
-- Colors: Apple iOS system colors, except a warm cream page background. Light mode: page background, tab bar and navigation bar #FFFBF0 (warm cream), cards #FFFFFF with a 1pt #E5E5EA border (every card, like the calendar grid), inset fields inside cards #FAF5E8. Dark mode: page background #000000. Other colors: primary #007AFF, success #34C759, danger #FF3B30, orange #FF9500, purple #5E35B1 (late night only), PRO = gold (gold fill with dark brown text; never orange or purple), secondary text #8E8E93, separators #E5E5EA. Must also work in dark mode.
+- Colors: Apple iOS system colors, except a warm cream page background. Light mode: page background, tab bar and navigation bar #FFFBF0 (warm cream), cards #FFFFFF with a 1pt #E5E5EA border (every card, like the calendar grid), inset fields inside cards #F4EEE8 (very light brown; row dividers inside them 2pt #E5E5EA). Dark mode: page background #000000. Other colors: primary #007AFF, success #34C759, danger #FF3B30, orange #FF9500, purple #5E35B1 (late night only), PRO = gold (gold fill with dark brown text; never orange or purple), secondary text #8E8E93, separators #E5E5EA. Must also work in dark mode.
 - Typography: iOS text styles only (Title1 28/34 bold, Title2 22/28 bold, Title3 20/25, Headline 17/22 semibold, Body 17/22, Subheadline 15/20, Footnote 13/18, Caption1 12/16, Caption2 11/13).
 - Spacing: 4 / 8 / 16 / 24 / 32. Screen side padding 24. Minimum tap target 44pt.
 - Corner radius: badges 8, inset elements 12, cards and bottom sheets 16, dialogs 24, buttons fully rounded (pill).
@@ -156,17 +156,16 @@ Hard rules:
 
 ## 8. 今のコードとのずれ（見直しの中で直す候補）
 
-| 場所                                   | ずれ                                                                                                                                                                                                                                                                                                                    |
-| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/app/photo-select.tsx`             | `MOCK_COLORS` で13色を直接書いている（Tailwindの灰色系と `#0066FF`）。白の背景も直接指定で、**ダークモードで崩れる可能性**                                                                                                                                                                                              |
-| `src/app/(tabs)/settings.tsx`          | PROカードの背景 `#F5F5F7`、ボタン `#1C1C1E` などを直接指定                                                                                                                                                                                                                                                              |
-| `src/app/paywall.tsx` ほか             | 星アイコンの白など                                                                                                                                                                                                                                                                                                      |
-| 文字                                   | 昔の段階が約35か所。`fontSize` の直書きが約50か所（16・12・13など）                                                                                                                                                                                                                                                     |
-| 角の丸み                               | 直書きが約20か所（4・6・10・14など、表に無い値）                                                                                                                                                                                                                                                                        |
-| 主ボタン                               | 黒・角丸16（`PrimaryButton`）と青（写真選択の「解析する」）が混在。**青・ピル型に揃える**                                                                                                                                                                                                                               |
-| 副ボタン                               | チュートリアル・案内の出口などで同じ見た目を手書きで重複                                                                                                                                                                                                                                                                |
-| `src/components/circular-progress.tsx` | PR #17 以降どこからも使われていない                                                                                                                                                                                                                                                                                     |
-| `fill`（カードの中の欄）               | ベージュ `#FAF5E8` は白いカードの中で浮いて違和感がある（2026-10-27 ユーザー指摘）。6候補を見比べ、方向は「白＋細い枠線」（切り替えの溝だけ薄い灰色）だが見た目がまだ微妙なので、**あとでデザインから見直す**（ユーザー決定。それまではベージュのまま）。候補のページ https://claude.ai/artifact/BefsDNFeXnm6aUxRFwTX7o |
+| 場所                                   | ずれ                                                                                                                       |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `src/app/photo-select.tsx`             | `MOCK_COLORS` で13色を直接書いている（Tailwindの灰色系と `#0066FF`）。白の背景も直接指定で、**ダークモードで崩れる可能性** |
+| `src/app/(tabs)/settings.tsx`          | PROカードの背景 `#F5F5F7`、ボタン `#1C1C1E` などを直接指定                                                                 |
+| `src/app/paywall.tsx` ほか             | 星アイコンの白など                                                                                                         |
+| 文字                                   | 昔の段階が約35か所。`fontSize` の直書きが約50か所（16・12・13など）                                                        |
+| 角の丸み                               | 直書きが約20か所（4・6・10・14など、表に無い値）                                                                           |
+| 主ボタン                               | 黒・角丸16（`PrimaryButton`）と青（写真選択の「解析する」）が混在。**青・ピル型に揃える**                                  |
+| 副ボタン                               | チュートリアル・案内の出口などで同じ見た目を手書きで重複                                                                   |
+| `src/components/circular-progress.tsx` | PR #17 以降どこからも使われていない                                                                                        |
 
 > 引き継ぎメモにある「基調色 `#0066FF`」は、写真選択画面の `MOCK_COLORS.blue` から来た値と思われる。アプリ全体の主色は `#007AFF`（`theme.ts`）なので、こちらに揃える。
 
