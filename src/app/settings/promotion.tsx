@@ -67,11 +67,7 @@ export default function PromotionScreen() {
           キャンペーンなどで受け取ったコードを入力すると、特典を受け取れます。
         </ThemedText>
 
-        <PrimaryButton
-          variant="bluePill"
-          label="コードを入力"
-          onPress={() => void handleRedeemPress()}
-        />
+        <PrimaryButton label="コードを入力" onPress={() => void handleRedeemPress()} />
 
         <View style={styles.group}>
           <ThemedText type="caption1" themeColor="textSecondary" style={styles.caption}>

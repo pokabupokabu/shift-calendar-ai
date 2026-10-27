@@ -367,7 +367,6 @@ export default function CalendarConfirmScreen() {
             label={registering ? '登録中…' : `カレンダーに登録（${visible.length}件）`}
             onPress={handleRegister}
             disabled={registering || visible.length === 0}
-            variant="bluePill"
           />
         </TourTarget>
       </View>
@@ -492,7 +491,7 @@ export default function CalendarConfirmScreen() {
         </View>
 
         <View style={styles.dialogActions}>
-          <PrimaryButton label="追加" onPress={handleConfirmAdd} variant="bluePill" />
+          <PrimaryButton label="追加" onPress={handleConfirmAdd} />
           <Pressable
             accessibilityRole="button"
             onPress={() => setAddDialogOpen(false)}

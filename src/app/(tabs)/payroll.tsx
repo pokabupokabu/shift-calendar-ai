@@ -424,11 +424,7 @@ export default function PayrollTab() {
                 <ThemedText type="subheadline" themeColor="textSecondary">
                   今年の年齢区分（19〜22歳かどうか）を選ぶと、あなたに合った壁が表示されます
                 </ThemedText>
-                <PrimaryButton
-                  variant="bluePill"
-                  label="今年の年齢区分を選ぶ"
-                  onPress={openDependencySettings}
-                />
+                <PrimaryButton label="今年の年齢区分を選ぶ" onPress={openDependencySettings} />
                 {yearlyTotalRow}
                 {yearlyAllDayNote}
               </>
@@ -537,11 +533,7 @@ export default function PayrollTab() {
             <ThemedText type="footnote" themeColor="textSecondary">
               複数勤務先の年収を自動合算し、年齢とその年の制度に合わせた「年収の壁」への接近をお知らせします。
             </ThemedText>
-            <PrimaryButton
-              variant="bluePill"
-              label="PROにアップグレード"
-              onPress={() => router.push('/paywall')}
-            />
+            <PrimaryButton label="PROにアップグレード" onPress={() => router.push('/paywall')} />
           </Card>
         )}
 

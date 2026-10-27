@@ -121,11 +121,7 @@ export function LegalContact({ body }: { body: string }) {
                 />
               </Pressable>
             </Card>
-            <PrimaryButton
-              variant="bluePill"
-              label="メールを作成"
-              onPress={() => void composeMail()}
-            />
+            <PrimaryButton label="メールを作成" onPress={() => void composeMail()} />
           </>
         )}
       </View>

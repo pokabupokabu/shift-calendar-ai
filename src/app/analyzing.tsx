@@ -275,7 +275,6 @@ export default function AnalyzingScreen() {
         </View>
         <View style={styles.failureButton}>
           <PrimaryButton
-            variant="bluePill"
             label={isTouring ? 'もう一度試す' : '別の画像を選び直す'}
             onPress={handleAbort}
           />

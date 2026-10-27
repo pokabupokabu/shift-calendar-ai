@@ -90,7 +90,7 @@ export function AiConsentSheet({
           <ThemedText type="footnote" themeColor="textSecondary" style={styles.note}>
             次回以降は省略します
           </ThemedText>
-          <PrimaryButton variant="bluePill" label="同意してスキャン" onPress={onAgree} />
+          <PrimaryButton label="同意してスキャン" onPress={onAgree} />
           <Pressable
             accessibilityRole="button"
             onPress={onCancel}

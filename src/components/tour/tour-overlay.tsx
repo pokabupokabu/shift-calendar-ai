@@ -168,9 +168,7 @@ export function TourOverlay() {
             </ThemedText>
           </Pressable>
         )}
-        {step === 'done' && (
-          <PrimaryButton label="はじめる" onPress={handleFinish} variant="bluePill" />
-        )}
+        {step === 'done' && <PrimaryButton label="はじめる" onPress={handleFinish} />}
       </View>
     </View>
   );

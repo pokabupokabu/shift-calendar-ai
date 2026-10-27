@@ -159,11 +159,7 @@ export default function CompleteScreen() {
         </View>
 
         <View style={styles.actions}>
-          <PrimaryButton
-            label="カレンダーを確認する"
-            onPress={handleOpenCalendar}
-            variant="bluePill"
-          />
+          <PrimaryButton label="カレンダーを確認する" onPress={handleOpenCalendar} />
           <Pressable onPress={handleDone} style={styles.doneLink} hitSlop={Spacing.two}>
             <ThemedText type="headline" themeColor="primary">
               ホームに戻る

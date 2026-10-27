@@ -233,7 +233,7 @@ export default function ShiftReviewScreen() {
         </View>
 
         <View style={styles.actions}>
-          <PrimaryButton label="保存する" onPress={handleSave} variant="bluePill" />
+          <PrimaryButton label="保存する" onPress={handleSave} />
           <Pressable onPress={handleDelete} style={styles.deleteLink} hitSlop={Spacing.two}>
             <ThemedText type="subheadline" themeColor="danger" style={styles.deleteLinkText}>
               このシフトを削除

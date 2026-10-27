@@ -228,7 +228,6 @@ export default function PaywallScreen() {
           label={purchasing ? '処理中…' : `${price}/月でPROに申し込む`}
           onPress={handlePurchase}
           disabled={busy}
-          variant="bluePill"
         />
         <View style={styles.footerRow}>
           <FooterLink

@@ -60,15 +60,11 @@ export default function TourExitScreen() {
         <View style={styles.footer}>
           {reason === 'permission' ? (
             <>
-              <PrimaryButton
-                variant="bluePill"
-                label="設定で許可する"
-                onPress={() => void Linking.openSettings()}
-              />
+              <PrimaryButton label="設定で許可する" onPress={() => void Linking.openSettings()} />
               <SecondaryButton label="また今度" onPress={goHome} />
             </>
           ) : (
-            <PrimaryButton variant="bluePill" label="ホームへ" onPress={goHome} />
+            <PrimaryButton label="ホームへ" onPress={goHome} />
           )}
         </View>
       </SafeAreaView>

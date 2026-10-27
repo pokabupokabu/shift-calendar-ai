@@ -231,7 +231,6 @@ export default function UserMatchSelectScreen() {
               label="この名前で確認する"
               onPress={() => void resolve(customLabel)}
               disabled={resolving || customLabel.trim().length === 0}
-              variant="bluePill"
             />
           </View>
         )}
@@ -276,7 +275,6 @@ export default function UserMatchSelectScreen() {
             label="この行で確定して次へ"
             onPress={() => selectedLabel && void resolve(selectedLabel)}
             disabled={resolving || !selectedLabel}
-            variant="bluePill"
           />
         </View>
       )}
