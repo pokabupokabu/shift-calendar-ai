@@ -57,7 +57,7 @@ UI全体の見直しで、すべての画面が守る共通ルール。Google St
 
 ## 3. 文字
 
-iPhone標準の段階だけを使う（`ThemedText` の `type`）。
+iPhone標準の段階だけを使う（`ThemedText` の `type`。**書かないと `callout`**）。
 
 | `type`        | 大きさ/行間 | 太さ | 使う場面                           |
 | ------------- | ----------- | ---- | ---------------------------------- |
@@ -66,6 +66,7 @@ iPhone標準の段階だけを使う（`ThemedText` の `type`）。
 | `title3`      | 20 / 25     | 600  | 金額などの強調                     |
 | `headline`    | 17 / 22     | 600  | 行の主な文字・ボタンの文字         |
 | `body`        | 17 / 22     | 400  | 本文                               |
+| `callout`     | 16 / 21     | 400  | 行の文字・小窓の中の本文（既定）   |
 | `subheadline` | 15 / 20     | 400  | 説明文・行の補足                   |
 | `footnote`    | 13 / 18     | 400  | 注釈・小さな説明                   |
 | `caption1`    | 12 / 16     | 500  | セクションの見出しラベル・バッジ   |
@@ -73,7 +74,13 @@ iPhone標準の段階だけを使う（`ThemedText` の `type`）。
 
 ✅ **決定（2026-10-16）**: 大きな金額（給与タブの合計見込みなど）は、大見出しと同じ28pt（`title1` の大きさ）にしてよい。「1画面に1つまで」は見出しとしての数で、金額は数えない。
 
-✅ **決定（2026-10-15）**: 昔の段階（`title` 48 / `subtitle` 32 / `default` / `small` / `smallBold` / `link`）は**廃止**する。まだ約35か所で使われているので、見直しの中で上の段階へ置き換え、使われなくなったら `theme.ts` から削除する。
+✅ **決定（2026-10-15）**: 昔の段階（`title` 48 / `subtitle` 32 / `default` / `small` / `smallBold` / `link`）は**廃止**する。
+
+✅ **済み（2026-10-27。ユーザー決定の方式A＝見た目をほぼ変えない）**: 昔の段階（`title` / `subtitle` / `default` / `small` / `smallBold` / `link` / `linkPrimary` / `code`）を `theme.ts` から消し、iPhone標準の `callout`（16 / 21・400・字間 -0.31）を足した。`type` を書いていなかった所（昔の `default` 16 / 24・500）と `fontSize` の直書きは、いちばん近い段階を明示した（16pt → `callout`、見出しや太字のボタンの文字 → `headline`、14pt は太字のラベルなら `subheadline`・小さな補足なら `footnote`）。太さが500 → 400に少し細くなった所がある（了承済み）。見出しのように太さが意味を持つ所は、段階の太さか `fontWeight` の上書きで保った。
+
+- **例外: 課金画面まわり**（`src/app/paywall.tsx`・`src/components/paywall/`・`src/components/quota-exceeded-dialog.tsx`）の文字の大きさは、iPhone SE に収めるために細かく合わせた値なので、直書きのまま残す
+- 入力欄（`TextInput`）は `ThemedText` ではないので、大きさだけ `Typography.callout.fontSize` のように段階の値を参照する
+- 月のマスの時刻（`caption2`）は、マスの高さを守るため行間だけ12に詰める。タブバーの「スキャン」の文字は、ほかのタブの文字と高さをそろえた実測の都合で行間20・太さ500を残す
 
 ## 4. 余白
 
@@ -119,6 +126,8 @@ iPhone標準の段階だけを使う（`ThemedText` の `type`）。
 
 ✅ **決定（2026-10-15）: 主ボタンは「青（`primary` = `#007AFF`）・ピル型（`Radius.pill`）・横いっぱい」**。副ボタンも同じピル型で、白地＋`border` の枠＋`primary` の文字。
 
+✅ **済み（2026-10-27）**: `PrimaryButton` は青・ピル型（高さ48・文字は `headline`）の**1種類だけ**にした。昔の黒・角丸16の作りと `variant` の指定は消した（使っていた21か所はすべて青・ピル型だったので、見た目は変わらない）。
+
 - 10色を比べた結果、押せる文字・タブ・選択中の印と同じ青に揃えることにした（「青いもの＝押せる」が全体で揃う）
 - ただし**画面によっては青でないほうが良い場所もある**ので、グループごとの見直しで都度判断する（例外にしたら、ここに理由とともに書き足す）
 - 外した色: はこブーピンク・オレンジ（白文字が読みにくい）、インディゴ・ティール（PROの紫・成功の緑と意味が混ざる）
@@ -128,6 +137,18 @@ iPhone標準の段階だけを使う（`ThemedText` の `type`）。
 | 場所                                     | 色                                                                                                                | 理由                                                                                                     |
 | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | カレンダータブ「カレンダーを見に行く ›」 | 薄いベージュのピル型（`beigeButton` / `onBeigeButton`。ライト `#F3EBDD`・`#3C3836`、ダーク `#3A3530`・`#F3EBDD`） | 画面の主役はタブバーの青いスキャンボタン。青い大きなボタンが2つ並ぶと迷うため（2026-10-16 ユーザー決定） |
+
+### 広告の置き場所
+
+✅ **決定（2026-10-27。ユーザー決定）**
+
+- 横長のバナー（`AdPlaceholder`、320×50）を、**カレンダー・マイカスタム・給与・設定の各タブと写真選択の画面**で、**見出しの行（写真選択は上のバー）のすぐ下・スクロールする中身の一番上**に置く。画面と一緒に流れる（固定しない）。PROでは出さない
+- 下の中身とは、押し間違えないよう **24pt** 空ける（マイカスタムと同じ）。写真選択は上のバーとも画面の上の余白24で離す
+- カレンダー・給与のタブは、広告を見出しのすぐ下に置くため、勤務日数・切り替え・月送りの行もスクロールの中に入れた
+- 写真選択の画面では、写真を選んだあとも出したままにする。**写真を選んだときなどに広告を取り直す作りにはしない**（AdMob の方針の表示回数の水増しに当たる）
+- **登録完了の画面には置かない**（Google の方針で、お礼・終了の画面には広告を置かないため）。解析中の画面にも置かない
+- 要件定義書21節は、写真のアップロード直後・AI解析中・カレンダー登録の直前への広告を「慎重に設計する」としている（禁止ではない）。写真選択の画面に置くことはユーザーが決めた
+- トラッキングの許可（ATT）の確認を出してよい場所は、今までどおりカレンダー・給与（`ATT_TRIGGER_SLOTS`）。写真選択はスキャンの最中に割り込ませないよう含めない（許可を聞かない場所は、個人に合わせない広告になる）
 
 ## 7. Stitchへ毎回添える指示
 
@@ -141,7 +162,7 @@ Users: Japanese university students with part-time jobs. They glance at the app 
 
 Design system (must follow):
 - Colors: Apple iOS system colors, except a warm cream page background. Light mode: page background, tab bar and navigation bar #FFFBF0 (warm cream), cards #FFFFFF with a 1pt #E5E5EA border (every card, like the calendar grid), inset fields inside cards #F4EEE8 (very light brown; row dividers inside them 2pt #E5E5EA). Dark mode: page background #000000. Other colors: primary #007AFF, success #34C759, danger #FF3B30, orange #FF9500, purple #5E35B1 (late night only), PRO = gold (gold fill with dark brown text; never orange or purple), secondary text #8E8E93, separators #E5E5EA. Must also work in dark mode.
-- Typography: iOS text styles only (Title1 28/34 bold, Title2 22/28 bold, Title3 20/25, Headline 17/22 semibold, Body 17/22, Subheadline 15/20, Footnote 13/18, Caption1 12/16, Caption2 11/13).
+- Typography: iOS text styles only (Title1 28/34 bold, Title2 22/28 bold, Title3 20/25, Headline 17/22 semibold, Body 17/22, Callout 16/21, Subheadline 15/20, Footnote 13/18, Caption1 12/16, Caption2 11/13).
 - Spacing: 4 / 8 / 16 / 24 / 32. Screen side padding 24. Minimum tap target 44pt.
 - Corner radius: badges 8, inset elements 12, cards and bottom sheets 16, dialogs 24, buttons fully rounded (pill).
 - Row icons sit inside soft tinted circles (e.g. blue background #E8F2FF with #007AFF icon).
@@ -161,9 +182,7 @@ Hard rules:
 | `src/app/photo-select.tsx`             | `MOCK_COLORS` で13色を直接書いている（Tailwindの灰色系と `#0066FF`）。白の背景も直接指定で、**ダークモードで崩れる可能性** |
 | `src/app/(tabs)/settings.tsx`          | PROカードの背景 `#F5F5F7`、ボタン `#1C1C1E` などを直接指定                                                                 |
 | `src/app/paywall.tsx` ほか             | 星アイコンの白など                                                                                                         |
-| 文字                                   | 昔の段階が約35か所。`fontSize` の直書きが約50か所（16・12・13など）                                                        |
 | 角の丸み                               | 直書きが約20か所（4・6・10・14など、表に無い値）                                                                           |
-| 主ボタン                               | 黒・角丸16（`PrimaryButton`）と青（写真選択の「解析する」）が混在。**青・ピル型に揃える**                                  |
 | 副ボタン                               | チュートリアル・案内の出口などで同じ見た目を手書きで重複                                                                   |
 | `src/components/circular-progress.tsx` | PR #17 以降どこからも使われていない                                                                                        |
 
