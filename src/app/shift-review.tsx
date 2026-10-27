@@ -56,7 +56,7 @@ export default function ShiftReviewScreen() {
   if (!shift) {
     return (
       <Screen>
-        <ThemedText>このシフトは見つかりませんでした。</ThemedText>
+        <ThemedText type="callout">このシフトは見つかりませんでした。</ThemedText>
       </Screen>
     );
   }

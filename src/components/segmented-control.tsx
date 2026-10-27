@@ -77,7 +77,6 @@ export function SegmentedControl<T extends string | boolean>({
               type={isCompact ? 'caption1' : 'subheadline'}
               numberOfLines={1}
               style={[
-                isCompact && styles.compactLabel,
                 {
                   color: selected ? theme.text : theme.textSecondary,
                   fontWeight: selected ? '600' : '500',
@@ -103,10 +102,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: Spacing.one,
     borderRadius: 6,
-  },
-  compactLabel: {
-    fontSize: 12,
-    lineHeight: 16,
   },
   regularTrack: {
     flexDirection: 'row',

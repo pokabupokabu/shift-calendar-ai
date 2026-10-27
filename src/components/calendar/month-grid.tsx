@@ -28,12 +28,12 @@ const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
 
 /** 表のカードの枠線の太さ。曜日の見出しの左右をマスの列に揃えるためにも使う。 */
 const GRID_CARD_BORDER_WIDTH = 1;
-/** 無料版（広告あり）の1週ぶんの行の高さ。今までの日付マスの最低の高さと同じ。 */
+/** 高さに合わせて伸ばさないときの1週ぶんの行の高さ（今は使う画面が無い）。 */
 const FIXED_WEEK_ROW_MIN_HEIGHT = 74;
 /**
- * 高さに合わせて伸ばすとき（PRO）の1週ぶんの行の最低の高さ。マスの中身がちょうど収まる高さ:
+ * 高さに合わせて伸ばすときの1週ぶんの行の最低の高さ。マスの中身がちょうど収まる高さ:
  * 上下の内側余白 2+2 ＋ 日付の行 16 ＋ すき間 2 ＋ 時刻の欄 26（11pt×2行＋上下1）＝ 48。
- * iPhone SE（375×667）で6週ある月でもスクロールせずに収まる値（calendar-view.tsx の説明を参照）。
+ * iPhone SE（375×667）で、広告の無いPROなら6週ある月でもスクロールせずに収まる値（calendar-view.tsx の説明を参照）。
  */
 const FILL_WEEK_ROW_MIN_HEIGHT = 48;
 /** マスの中の文字は幅に余裕が無いため、iPhoneの文字サイズ設定で大きくしない。 */
@@ -48,7 +48,7 @@ export interface MonthGridProps {
   onSelectDate: (date: string) => void;
   /**
    * true のとき、親（ScrollView の中身）の空いている高さいっぱいまで週の行を均等に伸ばす。
-   * 広告の無いPROで使う。親が flexGrow で高さを渡している前提。
+   * カレンダーのタブの月表示で使う（2026-10-27 から無料・PROとも）。親が flexGrow で高さを渡している前提。
    */
   fillAvailableHeight?: boolean;
 }
@@ -149,6 +149,7 @@ export function MonthGrid({
           <View style={styles.dateRow}>
             <View style={styles.dateBadge}>
               <ThemedText
+                type="caption1"
                 themeColor="textSecondary"
                 maxFontSizeMultiplier={CELL_TEXT_MAX_FONT_SCALE}
                 style={[styles.dateNumber, styles.adjacentDateNumber]}
@@ -200,6 +201,7 @@ export function MonthGrid({
           {/* 今日は青い丸に白い数字（iPhone標準カレンダーと同じ表し方） */}
           <View style={[styles.dateBadge, today && { backgroundColor: theme.primary }]}>
             <ThemedText
+              type="caption1"
               maxFontSizeMultiplier={CELL_TEXT_MAX_FONT_SCALE}
               style={[styles.dateNumber, { color: dateColor }]}
             >
@@ -220,6 +222,7 @@ export function MonthGrid({
           <View style={[styles.timeBlock, { backgroundColor: dayBadge.background }]}>
             {dayLabel.isAllDay ? (
               <ThemedText
+                type="caption2"
                 maxFontSizeMultiplier={CELL_TEXT_MAX_FONT_SCALE}
                 style={[styles.timeLabel, { color: dayBadge.icon }]}
               >
@@ -228,12 +231,14 @@ export function MonthGrid({
             ) : (
               <>
                 <ThemedText
+                  type="caption2"
                   maxFontSizeMultiplier={CELL_TEXT_MAX_FONT_SCALE}
                   style={[styles.timeLabel, { color: dayBadge.icon }]}
                 >
                   {dayLabel.startTime}
                 </ThemedText>
                 <ThemedText
+                  type="caption2"
                   maxFontSizeMultiplier={CELL_TEXT_MAX_FONT_SCALE}
                   style={[styles.timeLabel, { color: dayBadge.icon }]}
                 >
@@ -370,8 +375,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dateNumber: {
-    fontSize: 12,
-    lineHeight: 16,
     fontWeight: '700',
   },
   adjacentDateNumber: {
@@ -385,11 +388,10 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     paddingVertical: 1,
   },
+  // caption2（11pt・600）の行間13を12に詰める（2行で26に収め、行の最低の高さ48を守るため）
   timeLabel: {
-    fontSize: 11,
     lineHeight: 12,
     textAlign: 'center',
-    fontWeight: '600',
   },
   extraCount: {
     width: '100%',

@@ -325,14 +325,20 @@ export function ShiftDetailCard({
       <View style={styles.actionButtonsRow}>
         <Pressable accessibilityRole="button" onPress={onStartEdit} style={styles.actionButton}>
           <Pencil size={IconSize.small} color={theme.primary} />
-          <ThemedText style={[styles.actionButtonLabel, { color: theme.primary }]}>
+          <ThemedText
+            type="subheadline"
+            style={[styles.actionButtonLabel, { color: theme.primary }]}
+          >
             編集する
           </ThemedText>
         </Pressable>
         <View style={[styles.actionDivider, { backgroundColor: theme.border }]} />
         <Pressable accessibilityRole="button" onPress={onRequestDelete} style={styles.actionButton}>
           <Trash2 size={IconSize.small} color={theme.danger} />
-          <ThemedText style={[styles.actionButtonLabel, { color: theme.danger }]}>
+          <ThemedText
+            type="subheadline"
+            style={[styles.actionButtonLabel, { color: theme.danger }]}
+          >
             シフトを削除
           </ThemedText>
         </Pressable>
@@ -423,8 +429,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.two,
   },
   actionButtonLabel: {
-    fontSize: 15,
-    lineHeight: 20,
     fontWeight: '600',
   },
   actionDivider: {

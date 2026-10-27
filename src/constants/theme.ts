@@ -257,23 +257,15 @@ export const MaxContentWidth = 800;
 
 /** Font-size/line-height/weight metrics for each ThemedText `type`, extracted from
  * the values themed-text.tsx already used inline, so existing screens render unchanged. */
+/**
+ * 文字の段階。iPhone標準の段階（Apple iOS text styles）だけを持つ（docs/design-system.md 3章）。
+ * 2026-10-27 に昔の段階（title / subtitle / default / small / smallBold / link / linkPrimary / code）を消し、
+ * `callout`（16pt）を足した。`ThemedText` は type を書かないと `callout` になる。
+ */
 export const Typography = {
-  small: { fontSize: 14, lineHeight: 20, fontWeight: '500' },
-  smallBold: { fontSize: 14, lineHeight: 20, fontWeight: '700' },
-  default: { fontSize: 16, lineHeight: 24, fontWeight: '500' },
-  title: { fontSize: 48, lineHeight: 52, fontWeight: '600' },
-  subtitle: { fontSize: 32, lineHeight: 44, fontWeight: '600' },
-  link: { fontSize: 14, lineHeight: 30, fontWeight: '500' },
-  linkPrimary: { fontSize: 14, lineHeight: 30, fontWeight: '500' },
-  code: {
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: (Platform.select({ android: '700' }) ?? '500') as '700' | '500',
-  },
-  // Apple iOS text styles (see Stitch mockups) — additive, for screens being restyled
-  // to match those mockups precisely. Existing keys above are left untouched.
   body: { fontSize: 17, lineHeight: 22, fontWeight: '400', letterSpacing: -0.43 },
   headline: { fontSize: 17, lineHeight: 22, fontWeight: '600', letterSpacing: -0.43 },
+  callout: { fontSize: 16, lineHeight: 21, fontWeight: '400', letterSpacing: -0.31 },
   subheadline: { fontSize: 15, lineHeight: 20, fontWeight: '400', letterSpacing: -0.23 },
   footnote: { fontSize: 13, lineHeight: 18, fontWeight: '400', letterSpacing: -0.08 },
   caption1: { fontSize: 12, lineHeight: 16, fontWeight: '500', letterSpacing: 0 },

@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { TourTarget } from '@/components/tour/tour-target';
-import { IconSize, Radius, Spacing } from '@/constants/theme';
+import { IconSize, Radius, Spacing, Typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 const TAB_BAR_CONTENT_HEIGHT = 56;
@@ -38,7 +38,7 @@ function ScanTabButton() {
           </Pressable>
         </TourTarget>
       </View>
-      <ThemedText type="small" themeColor="textSecondary" style={styles.tabBarLabel}>
+      <ThemedText type="caption2" themeColor="textSecondary" style={styles.scanTabLabel}>
         スキャン
       </ThemedText>
     </View>
@@ -135,8 +135,15 @@ const styles = StyleSheet.create({
   wideLabelTab: {
     paddingHorizontal: 0,
   },
+  // ほかのタブの文字（react-navigation が描く）。大きさは caption2 の11pt
   tabBarLabel: {
-    fontSize: 11,
+    fontSize: Typography.caption2.fontSize,
+  },
+  // 「スキャン」の文字。caption2 の11ptのまま、行間20・太さ500は今までの値を残す
+  // （下の scanButtonLift の -35 は、この行間でほかのタブの文字と高さがそろうように実測した値のため）
+  scanTabLabel: {
+    lineHeight: 20,
+    fontWeight: '500',
   },
   scanButtonWrapper: {
     flex: 1,

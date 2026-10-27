@@ -10,7 +10,7 @@ import { Screen } from '@/components/screen';
 import { SecondaryButton } from '@/components/secondary-button';
 import { ThemedText } from '@/components/themed-text';
 import { env } from '@/config/env';
-import { Fonts, IconSize, Radius, Spacing } from '@/constants/theme';
+import { Fonts, IconSize, Radius, Spacing, Typography } from '@/constants/theme';
 import { useIconBadgeColors } from '@/hooks/use-icon-badge-colors';
 import { useTheme } from '@/hooks/use-theme';
 import { useAppStore } from '@/store/useAppStore';
@@ -206,6 +206,6 @@ const styles = StyleSheet.create({
     borderRadius: Radius.smallLarge,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,
-    fontSize: 16,
+    fontSize: Typography.callout.fontSize,
   },
 });

@@ -9,7 +9,7 @@ import { ThemedText } from './themed-text';
 
 export interface AdPlaceholderProps {
   /** Identifies the placement for analytics; purely a label today. */
-  slot: 'home' | 'calendar-view' | 'payroll' | 'complete' | 'template' | 'settings';
+  slot: 'home' | 'calendar-view' | 'payroll' | 'template' | 'settings' | 'photo-select';
   size?: AdPlaceholderSize;
   style?: StyleProp<ViewStyle>;
 }
@@ -17,9 +17,8 @@ export interface AdPlaceholderProps {
 /**
  * Web build: react-native-google-mobile-ads has no web implementation, so this stays a
  * reserved, layout-only placeholder (see ad-placeholder.native.tsx for the real ad on
- * iOS/Android). Requirements section 21 forbids ads immediately after photo upload, during
- * AI analysis, or immediately before calendar registration — this component is
- * intentionally only used outside that flow.
+ * iOS/Android). 置き場所の決まり（全画面で見出しのすぐ下・写真選択にも・登録完了には置かない）は
+ * ad-placeholder.native.tsx と docs/design-system.md 6章を参照。
  */
 export function AdPlaceholder({ size = 'banner', style }: AdPlaceholderProps) {
   const theme = useTheme();
@@ -36,7 +35,7 @@ export function AdPlaceholder({ size = 'banner', style }: AdPlaceholderProps) {
         style,
       ]}
     >
-      <ThemedText themeColor="textSecondary" type="small">
+      <ThemedText themeColor="textSecondary" type="footnote">
         広告
       </ThemedText>
     </View>

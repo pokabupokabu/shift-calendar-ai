@@ -174,12 +174,12 @@ function NavRow({ row }: { row: SettingsRow }) {
       <IconBadge tone={row.tone} size={ROW_ICON_BADGE_SIZE}>
         <row.icon size={ROW_ICON_SIZE} color={badge.icon} />
       </IconBadge>
-      <ThemedText style={styles.rowLabel} numberOfLines={1}>
+      <ThemedText type="callout" style={styles.rowLabel} numberOfLines={1}>
         {row.label}
       </ThemedText>
       <View style={styles.rowRight}>
         {row.trailingLabel && (
-          <ThemedText style={styles.trailingLabel} themeColor="textSecondary" numberOfLines={1}>
+          <ThemedText type="footnote" themeColor="textSecondary" numberOfLines={1}>
             {row.trailingLabel}
           </ThemedText>
         )}
@@ -228,7 +228,9 @@ function AppearanceRow({ withTopSeparator }: { withTopSeparator: boolean }) {
         <IconBadge tone="purple" size={ROW_ICON_BADGE_SIZE}>
           <Palette size={ROW_ICON_SIZE} color={purpleBadge.icon} />
         </IconBadge>
-        <ThemedText style={styles.rowLabel}>外観</ThemedText>
+        <ThemedText type="callout" style={styles.rowLabel}>
+          外観
+        </ThemedText>
         <SegmentedControl
           size="compact"
           accessibilityLabel="外観"
@@ -275,7 +277,11 @@ function ResetDataRow() {
         <IconBadge tone="red" size={ROW_ICON_BADGE_SIZE}>
           <Trash2 size={ROW_ICON_SIZE} color={redBadge.icon} />
         </IconBadge>
-        <ThemedText style={[styles.rowLabel, { color: theme.danger }]} numberOfLines={1}>
+        <ThemedText
+          type="callout"
+          style={[styles.rowLabel, { color: theme.danger }]}
+          numberOfLines={1}
+        >
           データを初期化
         </ThemedText>
       </Pressable>
@@ -300,8 +306,9 @@ export default function SettingsTab() {
       <TabTitleRow title="設定" />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* 横長のバナー（320×50）。PROでは自動で消える。下のカードとは scrollContent の gap（16pt）で離す */}
-        <AdPlaceholder slot="settings" />
+        {/* 横長のバナー（320×50）。PROでは自動で消える。下のカードとは押し間違えないよう24pt空ける
+            （scrollContent の gap 16 ＋ 8。マイカスタムと同じ。design-system.md 6章） */}
+        <AdPlaceholder slot="settings" style={styles.ad} />
 
         {/* PROの宣伝は無料の人だけ。PROの人は見出しの右の金の「PRO」で分かるので、カードごと出さない */}
         {!isPro && (
@@ -386,10 +393,10 @@ export default function SettingsTab() {
         <ResetDataRow />
 
         <View style={styles.footer}>
-          <ThemedText style={styles.footerLine1} themeColor="textSecondary">
+          <ThemedText type="caption1" themeColor="textSecondary">
             シフToカレ for iOS
           </ThemedText>
-          <ThemedText style={styles.footerLine2} themeColor="textSecondary">
+          <ThemedText type="caption2" style={styles.footerLine2} themeColor="textSecondary">
             バージョン {APP_VERSION}
           </ThemedText>
         </View>
@@ -402,6 +409,9 @@ const styles = StyleSheet.create({
   scrollContent: {
     gap: Spacing.three,
     paddingBottom: BottomTabInset,
+  },
+  ad: {
+    marginBottom: Spacing.two,
   },
   cardShadow: {
     shadowColor: '#000000',
@@ -471,18 +481,11 @@ const styles = StyleSheet.create({
   },
   rowLabel: {
     flex: 1,
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: '400',
   },
   rowRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-  },
-  trailingLabel: {
-    fontSize: 14,
-    lineHeight: 18,
   },
   separator: {
     height: StyleSheet.hairlineWidth,
@@ -501,14 +504,8 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: Spacing.two,
   },
-  footerLine1: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '500',
-  },
+  // caption2 は太さ600。バージョンの行は今までどおり細い字にする
   footerLine2: {
-    fontSize: 11,
-    lineHeight: 13,
     fontWeight: '400',
   },
 });
