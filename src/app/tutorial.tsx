@@ -183,7 +183,7 @@ export default function TutorialScreen() {
               </ThemedText>
               に{'\n'}同意したことになります。
             </ThemedText>
-            <PrimaryButton label="やってみる" onPress={handleTry} variant="bluePill" />
+            <PrimaryButton label="やってみる" onPress={handleTry} />
             <SecondaryButton label="やらない" onPress={handleDecline} />
           </View>
         </SafeAreaView>
@@ -205,7 +205,7 @@ export default function TutorialScreen() {
             </ThemedText>
           </View>
           <View style={styles.footer}>
-            <PrimaryButton label="はじめる" onPress={handleFinish} variant="bluePill" />
+            <PrimaryButton label="はじめる" onPress={handleFinish} />
           </View>
         </SafeAreaView>
       </ThemedView>
@@ -245,11 +245,7 @@ export default function TutorialScreen() {
         </View>
 
         <View style={styles.footer}>
-          <PrimaryButton
-            label={isLastSlide ? 'はじめる' : '次へ'}
-            onPress={handleNext}
-            variant="bluePill"
-          />
+          <PrimaryButton label={isLastSlide ? 'はじめる' : '次へ'} onPress={handleNext} />
         </View>
       </SafeAreaView>
     </ThemedView>

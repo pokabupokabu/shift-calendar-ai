@@ -15,7 +15,7 @@ export interface CircularProgressProps {
   strokeWidth?: number;
   color?: string;
   trackColor?: string;
-  /** ThemedText `type` for the centered percentage label. Defaults to "subtitle". */
+  /** ThemedText `type` for the centered percentage label. Defaults to "title1". */
   textType?: keyof typeof Typography;
 }
 
@@ -25,7 +25,7 @@ export function CircularProgress({
   strokeWidth = 12,
   color,
   trackColor,
-  textType = 'subtitle',
+  textType = 'title1',
 }: CircularProgressProps) {
   const theme = useTheme();
   const resolvedColor = color ?? theme.primary;

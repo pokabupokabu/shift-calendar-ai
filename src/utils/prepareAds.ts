@@ -4,6 +4,11 @@ export interface AdRequestState {
   requestNonPersonalizedAdsOnly: boolean;
 }
 
+/** No-op on web (see .native.ts). */
+export function peekAdRequestState(): Promise<AdRequestState> {
+  return Promise.resolve({ requestNonPersonalizedAdsOnly: true });
+}
+
 /** No-op on web: react-native-google-mobile-ads has no web implementation (see .native.ts). */
 export function prepareAds(): Promise<AdRequestState> {
   return Promise.resolve({ requestNonPersonalizedAdsOnly: true });

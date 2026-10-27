@@ -10,7 +10,7 @@ import { Screen } from '@/components/screen';
 import { SecondaryButton } from '@/components/secondary-button';
 import { ThemedText } from '@/components/themed-text';
 import { env } from '@/config/env';
-import { Fonts, IconSize, Radius, Spacing } from '@/constants/theme';
+import { Fonts, IconSize, Radius, Spacing, Typography } from '@/constants/theme';
 import { useIconBadgeColors } from '@/hooks/use-icon-badge-colors';
 import { useTheme } from '@/hooks/use-theme';
 import { useAppStore } from '@/store/useAppStore';
@@ -67,11 +67,7 @@ export default function PromotionScreen() {
           キャンペーンなどで受け取ったコードを入力すると、特典を受け取れます。
         </ThemedText>
 
-        <PrimaryButton
-          variant="bluePill"
-          label="コードを入力"
-          onPress={() => void handleRedeemPress()}
-        />
+        <PrimaryButton label="コードを入力" onPress={() => void handleRedeemPress()} />
 
         <View style={styles.group}>
           <ThemedText type="caption1" themeColor="textSecondary" style={styles.caption}>
@@ -210,6 +206,6 @@ const styles = StyleSheet.create({
     borderRadius: Radius.smallLarge,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,
-    fontSize: 16,
+    fontSize: Typography.callout.fontSize,
   },
 });

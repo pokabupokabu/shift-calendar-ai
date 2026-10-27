@@ -38,9 +38,11 @@ export const Colors = {
     dangerSurface: '#FFF2F2',
     dangerSurfaceBorder: '#FFD2D0',
     // カレンダータブの「カレンダーを見に行く」専用（共通ルールの例外。docs/design-system.md 6章）。
-    // 画面の主役はタブバーの青いスキャンボタンなので、青い主ボタンにせず控えめなベージュにする。
-    beigeButton: '#F3EBDD',
-    onBeigeButton: '#3C3836',
+    // 画面の主役はタブバーの青いスキャンボタンなので、青い主ボタンにしない。
+    // さくら色の地＋濃いピンクの文字＋赤い枠線（22候補から選んだ「さくら」。2026-10-27 ユーザー決定）
+    calendarLinkButton: '#FCE4EC',
+    onCalendarLinkButton: '#AD1457',
+    calendarLinkButtonBorder: '#FF3B30',
 
     // 案内付きの操作の光る枠（docs/ui-review/group-c.md の C2。2026-10-26 ユーザー決定）。
     // 青いボタンの上でも見える黄色。初めて開いたときはいつもライトだが、ダークも同じ値にしておく。
@@ -69,9 +71,10 @@ export const Colors = {
     // ダークの「要確認」の地。カードの地（#1C1C1E）より赤みを帯びた暗い色で、赤い文字（#FF453A）も白い文字も読める。
     dangerSurface: '#3A1D1D',
     dangerSurfaceBorder: '#5C2A2A',
-    // ライトのベージュに対応する、温かみのある濃いグレー（2026-10-16 ユーザー確認済み）。
-    beigeButton: '#3A3530',
-    onBeigeButton: '#F3EBDD',
+    // ライトのさくら色に対応する、暗いさくら色の地＋明るいピンクの文字＋ダークの赤の枠線
+    calendarLinkButton: '#3D1F2B',
+    onCalendarLinkButton: '#F8BBD0',
+    calendarLinkButtonBorder: '#FF453A',
 
     tourHighlight: '#FFD43B',
   },
@@ -257,23 +260,15 @@ export const MaxContentWidth = 800;
 
 /** Font-size/line-height/weight metrics for each ThemedText `type`, extracted from
  * the values themed-text.tsx already used inline, so existing screens render unchanged. */
+/**
+ * 文字の段階。iPhone標準の段階（Apple iOS text styles）だけを持つ（docs/design-system.md 3章）。
+ * 2026-10-27 に昔の段階（title / subtitle / default / small / smallBold / link / linkPrimary / code）を消し、
+ * `callout`（16pt）を足した。`ThemedText` は type を書かないと `callout` になる。
+ */
 export const Typography = {
-  small: { fontSize: 14, lineHeight: 20, fontWeight: '500' },
-  smallBold: { fontSize: 14, lineHeight: 20, fontWeight: '700' },
-  default: { fontSize: 16, lineHeight: 24, fontWeight: '500' },
-  title: { fontSize: 48, lineHeight: 52, fontWeight: '600' },
-  subtitle: { fontSize: 32, lineHeight: 44, fontWeight: '600' },
-  link: { fontSize: 14, lineHeight: 30, fontWeight: '500' },
-  linkPrimary: { fontSize: 14, lineHeight: 30, fontWeight: '500' },
-  code: {
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: (Platform.select({ android: '700' }) ?? '500') as '700' | '500',
-  },
-  // Apple iOS text styles (see Stitch mockups) — additive, for screens being restyled
-  // to match those mockups precisely. Existing keys above are left untouched.
   body: { fontSize: 17, lineHeight: 22, fontWeight: '400', letterSpacing: -0.43 },
   headline: { fontSize: 17, lineHeight: 22, fontWeight: '600', letterSpacing: -0.43 },
+  callout: { fontSize: 16, lineHeight: 21, fontWeight: '400', letterSpacing: -0.31 },
   subheadline: { fontSize: 15, lineHeight: 20, fontWeight: '400', letterSpacing: -0.23 },
   footnote: { fontSize: 13, lineHeight: 18, fontWeight: '400', letterSpacing: -0.08 },
   caption1: { fontSize: 12, lineHeight: 16, fontWeight: '500', letterSpacing: 0 },

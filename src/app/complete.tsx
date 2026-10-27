@@ -2,7 +2,6 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Calendar, Camera, Wallet } from 'lucide-react-native';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { AdPlaceholder } from '@/components/ad-placeholder';
 import { HakobuMascot } from '@/components/hakobu-mascot';
 import { IconBadge } from '@/components/icon-badge';
 import { PrimaryButton } from '@/components/primary-button';
@@ -159,19 +158,13 @@ export default function CompleteScreen() {
         </View>
 
         <View style={styles.actions}>
-          <PrimaryButton
-            label="カレンダーを確認する"
-            onPress={handleOpenCalendar}
-            variant="bluePill"
-          />
+          <PrimaryButton label="カレンダーを確認する" onPress={handleOpenCalendar} />
           <Pressable onPress={handleDone} style={styles.doneLink} hitSlop={Spacing.two}>
             <ThemedText type="headline" themeColor="primary">
               ホームに戻る
             </ThemedText>
           </Pressable>
         </View>
-
-        <AdPlaceholder slot="complete" style={styles.ad} />
       </ScrollView>
     </Screen>
   );
@@ -254,8 +247,5 @@ const styles = StyleSheet.create({
   doneLink: {
     alignItems: 'center',
     padding: Spacing.two,
-  },
-  ad: {
-    marginTop: Spacing.two,
   },
 });

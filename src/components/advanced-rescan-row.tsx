@@ -109,7 +109,7 @@ export function AdvancedRescanRow({
         <ThemedText type="subheadline" themeColor="textSecondary" style={styles.dialogText}>
           {`同じ写真を精度の高いAIでもう一度読みます。高度なスキャンを1回使います（残り${remaining}回）。${discardNote ?? ''}`}
         </ThemedText>
-        <PrimaryButton variant="bluePill" label="読み直す" onPress={handleConfirm} />
+        <PrimaryButton label="読み直す" onPress={handleConfirm} />
         <SecondaryButton label="キャンセル" onPress={() => setConfirmOpen(false)} />
       </Dialog>
     </>

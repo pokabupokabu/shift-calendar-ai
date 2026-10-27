@@ -133,7 +133,7 @@ export function ProThanks({ reason, onStart }: { reason: ProThanksReason; onStar
           { paddingBottom: Math.max(Spacing.three, insets.bottom + Spacing.two) },
         ]}
       >
-        <PrimaryButton label="はじめる" onPress={onStart} variant="bluePill" />
+        <PrimaryButton label="はじめる" onPress={onStart} />
       </View>
     </View>
   );

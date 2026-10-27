@@ -18,7 +18,7 @@ import { IconBadge } from '@/components/icon-badge';
 import { PrimaryButton } from '@/components/primary-button';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
-import { BottomTabInset, IconSize, Radius, Spacing } from '@/constants/theme';
+import { BottomTabInset, IconSize, Radius, Spacing, Typography } from '@/constants/theme';
 import { useIconBadgeColors } from '@/hooks/use-icon-badge-colors';
 import { useTheme } from '@/hooks/use-theme';
 import { useTourStepOnFocus } from '@/hooks/use-tour-step';
@@ -124,7 +124,10 @@ export default function UserMatchSelectScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.introRow}>
           <View style={styles.introBlock}>
-            <ThemedText type="title2" style={isNarrow && styles.introTitleNarrow}>
+            <ThemedText
+              type={isNarrow ? 'title3' : 'title2'}
+              style={isNarrow && styles.introTitleNarrow}
+            >
               {introTitle}
             </ThemedText>
             <ThemedText type="subheadline" themeColor="textSecondary" style={styles.introSubtitle}>
@@ -231,7 +234,6 @@ export default function UserMatchSelectScreen() {
               label="この名前で確認する"
               onPress={() => void resolve(customLabel)}
               disabled={resolving || customLabel.trim().length === 0}
-              variant="bluePill"
             />
           </View>
         )}
@@ -251,7 +253,7 @@ export default function UserMatchSelectScreen() {
 
         {resolving && <ActivityIndicator color={theme.primary} style={styles.spinner} />}
         {error && (
-          <ThemedText themeColor="danger" style={styles.errorText}>
+          <ThemedText type="callout" themeColor="danger" style={styles.errorText}>
             {error}
           </ThemedText>
         )}
@@ -276,7 +278,6 @@ export default function UserMatchSelectScreen() {
             label="この行で確定して次へ"
             onPress={() => selectedLabel && void resolve(selectedLabel)}
             disabled={resolving || !selectedLabel}
-            variant="bluePill"
           />
         </View>
       )}
@@ -304,9 +305,9 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: Spacing.one,
   },
+  // 幅390未満（SE・mini）は title3（20pt）。見出しなので title2 と同じ太さ700を保つ
   introTitleNarrow: {
-    fontSize: 20,
-    lineHeight: 25,
+    fontWeight: '700',
   },
   introSubtitle: {
     lineHeight: 20,
@@ -378,7 +379,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.smallLarge,
     paddingHorizontal: Spacing.three,
     paddingVertical: 0,
-    fontSize: 16,
+    fontSize: Typography.callout.fontSize,
   },
   spinner: {
     alignSelf: 'center',

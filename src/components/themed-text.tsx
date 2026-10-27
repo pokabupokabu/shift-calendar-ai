@@ -1,6 +1,6 @@
 import { Text, type TextProps } from 'react-native';
 
-import { Fonts, ThemeColor, Typography } from '@/constants/theme';
+import { ThemeColor, Typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type ThemedTextProps = TextProps & {
@@ -8,18 +8,11 @@ export type ThemedTextProps = TextProps & {
   themeColor?: ThemeColor;
 };
 
-export function ThemedText({ style, type = 'default', themeColor, ...rest }: ThemedTextProps) {
+/** 文字。`type` は iPhone標準の段階（theme.ts の Typography）。書かないと `callout`（16pt）になる。 */
+export function ThemedText({ style, type = 'callout', themeColor, ...rest }: ThemedTextProps) {
   const theme = useTheme();
 
   return (
-    <Text
-      style={[
-        { color: theme[themeColor ?? (type === 'linkPrimary' ? 'primary' : 'text')] },
-        Typography[type],
-        type === 'code' && { fontFamily: Fonts.mono },
-        style,
-      ]}
-      {...rest}
-    />
+    <Text style={[{ color: theme[themeColor ?? 'text'] }, Typography[type], style]} {...rest} />
   );
 }

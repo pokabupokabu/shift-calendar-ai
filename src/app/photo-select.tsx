@@ -15,6 +15,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { AdPlaceholder } from '@/components/ad-placeholder';
 import { AiConsentSheet } from '@/components/ai-consent-sheet';
 import { IconBadge } from '@/components/icon-badge';
 import { hasShiftKeyword, KeywordDialog } from '@/components/keyword-dialog';
@@ -117,7 +118,9 @@ function ActionButton({ icon: Icon, label, onPress, variant, disabled }: ActionB
       ]}
     >
       <Icon size={20} color={palette.fg} strokeWidth={2} />
-      <ThemedText style={[styles.actionButtonLabel, { color: palette.fg }]}>{label}</ThemedText>
+      <ThemedText type="headline" style={{ color: palette.fg }}>
+        {label}
+      </ThemedText>
     </Pressable>
   );
 }
@@ -155,8 +158,10 @@ function PhotoPreview({
         <IconBadge tone="blue" size={64}>
           <Camera size={IconSize.large} color={theme.primary} />
         </IconBadge>
-        <ThemedText style={styles.previewTitle}>写真が未選択です</ThemedText>
-        <ThemedText themeColor="textSecondary" style={styles.previewHint}>
+        <ThemedText type="headline" style={styles.previewTitle}>
+          写真が未選択です
+        </ThemedText>
+        <ThemedText type="footnote" themeColor="textSecondary" style={styles.previewHint}>
           フォーカスが合っている鮮明な写真をお使いいただくと認識精度が向上します
         </ThemedText>
       </View>
@@ -195,7 +200,9 @@ function SelectedPhotos({
         { backgroundColor: theme.backgroundElement, borderColor: theme.border },
       ]}
     >
-      <ThemedText style={styles.previewCount}>{images.length}枚選択中</ThemedText>
+      <ThemedText type="subheadline" style={styles.previewCount}>
+        {images.length}枚選択中
+      </ThemedText>
       <View
         style={[styles.thumbnailRow, { height: slotSize }]}
         onLayout={(event) => setRowWidth(event.nativeEvent.layout.width)}
@@ -245,17 +252,19 @@ function TipsSection() {
         <View style={[styles.tipsIconBadge, { backgroundColor: tipsBadge.background }]}>
           <Lightbulb size={IconSize.small} color={tipsBadge.icon} strokeWidth={2.2} />
         </View>
-        <ThemedText style={styles.tipsHeaderLabel}>きれいに読み取るコツ</ThemedText>
+        <ThemedText type="subheadline" style={styles.tipsHeaderLabel}>
+          きれいに読み取るコツ
+        </ThemedText>
         <ChevronIcon size={20} color={theme.textSecondary} strokeWidth={2.2} />
       </Pressable>
       {expanded && (
         <View style={[styles.tipsList, { borderTopColor: theme.border }]}>
           {TIPS.map((tip) => (
             <View key={tip} style={styles.tipRow}>
-              <ThemedText themeColor="primary" style={styles.tipBullet}>
+              <ThemedText type="footnote" themeColor="primary" style={styles.tipBullet}>
                 •
               </ThemedText>
-              <ThemedText themeColor="textSecondary" style={styles.tipText}>
+              <ThemedText type="footnote" themeColor="textSecondary" style={styles.tipText}>
                 {tip}
               </ThemedText>
             </View>
@@ -293,7 +302,7 @@ function GoldPillButton({
       ]}
     >
       <Sparkles size={20} color={theme.onGold} strokeWidth={2} />
-      <ThemedText numberOfLines={1} style={[styles.actionButtonLabel, { color: theme.onGold }]}>
+      <ThemedText type="headline" numberOfLines={1} style={{ color: theme.onGold }}>
         {label}
       </ThemedText>
     </Pressable>
@@ -521,16 +530,21 @@ export default function PhotoSelectScreen() {
 
   return (
     <Screen style={styles.screen}>
-      {/* 題名は上のバーの「シフト表を選択」だけにする（大見出しは二重になるので置かない。決定1） */}
-      <ThemedText type="subheadline" themeColor="textSecondary" style={styles.header}>
-        複数のスクショや写真をまとめて選択・読み取りできます。手書きや印刷された表にも対応しています。
-      </ThemedText>
-
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* 横長のバナー（320×50）。PROでは自動で消える。ほかの画面と同じく一番上に置き、画面と一緒に流れる
+            （2026-10-27 ユーザー決定。写真を選んだあとも出したまま・取り直さない）。上のバーとは画面の上の余白24、
+            下の説明文とは押し間違えないよう24空ける */}
+        <AdPlaceholder slot="photo-select" style={styles.ad} />
+
+        {/* 題名は上のバーの「シフト表を選択」だけにする（大見出しは二重になるので置かない。決定1） */}
+        <ThemedText type="subheadline" themeColor="textSecondary" style={styles.header}>
+          複数のスクショや写真をまとめて選択・読み取りできます。手書きや印刷された表にも対応しています。
+        </ThemedText>
+
         <PhotoPreview images={images} onOpenImage={setViewerUri} />
 
         <View style={styles.buttonRow}>
@@ -560,7 +574,11 @@ export default function PhotoSelectScreen() {
                 { backgroundColor: theme.backgroundElement, borderColor: theme.border },
               ]}
             >
-              <ThemedText themeColor="textSecondary" style={styles.workplacePickerLabel}>
+              <ThemedText
+                type="caption1"
+                themeColor="textSecondary"
+                style={styles.workplacePickerLabel}
+              >
                 読み取る勤務先
               </ThemedText>
               {workplaces.map((workplace) => (
@@ -569,7 +587,7 @@ export default function PhotoSelectScreen() {
                   onPress={() => setSelectedWorkplaceId(workplace.id)}
                   style={[styles.workplaceRow, { borderTopColor: theme.border }]}
                 >
-                  <ThemedText>{workplace.name}</ThemedText>
+                  <ThemedText type="callout">{workplace.name}</ThemedText>
                   {workplace.id === effectiveWorkplaceId && (
                     <Check size={IconSize.small} color={theme.primary} />
                   )}
@@ -610,6 +628,7 @@ export default function PhotoSelectScreen() {
         </View>
 
         <ThemedText
+          type="caption1"
           style={[styles.quotaNote, { color: quotaExceeded ? theme.orange : theme.textSecondary }]}
         >
           {isTutorialFreeScan
@@ -633,7 +652,7 @@ export default function PhotoSelectScreen() {
 
         <View style={styles.footerNote}>
           <Lock size={IconSize.small} color={theme.textSecondary} strokeWidth={2} />
-          <ThemedText themeColor="textSecondary" style={styles.footerNoteText}>
+          <ThemedText type="caption1" themeColor="textSecondary" style={styles.footerNoteText}>
             取り込んだシフト表画像は安全な通信でAIに送信され、シフトの読み取りにのみ使用されます。
           </ThemedText>
         </View>
@@ -671,6 +690,9 @@ const styles = StyleSheet.create({
     paddingTop: 24,
     paddingBottom: 8,
     gap: 0,
+  },
+  ad: {
+    marginBottom: Spacing.four,
   },
   header: {
     marginBottom: Spacing.three,
@@ -739,23 +761,15 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 8,
   },
   previewTitle: {
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: '700',
     textAlign: 'center',
     marginTop: 16,
     marginBottom: 6,
   },
   previewHint: {
-    fontSize: 13,
-    lineHeight: 21,
-    fontWeight: '400',
     textAlign: 'center',
     maxWidth: 280,
   },
   previewCount: {
-    fontSize: 14,
-    lineHeight: 20,
     fontWeight: '700',
     marginBottom: 8,
   },
@@ -782,9 +796,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   quotaNote: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '500',
     textAlign: 'center',
     marginBottom: 16,
   },
@@ -803,12 +814,6 @@ const styles = StyleSheet.create({
   actionButtonDisabled: {
     opacity: 0.9,
     shadowOpacity: 0,
-  },
-  actionButtonLabel: {
-    fontSize: 16,
-    lineHeight: 20,
-    fontWeight: '700',
-    letterSpacing: 0.4,
   },
   tipsCard: {
     borderWidth: 1,
@@ -836,10 +841,7 @@ const styles = StyleSheet.create({
   },
   tipsHeaderLabel: {
     flex: 1,
-    fontSize: 15,
-    lineHeight: 20,
     fontWeight: '700',
-    letterSpacing: -0.23,
   },
   tipsList: {
     gap: 8,
@@ -854,15 +856,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   tipBullet: {
-    fontSize: 13,
-    lineHeight: 21,
     fontWeight: '700',
   },
   tipText: {
     flex: 1,
-    fontSize: 13,
-    lineHeight: 21,
-    fontWeight: '400',
   },
   footerNote: {
     flexDirection: 'row',
@@ -874,9 +871,6 @@ const styles = StyleSheet.create({
   },
   footerNoteText: {
     flex: 1,
-    fontSize: 12,
-    lineHeight: 15,
-    fontWeight: '400',
     marginTop: 2,
   },
   centerText: {
@@ -899,7 +893,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   workplacePickerLabel: {
-    fontSize: 12,
     fontWeight: '600',
     paddingHorizontal: Spacing.three,
     paddingTop: Spacing.two,

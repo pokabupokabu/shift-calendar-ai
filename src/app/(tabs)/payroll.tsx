@@ -311,10 +311,14 @@ export default function PayrollTab() {
 
   return (
     <Screen>
-      <View style={styles.topSection}>
-        <TabTitleRow title="給与" />
+      <TabTitleRow title="給与" />
 
-        <View style={styles.header}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* 横長のバナー（320×50）。PROでは自動で消える。見出しのすぐ下に置き、画面と一緒に流れる。
+            下の月送りとは押し間違えないよう24pt空ける（マイカスタムと同じ。design-system.md 6章） */}
+        <AdPlaceholder slot="payroll" style={styles.ad} />
+
+        <View style={[styles.header, styles.headerSpacing]}>
           <Pressable
             onPress={handlePrevMonth}
             hitSlop={Spacing.one}
@@ -345,9 +349,7 @@ export default function PayrollTab() {
             <ChevronRight size={IconSize.medium} color={theme.primary} />
           </Pressable>
         </View>
-      </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
         <Card style={styles.totalCard}>
           <View style={styles.totalHeaderRow}>
             <IconBadge tone="blue" size={28}>
@@ -424,11 +426,7 @@ export default function PayrollTab() {
                 <ThemedText type="subheadline" themeColor="textSecondary">
                   今年の年齢区分（19〜22歳かどうか）を選ぶと、あなたに合った壁が表示されます
                 </ThemedText>
-                <PrimaryButton
-                  variant="bluePill"
-                  label="今年の年齢区分を選ぶ"
-                  onPress={openDependencySettings}
-                />
+                <PrimaryButton label="今年の年齢区分を選ぶ" onPress={openDependencySettings} />
                 {yearlyTotalRow}
                 {yearlyAllDayNote}
               </>
@@ -537,11 +535,7 @@ export default function PayrollTab() {
             <ThemedText type="footnote" themeColor="textSecondary">
               複数勤務先の年収を自動合算し、年齢とその年の制度に合わせた「年収の壁」への接近をお知らせします。
             </ThemedText>
-            <PrimaryButton
-              variant="bluePill"
-              label="PROにアップグレード"
-              onPress={() => router.push('/paywall')}
-            />
+            <PrimaryButton label="PROにアップグレード" onPress={() => router.push('/paywall')} />
           </Card>
         )}
 
@@ -767,8 +761,6 @@ export default function PayrollTab() {
             })}
           </Card>
         )}
-
-        <AdPlaceholder slot="payroll" style={styles.ad} />
       </ScrollView>
 
       {/* 明細の行を押したときの小窓（カレンダーの小窓と同じ作り） */}
@@ -1045,9 +1037,6 @@ function ShiftTypeFilterDialog({
 }
 
 const styles = StyleSheet.create({
-  topSection: {
-    gap: Spacing.two,
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1366,7 +1355,12 @@ const styles = StyleSheet.create({
   optionLabel: {
     flexShrink: 1,
   },
+  // scrollContent の gap（8）＋ 16 で、下の月送りと24空ける
   ad: {
-    marginTop: Spacing.two,
+    marginBottom: Spacing.three,
+  },
+  // 月送りと合計のカードの間は、今までどおり16（scrollContent の gap 8 ＋ 8）
+  headerSpacing: {
+    marginBottom: Spacing.two,
   },
 });
