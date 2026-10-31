@@ -1,24 +1,19 @@
 /**
- * Thin transparent proxy in front of the AI APIs (see shift-calendar-ai
- * README "8. 不明点・リスク" 1): the real API keys live only in this Worker's
+ * Thin transparent proxy in front of the Anthropic API (see shift-calendar-ai
+ * README "8. 不明点・リスク" 1): the real API key lives only in this Worker's
  * secrets, never in the app bundle. The app sends the same request shape it
- * would send straight to the provider, just to this Worker's URL with a
+ * would send straight to Anthropic, just to this Worker's URL with a
  * shared-secret header instead of the real key.
  *
- * Routes:
- * - POST /v1/messages → Anthropic Messages API（今の本命。モデルは本文の model で指定）
- * - POST /v1beta/models/<model>:generateContent → Gemini（切り替えが済んだら閉じる）
- *
- * 合言葉・回数制限（KVの数え方）・本文の大きさ・画像の枚数の決まりは両方の道で共通。
+ * Route: POST /v1/messages → Anthropic Messages API（モデルは本文の model で指定）
  *
  * This does not fully stop abuse by someone who extracts the shared secret
  * from the app bundle (it's still client-embedded) — it bounds the blast
- * radius to our own rate limit instead of unlimited direct Gemini usage, and
- * lets us revoke/rotate the secret independently of the Gemini key.
+ * radius to our own rate limit instead of unlimited direct API usage, and
+ * lets us revoke/rotate the secret independently of the Anthropic key.
  */
 
 export interface Env {
-  GEMINI_API_KEY: string;
   /** Anthropic の APIキー。`wrangler secret put ANTHROPIC_API_KEY` で設定する（アプリには入れない）。 */
   ANTHROPIC_API_KEY: string;
   APP_SHARED_SECRET: string;
@@ -34,8 +29,6 @@ export interface Env {
   RATE_LIMIT_KV: KVNamespace;
 }
 
-const GEMINI_ORIGIN = 'https://generativelanguage.googleapis.com';
-const GENERATE_CONTENT_PATH = /^\/v1beta\/models\/([\w.-]+):generateContent$/;
 const ANTHROPIC_MESSAGES_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MESSAGES_PATH = '/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
@@ -48,18 +41,11 @@ const RATE_LIMIT_PER_HOUR = 30;
 const RATE_LIMIT_PER_MINUTE = 5;
 
 /**
- * このWorkerが中継してよいモデル。
+ * このWorkerが中継してよいモデル（ふだんの解析と、PROの高度なスキャン）。
  *
  * モデル名はクライアントが送ってくるため、ここで固定しないと、合言葉を抜いた相手が
- * 任意の（高価な）モデルを指定できてしまう。無料ユーザーがPRO用モデルを指定する
- * 経路も同時に塞がる。モデルを切り替えるときはアプリ側の既定値（src/config/env.ts）と
- * ここの両方を更新してデプロイすること。
- */
-const ALLOWED_MODELS = new Set(['gemini-3.1-flash-lite', 'gemini-3.8-flash']);
-
-/**
- * Anthropic の道で中継してよいモデル（ふだんの解析と、PROの高度なスキャン）。理由は ALLOWED_MODELS と同じ。
- * アプリ側の既定値（src/config/env.ts の modelStandard / modelAdvanced）と必ず揃えること。
+ * 任意の（高価な）モデルを指定できてしまう。モデルを切り替えるときはアプリ側の既定値
+ * （src/config/env.ts の modelStandard / modelAdvanced）とここの両方を更新してデプロイすること。
  */
 const ANTHROPIC_ALLOWED_MODELS = new Set(['claude-haiku-5-5', 'claude-sonnet-5-5']);
 
@@ -119,26 +105,6 @@ async function isWithinRateLimit(kv: KVNamespace, clientId: string): Promise<boo
 }
 
 /**
- * 本文に含まれる画像（inlineData）の枚数を数える。
- * 形が想定と違う場合は -1 を返し、呼び出し側で400にする。
- */
-function countInlineImages(body: unknown): number {
-  if (typeof body !== 'object' || body === null) return -1;
-  const contents = (body as { contents?: unknown }).contents;
-  if (!Array.isArray(contents)) return -1;
-
-  let count = 0;
-  for (const content of contents) {
-    const parts = (content as { parts?: unknown })?.parts;
-    if (!Array.isArray(parts)) continue;
-    for (const part of parts) {
-      if (part && typeof part === 'object' && 'inlineData' in part) count += 1;
-    }
-  }
-  return count;
-}
-
-/**
  * Anthropic の本文に含まれる画像ブロック（type: "image"）の枚数を数える。
  * messages が配列でないなど形が想定と違う場合は -1 を返し、呼び出し側で400にする。
  */
@@ -158,18 +124,6 @@ function countAnthropicImages(body: Record<string, unknown>): number {
     }
   }
   return count;
-}
-
-type Route = { kind: 'gemini'; path: string } | { kind: 'anthropic' };
-
-/** パスから道を決める。どちらにも当てはまらなければ null（404）。 */
-function matchRoute(pathname: string): Route | null {
-  if (pathname === ANTHROPIC_MESSAGES_PATH) return { kind: 'anthropic' };
-  // Only relay Gemini's own generateContent path shape — this must never
-  // become an open relay to arbitrary Google APIs.
-  const pathMatch = GENERATE_CONTENT_PATH.exec(pathname);
-  if (pathMatch && ALLOWED_MODELS.has(pathMatch[1])) return { kind: 'gemini', path: pathname };
-  return null;
 }
 
 /** 本文を検証してから Anthropic へ送る。中継するのは本文だけで、アプリのヘッダーは1つも渡さない。 */
@@ -232,9 +186,9 @@ export default {
       return new Response('Unauthorized', { status: 401 });
     }
 
+    // Anthropic の Messages API の道だけを中継する。ほかのパスは開けない。
     const url = new URL(request.url);
-    const route = matchRoute(url.pathname);
-    if (!route) {
+    if (url.pathname !== ANTHROPIC_MESSAGES_PATH) {
       return new Response('Not Found', { status: 404 });
     }
 
@@ -269,30 +223,6 @@ export default {
       return new Response('Bad Request', { status: 400 });
     }
 
-    if (route.kind === 'anthropic') {
-      return relayToAnthropic(parsedBody, rawBody, env);
-    }
-
-    const imageCount = countInlineImages(parsedBody);
-    if (imageCount < 0) {
-      return new Response('Bad Request', { status: 400 });
-    }
-    if (imageCount > MAX_IMAGES_PER_REQUEST) {
-      return new Response('Payload Too Large', { status: 413 });
-    }
-
-    const upstream = await fetch(`${GEMINI_ORIGIN}${route.path}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': env.GEMINI_API_KEY,
-      },
-      body: rawBody,
-    });
-
-    return new Response(upstream.body, {
-      status: upstream.status,
-      headers: { 'Content-Type': upstream.headers.get('Content-Type') ?? 'application/json' },
-    });
+    return relayToAnthropic(parsedBody, rawBody, env);
   },
 };

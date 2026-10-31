@@ -5,7 +5,7 @@ import type { ShiftImage } from '@/services/ai';
 
 /**
  * Long-edge cap before an image is downscaled. High enough to keep shift-table text
- * legible to the AI, low enough to bound Gemini request size/cost for full-resolution
+ * legible to the AI, low enough to bound AI request size/cost for full-resolution
  * phone photos (README "8. 不明点・リスク" 4).
  */
 const MAX_DIMENSION = 2000;
