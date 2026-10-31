@@ -32,7 +32,7 @@ apps/shift-calendar-ai/
     hooks/
     models/               # データモデル（2節）
     services/
-      ai/                 # AIProvider インターフェース + Gemini実装（3節）
+      ai/                 # AIProvider インターフェース + Anthropic実装（3節）
       calendar/           # CalendarProvider インターフェース + Apple/Google実装（4節）
     store/
       useAppStore.ts        # 永続化される状態（ユーザー・シフト種別マスター・作成済みイベント記録）
@@ -40,7 +40,7 @@ apps/shift-calendar-ai/
     utils/
 ```
 
-Expoアプリとは別に、リポジトリ直下に`server/ai-proxy/`（Cloudflare Workers、Gemini APIキーを
+Expoアプリとは別に、リポジトリ直下に`server/ai-proxy/`（Cloudflare Workers、Anthropic のAPIキーを
 クライアントから隠す薄いプロキシ。8節リスク1参照）がある。
 
 ## 2. 使用技術・依存関係
@@ -57,7 +57,7 @@ Expoアプリとは別に、リポジトリ直下に`server/ai-proxy/`（Cloudfl
 | 日付処理               | `date-fns`（`date-fns/locale/ja`）                                   | 「9/20（日）」のような和文表示フォーマットが必要（9節）                              |
 | Lint/Format            | `eslint-config-expo` + `prettier`                                    | テンプレート標準。`npm run lint`で担保                                               |
 
-Gemini/Google Calendar本体の呼び出しライブラリは未追加（後述のPhase 1/5で実装時に追加する）。
+AI（Anthropic）と Google Calendar は専用のライブラリを使わず、`fetch` で直接呼んでいる（AI は `server/ai-proxy/` を経由）。
 
 ## 3. データモデル（要件定義書20節に対応）
 
@@ -81,9 +81,10 @@ interface AIProvider {
 }
 ```
 
-`getAiProvider()`（`src/services/ai/index.ts`）が`EXPO_PUBLIC_AI_PROVIDER`を見て実装を返す。
-モデル差し替え（Proプラン候補、5節）は新しい`AIProvider`実装を追加するだけで済む。
-`GeminiProvider`はPhase 1で実装済み（Gemini 3系への直接呼び出し、`responseSchema`で`ShiftAnalysisResult`同型のJSONを強制）。
+`getAiProvider()`（`src/services/ai/index.ts`）が、呼び出し側から渡された段階（ふだん／高度なスキャン）に合わせて実装を返す。
+今の実装は`AnthropicProvider`だけ（ふだんは`claude-haiku-5-5`、高度なスキャンは`claude-sonnet-5-5`。`server/ai-proxy/`経由）。
+2026-10 に Gemini から切り替え、Gemini の実装は 2026-10-31 に消した（経緯は`docs/ai-model-comparison-2026-10.md`）。
+別の会社のモデルに替えるときも、新しい`AIProvider`実装を追加するだけで済む。
 `userMatch`が`ambiguous`/`not_found`のときの候補選択は`AnalyzeShiftImagesInput.confirmedRowLabel`経由で
 再解析する形でPhase 2実装済み（`src/app/user-match-select.tsx`）。
 
@@ -100,7 +101,7 @@ interface AIProvider {
 
 ## 6. 画面一覧（MVP、要件定義書 Claude Codeプロンプトの「MVP画面」節）
 
-`src/app/` にexpo-routerのファイルとして配置済み。AI解析（Gemini、Phase 1/2）とApple Calendar登録は
+`src/app/` にexpo-routerのファイルとして配置済み。AI解析（Phase 1/2。今は Anthropic）とApple Calendar登録は
 実処理まで接続済み。Google Calendarは未接続（下記「未実装」参照）。
 
 | #   | 画面                                                                             | ファイル                        |
@@ -158,7 +159,7 @@ interface AIProvider {
    このままGemini API keyを`EXPO_PUBLIC_GEMINI_API_KEY`に入れて配信すると、アプリを解凍した第三者が
    キーを読み取れる（無制限に使われる／課金される恐れ）。~~
    → 解消済み。(a) 薄いプロキシを挟む方針に決定し、`server/ai-proxy/`にCloudflare Workers製の
-   透過プロキシを実装した。実際のGemini APIキーはそのWorkerのシークレットとしてのみ保持され、
+   透過プロキシを実装した。実際のAIのAPIキー（今は Anthropic）はそのWorkerのシークレットとしてのみ保持され、
    クライアントはWorkerのURL(`EXPO_PUBLIC_AI_PROXY_URL`)と、乱用防止用の共有シークレット
    (`EXPO_PUBLIC_AI_PROXY_SECRET`、IPベースの簡易レート制限と組み合わせ)だけを持つ。
    デプロイ手順は`server/ai-proxy/README.md`参照（Cloudflareアカウントでの`wrangler login`等、
@@ -195,6 +196,6 @@ interface AIProvider {
 ## 9. 環境変数
 
 `.env.example`参照。`EXPO_PUBLIC_`接頭辞の変数はビルド時にJSバンドルへ埋め込まれるため、
-書き込み権限や従量課金が発生する実際の秘密情報（Gemini APIキー本体など）はコミットはもちろん、
+書き込み権限や従量課金が発生する実際の秘密情報（AIのAPIキー本体など）はコミットはもちろん、
 本番配信ビルドにも絶対に入れない（`EXPO_PUBLIC_AI_PROXY_SECRET`はWorker側の合言葉と同じ扱いの
-準秘密情報であり、Gemini APIキー本体ではないが、それでも実運用の値を気軽にコミットしないこと）。
+準秘密情報であり、AIのAPIキー本体ではないが、それでも実運用の値を気軽にコミットしないこと）。

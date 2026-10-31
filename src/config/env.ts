@@ -6,10 +6,7 @@
  */
 export const env = {
   ai: {
-    // 'anthropic'（既定）か 'gemini'。Gemini は実機で Anthropic が動くのを確かめるまでの戻し用で、
-    // リリース前にコードごと消す（docs/ai-model-comparison-2026-10.md「実装の進め方」）。
-    provider: process.env.EXPO_PUBLIC_AI_PROVIDER ?? 'anthropic',
-    // 中継サーバー（server/ai-proxy の Cloudflare Worker）。本物の Anthropic / Gemini の
+    // 中継サーバー（server/ai-proxy の Cloudflare Worker）。本物の Anthropic の
     // APIキーはその Worker のシークレットにだけあり、ここ（アプリ）には入らない。
     proxyUrl: process.env.EXPO_PUBLIC_AI_PROXY_URL ?? '',
     proxySecret: process.env.EXPO_PUBLIC_AI_PROXY_SECRET ?? '',
@@ -18,11 +15,6 @@ export const env = {
     // ここを変えるときは server/ai-proxy の ANTHROPIC_ALLOWED_MODELS も必ず一緒に直す（片方だけだと404）。
     modelStandard: process.env.EXPO_PUBLIC_AI_MODEL_STANDARD ?? 'claude-haiku-5-5',
     modelAdvanced: process.env.EXPO_PUBLIC_AI_MODEL_ADVANCED ?? 'claude-sonnet-5-5',
-    // provider が 'gemini' のときだけ使う（ふだん→_FREE、高度なスキャン→_PRO）。
-    // 3.1-flash-lite と 3.5-flash-lite は名前が似ているが別物で、3.5 は精度が悪い。バージョン番号まで書くこと。
-    // ここを変えるときは server/ai-proxy の ALLOWED_MODELS も必ず一緒に直す（片方だけだと404）。
-    geminiModelFree: process.env.EXPO_PUBLIC_GEMINI_MODEL_FREE ?? 'gemini-3.1-flash-lite',
-    geminiModelPro: process.env.EXPO_PUBLIC_GEMINI_MODEL_PRO ?? 'gemini-3.8-flash',
   },
   google: {
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? '',

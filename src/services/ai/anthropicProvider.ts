@@ -118,7 +118,7 @@ export class AnthropicProvider implements AIProvider {
     }
 
     // 中継サーバーやAIが受け付けなかった（合言葉違い・混雑・上限超え・障害など）場合は、
-    // 解析そのものが行われていないので回数を消費させない（GeminiProvider と同じ扱い）。
+    // 解析そのものが行われていないので回数を消費させない。
     // 画面には番号や英語の本文を出さず、分かる日本語だけを出す（docs/ui-review/group-b.md の決定12）。
     // 原因を調べられるよう、番号と本文は開発用のログにだけ残す。
     if (!response.ok) {
